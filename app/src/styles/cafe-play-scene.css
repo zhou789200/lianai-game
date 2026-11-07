@@ -1,0 +1,1573 @@
+/* ============================================================
+   R4 · 咖啡店经营：可点击的 2.5D 互动场景（cafe-play）
+   —— 底图已经包含店内的气泡和道具插画，这里只维护
+      与底图对齐的透明点击区，以及点击后的动画反馈。
+   ============================================================ */
+
+.cafe-play {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* 经营页直接使用场景底图铺满手机画布，不再套内层卡片边框。 */
+.screen--cafe {
+  gap: 0;
+  padding: 0 0 calc(86px + env(safe-area-inset-bottom));
+  overflow: hidden;
+}
+
+.screen--cafe > * {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.screen--cafe .cafe-play {
+  height: 100%;
+  min-height: 0;
+  gap: 0;
+}
+
+/* ---------------- 场景画布 ---------------- */
+.cafe-play__world {
+  position: relative;
+  aspect-ratio: 1600 / 2848;
+  border-radius: 26px;
+  overflow: hidden;
+  isolation: isolate;
+  background: #f3dcbb;
+  border: 2px solid rgba(255, 247, 230, 0.9);
+  box-shadow:
+    0 18px 34px rgba(88, 58, 30, 0.34),
+    inset 0 0 0 1px rgba(150, 112, 42, 0.28);
+  touch-action: manipulation;
+}
+
+.screen--cafe .cafe-play__world {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  aspect-ratio: auto;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.cafe-play__bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  user-select: none;
+  -webkit-user-drag: none;
+  pointer-events: none;
+}
+
+/* 顶部压一层暖光、底部压一层阴影，统一场景的明暗层次 */
+.cafe-play__wash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 243, 219, 0.16) 0%,
+      rgba(255, 240, 214, 0.04) 16%,
+      transparent 34%,
+      transparent 72%,
+      rgba(74, 46, 20, 0.1) 100%
+    ),
+    radial-gradient(122% 82% at 50% 40%, transparent 62%, rgba(96, 60, 24, 0.1) 100%);
+}
+
+/* ---------------- 上升的暖光尘 ---------------- */
+.cafe-play__ambient {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.cafe-play__ambient i {
+  position: absolute;
+  left: var(--amb-x, 20%);
+  bottom: var(--amb-y, 30%);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 246, 218, 0.9);
+  box-shadow: 0 0 8px 2px rgba(255, 226, 170, 0.5);
+  opacity: 0;
+  animation: cafe-play-rise var(--amb-d, 7.5s) ease-in-out infinite;
+  animation-delay: var(--amb-delay, 0s);
+}
+
+.cafe-play__ambient i:nth-child(1) {
+  --amb-x: 16%;
+  --amb-y: 46%;
+  --amb-d: 8.4s;
+}
+.cafe-play__ambient i:nth-child(2) {
+  --amb-x: 38%;
+  --amb-y: 58%;
+  --amb-d: 7.1s;
+  --amb-delay: -2.2s;
+  width: 6px;
+  height: 6px;
+}
+.cafe-play__ambient i:nth-child(3) {
+  --amb-x: 58%;
+  --amb-y: 40%;
+  --amb-d: 9.6s;
+  --amb-delay: -4.4s;
+}
+.cafe-play__ambient i:nth-child(4) {
+  --amb-x: 82%;
+  --amb-y: 54%;
+  --amb-d: 6.9s;
+  --amb-delay: -1.1s;
+  width: 5px;
+  height: 5px;
+}
+.cafe-play__ambient i:nth-child(5) {
+  --amb-x: 68%;
+  --amb-y: 24%;
+  --amb-d: 10.2s;
+  --amb-delay: -5.6s;
+  width: 10px;
+  height: 10px;
+}
+.cafe-play__ambient i:nth-child(6) {
+  --amb-x: 28%;
+  --amb-y: 22%;
+  --amb-d: 8.8s;
+  --amb-delay: -3.3s;
+  width: 6px;
+  height: 6px;
+}
+
+@keyframes cafe-play-rise {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0) scale(0.6);
+  }
+  22% {
+    opacity: 0.75;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(10px, -150px, 0) scale(1.3);
+  }
+}
+
+/* ---------------- 今日目标 ---------------- */
+.cafe-play__goal {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(180deg, rgba(255, 252, 244, 0.94), rgba(246, 231, 206, 0.9));
+  border: 1.5px solid rgba(150, 112, 42, 0.36);
+  box-shadow: 0 6px 14px rgba(96, 64, 32, 0.26), var(--shadow-inset);
+  color: var(--ink-700);
+  font-size: 11px;
+  font-weight: 800;
+  backdrop-filter: blur(4px);
+}
+
+.cafe-play__goal svg {
+  color: var(--coral-500);
+}
+
+.cafe-play__goal strong {
+  font-family: var(--font-display);
+  font-size: var(--fs-md);
+  color: var(--ink-900);
+}
+
+.cafe-play__goal i {
+  width: 1px;
+  height: 11px;
+  background: rgba(150, 112, 42, 0.32);
+}
+
+/* ---------------- 可点击热点 ----------------
+   气泡插图已经画在底层场景图里。这里只放透明点击区，
+   不再额外绘制圆形按钮、图标或文字，避免和背景重影。 */
+.cafe-hotspot {
+  position: absolute;
+  z-index: 4;
+  display: block;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: transparent;
+  cursor: pointer;
+  translate: -50% -50%;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.cafe-hotspot:focus-visible {
+  outline: 3px solid rgba(232, 131, 106, 0.82);
+  outline-offset: 2px;
+  background: rgba(255, 248, 232, 0.12);
+}
+
+.cafe-hotspot.is-active {
+  animation: cafe-hotspot-tap 0.46s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+@keyframes cafe-hotspot-tap {
+  0% {
+    transform: scale(0.92);
+  }
+  55% {
+    transform: scale(1.06);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* ---------------- 可拖动角色 ----------------
+   底图保留完整场景，店长和小猫使用独立透明精灵层，
+   这样拖拽、走向设备和顾客时不会带着场景一起移动。 */
+.cafe-actors {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.cafe-actor {
+  position: absolute;
+  display: block;
+  width: 28%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  transform: translate(-50%, -100%);
+  transform-origin: 50% 100%;
+  cursor: grab;
+  pointer-events: auto;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    left 680ms cubic-bezier(0.2, 0.76, 0.25, 1),
+    top 680ms cubic-bezier(0.2, 0.76, 0.25, 1);
+  will-change: left, top;
+}
+
+.cafe-actor--cat {
+  z-index: 2;
+  width: 18%;
+}
+
+.cafe-actor:focus-visible {
+  outline: 3px solid rgba(232, 131, 106, 0.78);
+  outline-offset: 4px;
+}
+
+.cafe-actor.is-dragging {
+  z-index: 8;
+  cursor: grabbing;
+  transition: none;
+}
+
+.cafe-actor__sprite {
+  display: block;
+  width: 100%;
+  height: auto;
+  transform: scaleX(var(--actor-facing, 1));
+  transform-origin: 50% 100%;
+  filter: drop-shadow(0 5px 5px rgba(74, 46, 20, 0.23));
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.cafe-actor--cat .cafe-actor__sprite {
+  filter:
+    drop-shadow(0 0 1px rgba(103, 62, 29, 0.74))
+    drop-shadow(0 5px 5px rgba(74, 46, 20, 0.28));
+}
+
+.cafe-actor__shadow {
+  position: absolute;
+  left: 50%;
+  bottom: -4px;
+  width: 58%;
+  height: 11px;
+  translate: -50% 0;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(64, 41, 22, 0.32), transparent 76%);
+  opacity: 0.72;
+  pointer-events: none;
+}
+
+.cafe-actor--cat .cafe-actor__shadow {
+  width: 76%;
+  height: 9px;
+  opacity: 0.7;
+}
+
+.cafe-actor.is-dragging .cafe-actor__sprite {
+  transform: translateY(-3px) scale(1.035) scaleX(var(--actor-facing, 1));
+  filter: drop-shadow(0 9px 7px rgba(74, 46, 20, 0.28));
+}
+
+.cafe-actor.is-reacting .cafe-actor__sprite {
+  animation: cafe-actor-react 620ms cubic-bezier(0.2, 1.35, 0.4, 1);
+}
+
+.cafe-actor.is-work .cafe-actor__sprite {
+  animation: cafe-actor-work 620ms ease-in-out infinite;
+}
+
+.cafe-actor--barista.is-work::before,
+.cafe-actor--barista.is-work::after {
+  content: '';
+  position: absolute;
+  z-index: 3;
+  top: 15%;
+  width: 9%;
+  min-width: 7px;
+  height: 16%;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.86);
+  filter: blur(1.8px);
+  opacity: 0;
+  pointer-events: none;
+  animation: cafe-actor-steam 1.25s ease-out infinite;
+}
+
+.cafe-actor--barista.is-work::before {
+  right: 27%;
+}
+
+.cafe-actor--barista.is-work::after {
+  right: 18%;
+  animation-delay: 0.22s;
+}
+
+.cafe-actor.is-visit .cafe-actor__sprite {
+  animation: cafe-actor-visit 760ms ease-in-out infinite;
+}
+
+.cafe-actor--cat.is-visit::before,
+.cafe-actor--cat.is-visit::after {
+  content: '';
+  position: absolute;
+  z-index: 3;
+  top: 2%;
+  width: 15px;
+  height: 13px;
+  background: var(--coral-400);
+  clip-path: polygon(50% 100%, 7% 50%, 7% 23%, 29% 7%, 50% 25%, 71% 7%, 93% 23%, 93% 50%);
+  filter: drop-shadow(0 2px 3px rgba(120, 55, 38, 0.24));
+  opacity: 0;
+  pointer-events: none;
+  animation: cafe-actor-heart 1.45s ease-out infinite;
+}
+
+.cafe-actor--cat.is-visit::before {
+  right: 24%;
+  --heart-drift: -22px;
+}
+
+.cafe-actor--cat.is-visit::after {
+  right: 38%;
+  width: 10px;
+  height: 9px;
+  animation-delay: 0.42s;
+  --heart-drift: 18px;
+}
+
+@keyframes cafe-actor-react {
+  0%,
+  100% {
+    transform: scaleX(var(--actor-facing, 1)) translateY(0);
+  }
+  38% {
+    transform: scaleX(var(--actor-facing, 1)) translateY(-11px) rotate(-3deg);
+  }
+  66% {
+    transform: scaleX(var(--actor-facing, 1)) translateY(-4px) rotate(3deg);
+  }
+}
+
+@keyframes cafe-actor-work {
+  0%,
+  100% {
+    transform: scaleX(var(--actor-facing, 1)) translateY(0) rotate(-0.8deg);
+  }
+  50% {
+    transform: scaleX(var(--actor-facing, 1)) translateY(-4px) rotate(0.8deg);
+  }
+}
+
+@keyframes cafe-actor-visit {
+  0%,
+  100% {
+    transform: scaleX(var(--actor-facing, 1)) translateY(0) rotate(-1.2deg);
+  }
+  50% {
+    transform: scaleX(var(--actor-facing, 1)) translateY(-5px) rotate(1.2deg);
+  }
+}
+
+@keyframes cafe-actor-steam {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.7);
+  }
+  32% {
+    opacity: 0.76;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-26px) scale(1.25);
+  }
+}
+
+@keyframes cafe-actor-heart {
+  0% {
+    opacity: 0;
+    transform: translateY(5px) scale(0.45) rotate(-8deg);
+  }
+  28% {
+    opacity: 0.95;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--heart-drift), -34px) scale(1.08) rotate(9deg);
+  }
+}
+
+@keyframes cafe-prop-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+/* ---------------- 圆形道具徽章 ---------------- */
+.cafe-object {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  color: var(--sea-700);
+  background: radial-gradient(circle at 34% 26%, #fffdf6 0%, #f4e2c2 62%, #dcc091 100%);
+  border: 2px solid rgba(150, 112, 42, 0.46);
+  box-shadow:
+    0 9px 16px rgba(96, 64, 32, 0.34),
+    inset 0 2px 0 rgba(255, 255, 255, 0.88);
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+
+/* 贴地投影：让徽章看起来立在台面上 */
+.cafe-object::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -9px;
+  width: 74%;
+  height: 10px;
+  translate: -50% 0;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(74, 46, 20, 0.34), transparent 78%);
+  pointer-events: none;
+}
+
+.cafe-object--machine {
+  color: var(--sea-900);
+  background: radial-gradient(circle at 34% 24%, #fdf9f0 0%, #cfe6df 58%, #8ecdc1 100%);
+  border-color: rgba(45, 99, 92, 0.46);
+}
+
+/* 咖啡机顶盖：一小段铜色出气口 */
+.cafe-object__top {
+  position: absolute;
+  left: 50%;
+  top: -8px;
+  translate: -50% 0;
+  width: 26px;
+  height: 10px;
+  border-radius: 8px 8px 3px 3px;
+  background: linear-gradient(180deg, var(--gold-300), var(--gold-600));
+  border: 1px solid rgba(120, 88, 24, 0.5);
+}
+
+/* 常态蒸汽：不点也有小店在运转的感觉 */
+.cafe-object--machine::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: -20px;
+  width: 9px;
+  height: 14px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.8);
+  filter: blur(2px);
+  translate: -50% 0;
+  animation: cafe-idle-steam 2.6s ease-out infinite;
+}
+
+@keyframes cafe-idle-steam {
+  0% {
+    opacity: 0;
+    transform: translateY(6px) scale(0.6);
+  }
+  35% {
+    opacity: 0.72;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-22px) scale(1.4);
+  }
+}
+
+.cafe-object--oven {
+  color: var(--gold-700);
+  background: radial-gradient(circle at 34% 24%, #fff6e4 0%, #f0dca8 58%, #d9a84e 100%);
+  border-color: rgba(120, 88, 24, 0.44);
+}
+
+.cafe-object__window {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  color: var(--sun-200);
+  background: radial-gradient(circle at 42% 34%, #6a4a26 0%, #3d2a17 78%);
+  box-shadow: inset 0 0 0 2px rgba(255, 226, 173, 0.55), 0 0 12px rgba(255, 180, 90, 0.5);
+  animation: cafe-oven-glow 2.4s ease-in-out infinite;
+}
+
+@keyframes cafe-oven-glow {
+  0%,
+  100% {
+    box-shadow: inset 0 0 0 2px rgba(255, 226, 173, 0.5), 0 0 10px rgba(255, 180, 90, 0.4);
+  }
+  50% {
+    box-shadow: inset 0 0 0 2px rgba(255, 226, 173, 0.8), 0 0 18px rgba(255, 180, 90, 0.7);
+  }
+}
+
+.cafe-object--menu {
+  color: var(--coral-600);
+  transform-origin: 50% 0;
+  animation: cafe-menu-sway 4.6s ease-in-out infinite;
+}
+
+@keyframes cafe-menu-sway {
+  0%,
+  100% {
+    transform: rotate(-2.2deg);
+  }
+  50% {
+    transform: rotate(2.2deg);
+  }
+}
+
+.cafe-object--decor {
+  color: var(--gold-600);
+  background: radial-gradient(circle at 34% 26%, rgba(255, 253, 245, 0.9) 0%, rgba(246, 226, 190, 0.72) 100%);
+  border-style: dashed;
+  border-color: rgba(168, 127, 44, 0.6);
+}
+
+.cafe-object--decor svg {
+  animation: cafe-decor-twinkle 2.8s ease-in-out infinite;
+}
+
+@keyframes cafe-decor-twinkle {
+  0%,
+  100% {
+    opacity: 0.7;
+    transform: scale(0.92) rotate(-6deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.08) rotate(6deg);
+  }
+}
+
+.cafe-object--pet {
+  color: var(--coral-600);
+  background: radial-gradient(circle at 34% 26%, #fffaf1 0%, #f8ddc6 60%, #eab48f 100%);
+  border-color: rgba(194, 91, 60, 0.42);
+  animation: cafe-cat-breathe 2.9s ease-in-out infinite;
+}
+
+@keyframes cafe-cat-breathe {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-2px) scale(1.03);
+  }
+}
+
+.cafe-object__ear {
+  position: absolute;
+  top: -6px;
+  width: 0;
+  height: 0;
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-bottom: 13px solid #f3c69d;
+  animation: cafe-cat-ear 2.9s ease-in-out infinite;
+}
+
+.cafe-object__ear--l {
+  left: 8px;
+  rotate: -14deg;
+}
+
+.cafe-object__ear--r {
+  right: 8px;
+  rotate: 14deg;
+  animation-delay: -0.6s;
+}
+
+@keyframes cafe-cat-ear {
+  0%,
+  100% {
+    rotate: -14deg;
+  }
+  50% {
+    rotate: -4deg;
+  }
+}
+
+.cafe-object--table {
+  color: var(--sea-900);
+  background: radial-gradient(circle at 34% 26%, #fffdF6 0%, #e7f2ee 58%, #a9d6cc 100%);
+  border-color: rgba(45, 99, 92, 0.42);
+}
+
+.cafe-object__tabletop {
+  position: absolute;
+  left: 50%;
+  bottom: -7px;
+  translate: -50% 0;
+  width: 92%;
+  height: 12px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #e9c893, #b07f47);
+  border: 1px solid rgba(120, 88, 24, 0.4);
+  box-shadow: 0 4px 8px rgba(96, 64, 32, 0.3);
+}
+
+/* 桌边两位客人 */
+.cafe-object__guest {
+  position: absolute;
+  top: -9px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50% 50% 44% 44%;
+  background: radial-gradient(circle at 36% 30%, #fff6e8, #e6c39a 70%, #c99a6a 100%);
+  border: 1.5px solid rgba(150, 112, 42, 0.4);
+  animation: cafe-guest-bob 2.2s ease-in-out infinite;
+}
+
+.cafe-object__guest--a {
+  left: -4px;
+}
+
+.cafe-object__guest--b {
+  right: -4px;
+  background: radial-gradient(circle at 36% 30%, #fff3ef, #f0c3b4 70%, #d99c88 100%);
+  animation-delay: -1.1s;
+}
+
+@keyframes cafe-guest-bob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-3deg);
+  }
+  50% {
+    transform: translateY(-4px) rotate(3deg);
+  }
+}
+
+.cafe-object__level {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  padding: 1px 7px;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(180deg, var(--gold-300), var(--gold-500));
+  border: 1px solid rgba(120, 88, 24, 0.5);
+  color: #4a3512;
+  font-size: 10px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  box-shadow: var(--shadow-sm);
+}
+
+.cafe-hotspot__label {
+  padding: 2px 9px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 250, 238, 0.93);
+  border: 1px solid rgba(150, 112, 42, 0.32);
+  color: var(--ink-700);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.4;
+  white-space: nowrap;
+  box-shadow: 0 4px 8px rgba(96, 64, 32, 0.24);
+}
+
+/* 点击时对应徽章回弹一下 */
+.cafe-play__world.is-fx-machine .cafe-hotspot--machine .cafe-object,
+.cafe-play__world.is-fx-oven .cafe-hotspot--oven .cafe-object,
+.cafe-play__world.is-fx-menu .cafe-hotspot--menu .cafe-object,
+.cafe-play__world.is-fx-decor .cafe-hotspot--decor .cafe-object,
+.cafe-play__world.is-fx-pet .cafe-hotspot--pet .cafe-object,
+.cafe-play__world.is-fx-table .cafe-hotspot--table .cafe-object {
+  animation: cafe-object-pop 0.62s cubic-bezier(0.2, 1.5, 0.4, 1);
+}
+
+@keyframes cafe-object-pop {
+  0% {
+    transform: scale(0.86);
+  }
+  55% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* ---------------- 点击特效层 ---------------- */
+.cafe-play__fx {
+  position: absolute;
+  z-index: 6;
+  width: 1px;
+  height: 1px;
+  translate: -50% -50%;
+  pointer-events: none;
+}
+
+.cafe-play__fx--machine {
+  left: 9.5%;
+  top: 54%;
+}
+.cafe-play__fx--oven {
+  left: 41%;
+  top: 67%;
+}
+.cafe-play__fx--menu {
+  left: 9%;
+  top: 20%;
+}
+.cafe-play__fx--decor {
+  left: 84%;
+  top: 33%;
+}
+.cafe-play__fx--pet {
+  left: 11%;
+  top: 80%;
+}
+.cafe-play__fx--table {
+  left: 75%;
+  top: 70%;
+}
+
+.cafe-fx__steam {
+  position: absolute;
+  left: 50%;
+  top: -22px;
+  width: 10px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  filter: blur(2px);
+  animation: cafe-fx-steam 1.5s ease-out forwards;
+}
+
+.cafe-fx__steam--a {
+  margin-left: -9px;
+}
+.cafe-fx__steam--b {
+  animation-delay: 0.18s;
+}
+.cafe-fx__steam--c {
+  margin-left: 9px;
+  animation-delay: 0.36s;
+}
+
+@keyframes cafe-fx-steam {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 8px) scale(0.6);
+  }
+  35% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -44px) scale(1.6);
+  }
+}
+
+.cafe-fx__bean {
+  position: absolute;
+  left: 50%;
+  top: -6px;
+  width: 9px;
+  height: 11px;
+  border-radius: 50% 50% 46% 46%;
+  background: linear-gradient(160deg, #8a5a30, #4f3017);
+  box-shadow: inset 0 0 0 1px rgba(255, 226, 173, 0.35);
+  opacity: 0;
+  animation: cafe-fx-bean 1.35s cubic-bezier(0.3, 0.7, 0.5, 1) forwards;
+}
+
+.cafe-fx__bean--a {
+  --bean-x: -34px;
+  --bean-y: -56px;
+  --bean-r: -180deg;
+}
+.cafe-fx__bean--b {
+  --bean-x: 30px;
+  --bean-y: -62px;
+  --bean-r: 220deg;
+  animation-delay: 0.1s;
+}
+.cafe-fx__bean--c {
+  --bean-x: 6px;
+  --bean-y: -74px;
+  --bean-r: 140deg;
+  animation-delay: 0.2s;
+}
+
+@keyframes cafe-fx-bean {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 0) rotate(0) scale(0.6);
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--bean-x)), var(--bean-y)) rotate(var(--bean-r)) scale(1);
+  }
+}
+
+.cafe-fx__cup {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  color: #fff8ea;
+  background: linear-gradient(150deg, var(--coral-300), var(--coral-600));
+  box-shadow: 0 8px 16px rgba(140, 60, 30, 0.4);
+  opacity: 0;
+  animation: cafe-fx-cup 1.5s cubic-bezier(0.2, 1.4, 0.4, 1) forwards;
+}
+
+@keyframes cafe-fx-cup {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 10px) scale(0.4);
+  }
+  30% {
+    opacity: 1;
+    transform: translate(-50%, -34px) scale(1.08);
+  }
+  70% {
+    opacity: 1;
+    transform: translate(-50%, -40px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -58px) scale(0.9);
+  }
+}
+
+.cafe-fx__heat {
+  position: absolute;
+  left: 50%;
+  top: -30px;
+  width: 9px;
+  height: 15px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, rgba(255, 226, 173, 0.1), rgba(255, 170, 80, 0.85));
+  filter: blur(1px);
+  opacity: 0;
+  animation: cafe-fx-heat 1.4s ease-out forwards;
+}
+
+.cafe-fx__heat--a {
+  margin-left: -12px;
+}
+.cafe-fx__heat--b {
+  animation-delay: 0.16s;
+}
+.cafe-fx__heat--c {
+  margin-left: 12px;
+  animation-delay: 0.32s;
+}
+
+@keyframes cafe-fx-heat {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 10px) scale(0.7);
+  }
+  40% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -34px) scale(1.3);
+  }
+}
+
+.cafe-fx__pastry {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  color: #7d5c1c;
+  background: linear-gradient(150deg, var(--gold-200), var(--gold-500));
+  box-shadow: 0 8px 16px rgba(140, 96, 24, 0.4);
+  opacity: 0;
+  animation: cafe-fx-pastry 1.6s cubic-bezier(0.24, 1.2, 0.4, 1) forwards;
+}
+
+@keyframes cafe-fx-pastry {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 6px) scale(0.45) rotate(-16deg);
+  }
+  28% {
+    opacity: 1;
+    transform: translate(-50%, -40px) scale(1.1) rotate(8deg);
+  }
+  72% {
+    opacity: 1;
+    transform: translate(calc(-50% + 12px), -52px) scale(1) rotate(-6deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + 18px), -70px) scale(0.92) rotate(4deg);
+  }
+}
+
+.cafe-fx__spark {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 12px;
+  height: 12px;
+  background: linear-gradient(150deg, #fff8e2, var(--gold-400));
+  clip-path: polygon(50% 0%, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0% 50%, 39% 39%);
+  opacity: 0;
+  animation: cafe-fx-spark 1.2s ease-out forwards;
+}
+
+.cafe-fx__spark--a {
+  --spark-x: -26px;
+  --spark-y: -30px;
+}
+.cafe-fx__spark--b {
+  --spark-x: 24px;
+  --spark-y: -34px;
+  animation-delay: 0.12s;
+}
+.cafe-fx__spark--c {
+  --spark-x: 0;
+  --spark-y: -48px;
+  animation-delay: 0.24s;
+  width: 15px;
+  height: 15px;
+}
+.cafe-fx__spark--d {
+  --spark-x: -12px;
+  --spark-y: -18px;
+  animation-delay: 0.34s;
+  width: 9px;
+  height: 9px;
+}
+
+@keyframes cafe-fx-spark {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 6px) scale(0.3) rotate(0);
+  }
+  35% {
+    opacity: 1;
+    transform: translate(calc(-50% + var(--spark-x) * 0.7), calc(6px + var(--spark-y) * 0.7)) scale(1.1)
+      rotate(90deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--spark-x)), var(--spark-y)) scale(0.5) rotate(200deg);
+  }
+}
+
+.cafe-fx__heart {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  color: var(--coral-500);
+  opacity: 0;
+  animation: cafe-fx-heart 1.6s ease-out forwards;
+  filter: drop-shadow(0 3px 5px rgba(140, 60, 30, 0.3));
+}
+
+.cafe-fx__heart--a {
+  --heart-x: -22px;
+  --heart-r: -22deg;
+}
+.cafe-fx__heart--b {
+  --heart-x: 20px;
+  --heart-r: 20deg;
+  animation-delay: 0.22s;
+}
+
+@keyframes cafe-fx-heart {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 4px) scale(0.4) rotate(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translate(calc(-50% + var(--heart-x) * 0.5), -22px) scale(1.15) rotate(var(--heart-r));
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--heart-x)), -62px) scale(0.85) rotate(var(--heart-r));
+  }
+}
+
+.cafe-fx__ring {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 232, 180, 0.9);
+  opacity: 0;
+  animation: cafe-fx-ring 1.1s ease-out forwards;
+}
+
+.cafe-fx__ring--b {
+  animation-delay: 0.24s;
+}
+
+@keyframes cafe-fx-ring {
+  0% {
+    opacity: 0.9;
+    transform: translate(-50%, -50%) scale(0.4);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.9);
+  }
+}
+
+.cafe-fx__emblem {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  color: #fff8ea;
+  background: linear-gradient(150deg, var(--coral-300), var(--coral-600));
+  border: 2px solid rgba(255, 248, 232, 0.92);
+  box-shadow:
+    0 8px 16px rgba(112, 61, 34, 0.34),
+    0 0 0 5px rgba(255, 235, 192, 0.24);
+  opacity: 0;
+  animation: cafe-fx-emblem 1.55s cubic-bezier(0.22, 1.35, 0.36, 1) forwards;
+}
+
+.cafe-fx__emblem--sparkle {
+  color: #6c4b16;
+  background: linear-gradient(150deg, #fff9e8, var(--gold-400));
+}
+
+.cafe-fx__emblem--ring {
+  color: #f9fff9;
+  background: linear-gradient(150deg, var(--sea-300), var(--sea-700));
+}
+
+.cafe-fx__emblem--fish {
+  color: #194f4a;
+  background: linear-gradient(150deg, #d9f5ef, #78c6bb);
+}
+
+.cafe-fx__emblem--flower {
+  color: #8d4c3b;
+  background: linear-gradient(150deg, #fff5e2, #f0b39e);
+}
+
+.cafe-fx__emblem--paw {
+  color: #7e432a;
+  background: linear-gradient(150deg, #fff0d8, #efb287);
+}
+
+.cafe-fx__emblem--clock {
+  color: #694c1b;
+  background: linear-gradient(150deg, #fff9e8, #e4c276);
+}
+
+@keyframes cafe-fx-emblem {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 8px) scale(0.42) rotate(-12deg);
+  }
+  28% {
+    opacity: 1;
+    transform: translate(-50%, -34px) scale(1.08) rotate(5deg);
+  }
+  70% {
+    opacity: 1;
+    transform: translate(-50%, -42px) scale(1) rotate(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -66px) scale(0.86) rotate(8deg);
+  }
+}
+
+.cafe-fx__bubble {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 2px solid rgba(216, 255, 247, 0.9);
+  background: rgba(156, 230, 217, 0.22);
+  opacity: 0;
+  animation: cafe-fx-bubble 1.25s ease-out forwards;
+}
+
+.cafe-fx__bubble--a {
+  --bubble-x: -24px;
+  --bubble-y: -52px;
+}
+
+.cafe-fx__bubble--b {
+  --bubble-x: 22px;
+  --bubble-y: -43px;
+  animation-delay: 0.12s;
+  width: 6px;
+  height: 6px;
+}
+
+.cafe-fx__bubble--c {
+  --bubble-x: 4px;
+  --bubble-y: -68px;
+  animation-delay: 0.22s;
+  width: 11px;
+  height: 11px;
+}
+
+@keyframes cafe-fx-bubble {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 8px) scale(0.4);
+  }
+  35% {
+    opacity: 0.95;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--bubble-x)), var(--bubble-y)) scale(1.2);
+  }
+}
+
+.cafe-fx__petal {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 12px;
+  height: 16px;
+  border-radius: 70% 30% 70% 30%;
+  background: linear-gradient(150deg, #fff6e7, #f5a68d);
+  box-shadow: 0 2px 5px rgba(139, 72, 49, 0.22);
+  opacity: 0;
+  animation: cafe-fx-petal 1.45s ease-out forwards;
+}
+
+.cafe-fx__petal--a {
+  --petal-x: -34px;
+  --petal-y: -52px;
+  --petal-r: -70deg;
+}
+
+.cafe-fx__petal--b {
+  --petal-x: 30px;
+  --petal-y: -62px;
+  --petal-r: 74deg;
+  animation-delay: 0.09s;
+}
+
+.cafe-fx__petal--c {
+  --petal-x: -12px;
+  --petal-y: -74px;
+  --petal-r: 150deg;
+  animation-delay: 0.18s;
+}
+
+.cafe-fx__petal--d {
+  --petal-x: 14px;
+  --petal-y: -34px;
+  --petal-r: -130deg;
+  animation-delay: 0.27s;
+}
+
+.cafe-fx__petal--e {
+  --petal-x: -24px;
+  --petal-y: -28px;
+  --petal-r: 42deg;
+  animation-delay: 0.36s;
+}
+
+@keyframes cafe-fx-petal {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 4px) rotate(0) scale(0.35);
+  }
+  30% {
+    opacity: 0.95;
+    transform: translate(calc(-50% + var(--petal-x) * 0.55), -30px) rotate(80deg) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--petal-x)), var(--petal-y)) rotate(var(--petal-r)) scale(0.82);
+  }
+}
+
+.cafe-fx__paw {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  color: #c87856;
+  opacity: 0;
+  filter: drop-shadow(0 3px 5px rgba(126, 67, 42, 0.28));
+  animation: cafe-fx-paw 1.4s ease-out forwards;
+}
+
+.cafe-fx__paw--a {
+  --paw-x: -30px;
+  --paw-y: -47px;
+  --paw-r: -18deg;
+}
+
+.cafe-fx__paw--b {
+  --paw-x: 27px;
+  --paw-y: -61px;
+  --paw-r: 20deg;
+  animation-delay: 0.16s;
+}
+
+@keyframes cafe-fx-paw {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 4px) rotate(0) scale(0.45);
+  }
+  32% {
+    opacity: 1;
+    transform: translate(calc(-50% + var(--paw-x) * 0.5), -30px) rotate(var(--paw-r)) scale(1.12);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--paw-x)), var(--paw-y)) rotate(var(--paw-r)) scale(0.8);
+  }
+}
+
+/* ---------------- 反馈气泡 ---------------- */
+.cafe-play__bubble {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  z-index: 8;
+  translate: -50% 0;
+  max-width: 84%;
+  padding: 7px 14px;
+  border-radius: var(--radius-pill);
+  background: rgba(58, 44, 30, 0.9);
+  color: #fff8ea;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  text-align: center;
+  box-shadow: var(--shadow-md);
+  pointer-events: none;
+  animation: cafe-bubble-in 0.22s ease;
+}
+
+@keyframes cafe-bubble-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ---------------- 底部操作面板 ---------------- */
+.cafe-play__sheet {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  z-index: 9;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 11px 12px 12px;
+  border-radius: 18px;
+  background: linear-gradient(170deg, rgba(255, 251, 243, 0.97), rgba(245, 230, 206, 0.96));
+  border: var(--stroke-hand);
+  box-shadow: var(--shadow-lg);
+  backdrop-filter: blur(8px);
+  animation: cafe-sheet-in 0.24s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+
+@keyframes cafe-sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.cafe-play__sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.cafe-play__sheet-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--ink-900);
+}
+
+.cafe-play__sheet-title strong {
+  font-family: var(--font-display);
+  font-size: var(--fs-md);
+}
+
+.cafe-play__sheet-close {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(150, 112, 42, 0.3);
+  background: rgba(255, 252, 244, 0.8);
+  color: var(--ink-600);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.cafe-play__sheet-close:active {
+  transform: scale(0.92);
+}
+
+.cafe-play__sheet-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.cafe-play__sheet-stats span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.62);
+  border: 1px solid rgba(150, 112, 42, 0.2);
+  color: var(--ink-700);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+}
+
+.cafe-play__recipe {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cafe-play__recipe-icon {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  color: var(--sea-700);
+  background: radial-gradient(circle at 34% 26%, #fffdf6, var(--sea-100) 66%, var(--sea-300));
+  border: 1.5px solid rgba(45, 99, 92, 0.28);
+}
+
+.cafe-play__recipe-icon--decor {
+  color: var(--gold-600);
+  background: radial-gradient(circle at 34% 26%, #fffdf6, var(--gold-100) 66%, var(--gold-300));
+  border-color: rgba(120, 88, 24, 0.3);
+}
+
+.cafe-play__recipe span {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.cafe-play__recipe strong {
+  font-size: var(--fs-md);
+  color: var(--ink-900);
+}
+
+.cafe-play__recipe small {
+  margin-top: 1px;
+  font-size: 10.5px;
+  color: var(--ink-500);
+}
+
+.cafe-play__sheet-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cafe-play__sheet-actions .btn {
+  flex: 1 1 auto;
+}
+
+.cafe-play__sheet-cost {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-display);
+  font-size: var(--fs-md);
+  font-weight: 700;
+  color: var(--gold-600);
+}
+
+.cafe-play__sheet-copy {
+  font-size: var(--fs-sm);
+  line-height: 1.55;
+  color: var(--ink-700);
+}
+
+/* ---------------- 场景下方的一行摘要 ---------------- */
+.cafe-play__action-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding-top: 8px;
+  background: #efcf9f;
+}
+
+.screen--cafe .cafe-play__action-row {
+  flex: 0 0 auto;
+  padding: 8px 10px 0;
+}
+
+.cafe-play__action-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--ink-600);
+  white-space: nowrap;
+}
+
+.cafe-play__action-note i {
+  width: 1px;
+  height: 12px;
+  background: rgba(150, 112, 42, 0.3);
+}
+
+.cafe-play__start {
+  flex: 1 1 auto;
+}
+
+.cafe-play__start:not(:disabled) {
+  animation: cafe-start-glow 2.6s ease-in-out infinite;
+}
+
+@keyframes cafe-start-glow {
+  0%,
+  100% {
+    box-shadow: 0 4px 10px rgba(173, 122, 34, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  }
+  50% {
+    box-shadow: 0 8px 20px rgba(224, 183, 99, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  }
+}
+
+/* ---------------- 动效偏好 ---------------- */
+@media (prefers-reduced-motion: reduce) {
+  .cafe-hotspot,
+  .cafe-object,
+  .cafe-object--machine::before,
+  .cafe-object__window,
+  .cafe-object--menu,
+  .cafe-object--decor svg,
+  .cafe-object--pet,
+  .cafe-object__ear,
+  .cafe-object__guest,
+  .cafe-play__ambient i,
+  .cafe-fx__emblem,
+  .cafe-fx__bubble,
+  .cafe-fx__petal,
+  .cafe-fx__paw,
+  .cafe-play__start {
+    animation: none !important;
+  }
+  .cafe-play__fx {
+    display: none;
+  }
+}

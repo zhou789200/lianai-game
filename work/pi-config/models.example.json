@@ -1,0 +1,28 @@
+{
+  "_说明": "这是 models.json 的模板。复制为 models.json 后填入从环境变量读取的密钥，models.json 已被 .gitignore 排除，不会进入仓库。",
+  "providers": {
+    "enw": {
+      "name": "enw",
+      "baseUrl": "https://llm.enw.cc/v1",
+      "api": "openai-completions",
+      "stream": false,
+      "compat": {
+        "supportsFinishReason": false,
+        "supportsReasoningEffort": false
+      },
+      "apiKey": "${ENW_API_KEY}",
+      "models": [
+        {
+          "id": "deepseek-v4.1-flash",
+          "name": "deepseek-v4.1-flash",
+          "reasoning": false,
+          "input": [
+            "text"
+          ],
+          "contextWindow": 128000,
+          "maxTokens": 16384
+        }
+      ]
+    }
+  }
+}

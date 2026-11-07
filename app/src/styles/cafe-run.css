@@ -1,0 +1,1945 @@
+/* ============================================================
+   R3 · 核心营业：交互式营业界面（cafe-run）
+   —— 只使用 tokens.css 的语义令牌，蓝绿为主视觉。
+   ============================================================ */
+
+/* ---------------- 准备页 ---------------- */
+.prep {
+  gap: 12px;
+}
+.prep__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.prep__title {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+  color: var(--ink-900);
+}
+.prep__goal {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, var(--sun-100), var(--cream-100));
+  border: var(--edge-paper);
+}
+.prep__goal-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  color: var(--gold-700);
+  background: radial-gradient(circle at 34% 28%, #fffdf6, var(--gold-200));
+  box-shadow: var(--shadow-sm);
+  flex: 0 0 auto;
+}
+.prep__goal-title {
+  margin: 0;
+  font-size: var(--fs-md);
+  font-weight: 700;
+  color: var(--ink-900);
+}
+.prep__goal-sub {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 4px;
+  font-size: var(--fs-xs);
+}
+.prep__goal-sub span,
+.prep__last span {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.58);
+}
+
+.prep__nav {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+.prep__nav-btn {
+  position: relative;
+  min-width: 0;
+  min-height: 58px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 7px 4px 6px;
+  border: 1px solid rgba(150, 112, 42, 0.2);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 251, 243, 0.64);
+  color: var(--ink-600);
+  cursor: pointer;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.prep__nav-btn:active {
+  transform: scale(0.97);
+}
+.prep__nav-btn:focus-visible {
+  outline: 3px solid rgba(78, 157, 144, 0.38);
+  outline-offset: 2px;
+}
+.prep__nav-icon {
+  display: grid;
+  place-items: center;
+  width: 27px;
+  height: 27px;
+  border-radius: 50%;
+  color: var(--sea-700);
+  background: var(--sea-100);
+  transition:
+    color 0.18s ease,
+    background 0.18s ease,
+    transform 0.18s ease;
+}
+.prep__nav-label {
+  font-size: var(--fs-xs);
+  font-weight: 800;
+  line-height: 1;
+}
+.prep__nav-chevron {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  color: var(--ink-400);
+  transition: transform 0.18s ease;
+}
+.prep__nav-btn.is-active {
+  border-color: rgba(78, 157, 144, 0.52);
+  background: linear-gradient(180deg, rgba(226, 244, 240, 0.96), rgba(199, 231, 224, 0.86));
+  color: var(--sea-900);
+  box-shadow: 0 4px 10px rgba(45, 99, 92, 0.13), var(--shadow-inset);
+}
+.prep__nav-btn.is-active .prep__nav-icon {
+  color: var(--cream-50);
+  background: var(--sea-600);
+  transform: translateY(-1px);
+}
+.prep__nav-btn.is-active .prep__nav-chevron {
+  color: var(--sea-700);
+  transform: rotate(180deg);
+}
+
+.prep__detail {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid rgba(78, 157, 144, 0.28);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 251, 243, 0.78);
+  box-shadow: var(--shadow-inset);
+  animation: prep-detail-in 0.2s ease-out both;
+}
+.prep__detail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.prep__detail-head strong {
+  color: var(--ink-900);
+  font-size: var(--fs-sm);
+}
+.prep__detail-head span {
+  font-size: var(--fs-xs);
+}
+.prep__detail-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.prep__detail-empty {
+  margin: 0;
+  font-size: var(--fs-xs);
+}
+.prep__pet-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+.prep__pet-grid > span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 7px 3px;
+  border-radius: var(--radius-xs);
+  background: rgba(255, 255, 255, 0.62);
+  color: var(--coral-600);
+}
+.prep__pet-grid strong {
+  font-family: var(--font-display);
+  font-size: var(--fs-md);
+  color: var(--ink-900);
+  line-height: 1.1;
+}
+.prep__pet-grid small {
+  color: var(--ink-500);
+  font-size: 10px;
+  font-weight: 700;
+}
+.prep__shop .cafe__summary-row {
+  margin-bottom: 6px;
+}
+.prep__grid {
+  display: grid;
+  gap: 8px;
+}
+.prep__cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 251, 243, 0.7);
+  border: 1px solid rgba(150, 112, 42, 0.16);
+}
+.prep__cell-label {
+  font-size: var(--fs-xs);
+  color: var(--ink-500);
+  letter-spacing: 0.04em;
+}
+.prep__cell-value {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: var(--fs-sm);
+  color: var(--ink-800);
+}
+.prep__menu-chip,
+.prep__level {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--sea-100);
+  color: var(--sea-700);
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+}
+.prep__pet span {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.prep__stamina {
+  padding-top: 2px;
+}
+.prep__last {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  min-height: 22px;
+  font-size: var(--fs-xs);
+}
+
+@keyframes prep-detail-in {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .prep__nav-btn,
+  .prep__nav-icon,
+  .prep__nav-chevron {
+    transition: none;
+  }
+  .prep__detail {
+    animation: none;
+  }
+}
+
+/* ---------------- 营业主视图骨架 ---------------- */
+.cafe-run {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px 10px;
+  overflow: hidden;
+}
+.cafe-run > *:not(.cafe-run__ambience) {
+  position: relative;
+  z-index: 1;
+}
+.cafe-run.is-dragging {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.cafe-run__ambience {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0.55;
+}
+.cafe-run__ambience i {
+  position: absolute;
+  left: var(--amb-x, 20%);
+  bottom: var(--amb-y, 30%);
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.78);
+  animation: cafe-ambient-rise var(--amb-d, 7s) ease-in-out infinite;
+  animation-delay: var(--amb-delay, 0s);
+}
+.cafe-run__ambience i:nth-child(1) {
+  --amb-x: 9%;
+  --amb-y: 44%;
+  --amb-d: 8.5s;
+}
+.cafe-run__ambience i:nth-child(2) {
+  --amb-x: 34%;
+  --amb-y: 57%;
+  --amb-d: 7.2s;
+  --amb-delay: -2.4s;
+  width: 7px;
+  height: 7px;
+}
+.cafe-run__ambience i:nth-child(3) {
+  --amb-x: 72%;
+  --amb-y: 38%;
+  --amb-d: 9.2s;
+  --amb-delay: -4.1s;
+}
+.cafe-run__ambience i:nth-child(4) {
+  --amb-x: 88%;
+  --amb-y: 61%;
+  --amb-d: 6.8s;
+  --amb-delay: -1.2s;
+  width: 6px;
+  height: 6px;
+}
+.cafe-run__ambience i:nth-child(5) {
+  --amb-x: 53%;
+  --amb-y: 18%;
+  --amb-d: 10s;
+  --amb-delay: -5.3s;
+  width: 12px;
+  height: 12px;
+}
+
+.cafe-run__hud {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+.cafe-run__timer {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--sea-700);
+  color: var(--cream-50);
+  font-weight: 700;
+  font-size: var(--fs-sm);
+  box-shadow: var(--shadow-sm);
+}
+.cafe-run__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 9px;
+  border-radius: var(--radius-pill);
+  background: var(--paper);
+  color: var(--ink-800);
+  font-size: var(--fs-xs);
+  border: var(--edge-paper);
+}
+
+/* 数字变化时弹一下：上菜数、好评率 */
+.cafe-run__chip b {
+  font-weight: 800;
+}
+
+.cafe-run__pop {
+  display: inline-block;
+  animation: cafe-num-pop 0.42s cubic-bezier(0.2, 1.5, 0.4, 1);
+}
+
+@keyframes cafe-num-pop {
+  0% {
+    transform: scale(0.62);
+    color: var(--coral-600);
+  }
+
+  60% {
+    transform: scale(1.18);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+.cafe-run__hud-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 6px;
+}
+.cafe-run__timerbar {
+  flex: 0 0 auto;
+  height: 4px;
+  border-radius: 99px;
+  background: rgba(120, 90, 60, 0.16);
+  overflow: hidden;
+}
+.cafe-run__timerbar i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--sea-400), var(--sea-600));
+  transition: width 0.25s linear;
+}
+
+/* ---------------- 桌位层 ---------------- */
+.cafe-floor {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+}
+.cafe-table {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 82px;
+  padding: 7px 8px;
+  border-radius: var(--radius-md);
+  background: var(--paper);
+  border: var(--edge-paper);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  overflow: hidden;
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.cafe-table--empty {
+  opacity: 0.72;
+}
+.cafe-table--dirty {
+  background: linear-gradient(135deg, var(--cream-200), var(--cream-100));
+  border-color: rgba(194, 86, 58, 0.4);
+}
+.cafe-table.is-focused {
+  border-color: var(--sea-500);
+  box-shadow: 0 0 0 2px var(--sea-300), var(--shadow-md);
+}
+.cafe-table.is-drop {
+  border-color: var(--gold-500);
+  box-shadow: 0 0 0 2px var(--gold-300), var(--shadow-md);
+}
+.cafe-table.has-misplaced {
+  border-color: rgba(194, 86, 58, 0.62);
+  background:
+    linear-gradient(135deg, rgba(255, 250, 243, 0.98), rgba(253, 232, 204, 0.9));
+  box-shadow:
+    0 0 0 2px rgba(232, 131, 106, 0.22),
+    var(--shadow-md);
+  animation: cafe-misplaced-pulse 1.15s ease-in-out infinite;
+}
+.cafe-table__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-right: 40px;
+  font-size: var(--fs-xs);
+  color: var(--ink-700);
+}
+.cafe-table__index {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--sea-600);
+  color: var(--cream-50);
+  font-size: 11px;
+  font-weight: 700;
+}
+.cafe-table__customer {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+  color: var(--ink-900);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cafe-table__avatar {
+  position: absolute;
+  top: 6px;
+  right: 7px;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  color: var(--sea-700);
+  background: radial-gradient(circle at 32% 25%, #fffdf5, var(--sea-100) 68%, var(--sea-300));
+  border: 1.5px solid rgba(45, 99, 92, 0.28);
+  box-shadow: var(--shadow-sm);
+  transform-origin: 50% 90%;
+}
+.cafe-table__avatar-ring {
+  position: absolute;
+  inset: -4px;
+  border: 2px solid transparent;
+  border-top-color: rgba(78, 157, 144, 0.5);
+  border-radius: 50%;
+}
+.cafe-table__mood-dot {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--coral-400);
+  border: 1.5px solid #fffaf0;
+}
+.cafe-table__avatar--ordering,
+.cafe-table__avatar--seated,
+.cafe-table__avatar--waiting,
+.cafe-table__avatar--impatient {
+  animation: cafe-customer-bob 2.2s ease-in-out infinite;
+}
+.cafe-table__avatar--ordering .cafe-table__avatar-ring,
+.cafe-table__avatar--waiting .cafe-table__avatar-ring {
+  animation: cafe-avatar-ring 1.8s linear infinite;
+}
+.cafe-table__avatar--served,
+.cafe-table__avatar--satisfied {
+  color: var(--coral-600);
+  background: radial-gradient(circle at 32% 25%, #fffdfc, var(--coral-100) 68%, var(--coral-300));
+  animation: cafe-happy-pop 0.65s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+.cafe-table--dirty .cafe-table__avatar {
+  color: var(--coral-500);
+  background: radial-gradient(circle at 32% 25%, #fffaf0, var(--cream-200) 66%, var(--gold-300));
+  animation: cafe-cup-wobble 2.4s ease-in-out infinite;
+}
+.cafe-table__patience {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.cafe-table__patience-bar {
+  flex: 1 1 auto;
+  height: 5px;
+  border-radius: 99px;
+  background: rgba(120, 90, 60, 0.16);
+  overflow: hidden;
+}
+.cafe-table__patience-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  transition: width 0.25s linear;
+}
+.cafe-table__patience--ok .cafe-table__patience-bar i {
+  background: linear-gradient(90deg, var(--sea-300), var(--sea-500));
+}
+.cafe-table__patience--warn .cafe-table__patience-bar i {
+  background: linear-gradient(90deg, var(--sun-300), var(--warn-500));
+}
+.cafe-table__patience--danger .cafe-table__patience-bar i {
+  background: linear-gradient(90deg, var(--coral-300), var(--danger-500));
+}
+.cafe-table__patience-num {
+  font-size: 10.5px;
+  color: var(--ink-500);
+  min-width: 26px;
+  text-align: right;
+}
+.cafe-table__order {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--fs-xs);
+  color: var(--ink-800);
+  min-height: 16px;
+}
+
+/* 顾客气泡：点单、等待、催单、上菜后的评价都用它说话 */
+.cafe-table__bubble {
+  --bubble-tail: #fffaf3;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 2px 0 0;
+  padding: 5px 8px;
+  border-radius: 12px 12px 12px 4px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(78, 157, 144, 0.34);
+  color: var(--ink-800);
+  font-size: 10.5px;
+  line-height: 1.35;
+  transform-origin: 88% 0;
+  animation: cafe-bubble-in 0.3s cubic-bezier(0.2, 1.3, 0.45, 1);
+}
+
+.cafe-table__bubble::after {
+  content: '';
+  position: absolute;
+  top: -5px;
+  right: 10px;
+  width: 8px;
+  height: 8px;
+  background: var(--bubble-tail);
+  border-left: 1px solid rgba(78, 157, 144, 0.34);
+  border-top: 1px solid rgba(78, 157, 144, 0.34);
+  transform: rotate(45deg);
+}
+
+.cafe-table__bubble-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.cafe-table__bubble--pref {
+  --bubble-tail: #fdf3dc;
+  background: linear-gradient(180deg, #fffdf4, #fdf3dc);
+  border-color: rgba(160, 120, 40, 0.32);
+}
+
+.cafe-table__bubble--warn {
+  --bubble-tail: #fde8cc;
+  background: linear-gradient(180deg, #fff8e8, #fde8cc);
+  border-color: rgba(217, 144, 47, 0.55);
+  color: var(--coral-600);
+}
+
+.cafe-table__bubble--happy {
+  --bubble-tail: #fde5dd;
+  background: linear-gradient(180deg, #fffaf9, #fde5dd);
+  border-color: rgba(232, 131, 106, 0.45);
+  color: var(--coral-600);
+  animation:
+    cafe-bubble-in 0.3s cubic-bezier(0.2, 1.3, 0.45, 1),
+    cafe-happy-bubble 0.7s 0.28s ease-out;
+}
+
+.cafe-table__bubble--sad {
+  --bubble-tail: #efe9df;
+  background: #f5f0e8;
+  border-color: rgba(120, 90, 60, 0.28);
+  color: var(--ink-500);
+}
+
+.cafe-table__bubble--ok {
+  --bubble-tail: #faf5eb;
+  background: #faf5eb;
+}
+
+.cafe-table__stars {
+  flex: 0 0 auto;
+  display: inline-flex;
+  gap: 1px;
+  color: var(--gold-500);
+}
+
+/* 上菜后从桌面升起的 +金币 */
+.cafe-table__reward {
+  position: absolute;
+  top: 30%;
+  left: 50%;
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(180deg, #fff6d8, #ffe7a3);
+  border: 1px solid rgba(168, 127, 44, 0.45);
+  color: var(--gold-700);
+  font-size: 10.5px;
+  font-weight: 800;
+  pointer-events: none;
+  animation: cafe-reward-float 1.5s ease-out forwards;
+}
+
+@keyframes cafe-bubble-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.94);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes cafe-happy-bubble {
+  0%,
+  100% {
+    box-shadow: none;
+  }
+
+  40% {
+    box-shadow: 0 0 0 3px rgba(232, 131, 106, 0.18);
+  }
+}
+
+@keyframes cafe-reward-float {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 8px) scale(0.7);
+  }
+
+  20% {
+    opacity: 1;
+    transform: translate(-50%, 2px) scale(1);
+  }
+
+  70% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -26px) scale(1.02);
+  }
+}
+.cafe-table__order.is-pop {
+  transform-origin: 20% 100%;
+  animation: cafe-order-pop 0.48s cubic-bezier(0.2, 1.35, 0.45, 1);
+}
+.cafe-table--waiting .cafe-table__patience-bar i {
+  animation: cafe-patience-breathe 1.4s ease-in-out infinite;
+}
+.cafe-table--served {
+  animation: cafe-served-pulse 0.9s ease-out;
+}
+.cafe-table__actions {
+  margin-top: auto;
+  display: flex;
+  gap: 6px;
+}
+.cafe-table__failed {
+  font-size: var(--fs-xs);
+  color: var(--danger-500);
+}
+.cafe-mini {
+  min-height: 30px;
+  min-width: 52px;
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(62, 140, 134, 0.5);
+  background: var(--sea-100);
+  color: var(--sea-700);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  cursor: pointer;
+}
+.cafe-mini:active {
+  transform: scale(0.97);
+}
+.cafe-mini--gold {
+  border-color: var(--gold-500);
+  background: linear-gradient(135deg, var(--gold-200), var(--gold-400));
+  color: var(--gold-700);
+}
+.cafe-mini--sea {
+  background: var(--sea-600);
+  color: var(--cream-50);
+  border-color: var(--sea-700);
+}
+.cafe-mini--recover {
+  border-color: rgba(194, 86, 58, 0.62);
+  background: linear-gradient(135deg, var(--coral-100), var(--coral-300));
+  color: var(--coral-600);
+  box-shadow: 0 2px 0 rgba(148, 61, 40, 0.13);
+}
+
+/* ---------------- 事件条 / 横幅 / toast ---------------- */
+.cafe-event {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(150, 112, 42, 0.28);
+  background: linear-gradient(135deg, var(--sun-100), var(--cream-100));
+  color: var(--ink-800);
+  text-align: left;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  animation: cafe-pop-up 0.25s ease;
+}
+.cafe-event--romance {
+  background: linear-gradient(135deg, var(--coral-100), var(--sun-100));
+}
+.cafe-event--pet {
+  background: linear-gradient(135deg, var(--sea-100), var(--cream-100));
+}
+.cafe-event__body {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.cafe-event__body b {
+  font-size: var(--fs-sm);
+}
+.cafe-event__body span {
+  font-size: var(--fs-xs);
+  color: var(--ink-600);
+}
+.cafe-banner {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--gold-200);
+  color: var(--gold-700);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  animation: cafe-pop-up 0.22s ease;
+}
+.cafe-toast {
+  position: absolute;
+  left: 50%;
+  bottom: 84px;
+  transform: translateX(-50%);
+  max-width: 88%;
+  padding: 7px 14px;
+  border-radius: var(--radius-pill);
+  background: rgba(74, 59, 46, 0.92);
+  color: var(--cream-50);
+  font-size: var(--fs-xs);
+  box-shadow: var(--shadow-md);
+  z-index: var(--z-toast);
+  pointer-events: none;
+  animation: cafe-toast-in 0.2s ease;
+}
+.cafe-toast--success {
+  background: rgba(45, 99, 92, 0.94);
+}
+.cafe-toast--error {
+  background: rgba(193, 82, 58, 0.95);
+}
+.cafe-toast--pet {
+  background: rgba(62, 140, 134, 0.94);
+}
+.cafe-toast--romance {
+  background: rgba(194, 91, 60, 0.94);
+}
+
+/* ---------------- 订单条 ---------------- */
+.cafe-orders {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+}
+.cafe-orders::-webkit-scrollbar {
+  display: none;
+}
+.cafe-orders__empty {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--fs-xs);
+  padding: 6px 2px;
+}
+.cafe-orderchip {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 36px;
+  padding: 5px 11px;
+  border-radius: var(--radius-pill);
+  border: var(--edge-paper);
+  background: var(--paper);
+  color: var(--ink-800);
+  font-size: var(--fs-xs);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.cafe-orderchip.is-focused {
+  border-color: var(--sea-500);
+  box-shadow: 0 0 0 2px var(--sea-200);
+}
+.cafe-orderchip--pending {
+  background: linear-gradient(135deg, var(--gold-100), var(--cream-100));
+  border-color: var(--gold-400);
+}
+.cafe-orderchip__step {
+  font-weight: 700;
+  color: var(--sea-700);
+}
+
+/* ---------------- 操作台 ---------------- */
+.cafe-counter {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 2px;
+}
+.cafe-craft {
+  gap: 6px;
+}
+.cafe-craft__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-sm);
+  color: var(--ink-900);
+}
+.cafe-craft__head .t-muted {
+  margin-left: auto;
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cafe-craft__pref {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--fs-xs);
+}
+.cafe-craft__step {
+  margin: 0;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  background: rgba(216, 239, 233, 0.6);
+  color: var(--sea-900);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+/* 制作步骤进度：做完一格亮一格，当前格轻轻呼吸 */
+.cafe-craft__track {
+  display: flex;
+  gap: 3px;
+  margin: 6px 0 2px;
+}
+
+.cafe-craft__track i {
+  flex: 1;
+  height: 4px;
+  border-radius: 99px;
+  background: rgba(78, 157, 144, 0.18);
+  transition: background 0.25s ease;
+}
+
+.cafe-craft__track i.is-done {
+  background: var(--sea-500);
+}
+
+.cafe-craft__track i.is-current {
+  background: var(--gold-400);
+  animation: cafe-track-current 1.2s ease-in-out infinite;
+}
+
+@keyframes cafe-track-current {
+  0%,
+  100% {
+    transform: scaleY(1);
+  }
+
+  50% {
+    transform: scaleY(1.8);
+  }
+}
+.cafe-craft__options {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.cafe-option {
+  min-height: var(--tap);
+  padding: 6px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(62, 140, 134, 0.4);
+  background: var(--cream-50);
+  color: var(--ink-800);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  cursor: pointer;
+}
+.cafe-option:active {
+  transform: scale(0.97);
+}
+.cafe-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  min-height: var(--tap);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--sea-700);
+  background: linear-gradient(135deg, var(--sea-500), var(--sea-700));
+  color: var(--cream-50);
+  font-size: var(--fs-md);
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+}
+.cafe-action-btn:active {
+  transform: scale(0.98);
+}
+.cafe-craft__msg {
+  margin: 0;
+  font-size: var(--fs-xs);
+  color: var(--coral-600);
+}
+.cafe-craft__idle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink-600);
+}
+.cafe-craft__idle svg {
+  animation: cafe-idle-float 2.6s ease-in-out infinite;
+}
+.cafe-craft__idle p {
+  margin: 0;
+  font-size: var(--fs-sm);
+}
+.cafe-craft__util {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* 加工控件：长按 / 滑动 / 点按 */
+.cafe-process {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 52px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--gold-600);
+  background: var(--cream-100);
+  color: var(--gold-700);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  overflow: hidden;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.cafe-process:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.cafe-process__fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: linear-gradient(135deg, var(--gold-200), var(--gold-400));
+  transition: width 0.08s linear;
+  z-index: 0;
+}
+.cafe-process__fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 30%, rgba(255, 255, 255, 0.72) 48%, transparent 66%);
+  transform: translateX(-100%);
+  animation: cafe-progress-shine 1.15s linear infinite;
+}
+.cafe-process__zone {
+  position: absolute;
+  inset-block: 0;
+  z-index: 1;
+  border-left: 2px solid rgba(62, 140, 134, 0.68);
+  background:
+    repeating-linear-gradient(
+      135deg,
+      rgba(78, 157, 144, 0.13) 0 5px,
+      rgba(255, 255, 255, 0.18) 5px 10px
+    );
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.38);
+  pointer-events: none;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.cafe-process.is-sweet {
+  border-color: var(--sea-500);
+  background: linear-gradient(135deg, var(--sun-100), var(--sea-100));
+  color: var(--sea-700);
+  box-shadow: 0 0 0 2px rgba(78, 157, 144, 0.24);
+}
+.cafe-process.is-sweet .cafe-process__zone {
+  border-left-color: var(--sea-600);
+  background:
+    repeating-linear-gradient(
+      135deg,
+      rgba(62, 140, 134, 0.24) 0 5px,
+      rgba(255, 255, 255, 0.34) 5px 10px
+    );
+}
+.cafe-process.is-sweet .cafe-process__label {
+  color: var(--sea-700);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.65);
+}
+.cafe-process__label {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.cafe-process-recovery {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(194, 86, 58, 0.46);
+  background:
+    linear-gradient(135deg, rgba(255, 250, 243, 0.98), rgba(253, 232, 204, 0.92));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+.cafe-process-recovery p {
+  display: grid;
+  gap: 3px;
+  color: var(--ink-700);
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+}
+.cafe-process-recovery b {
+  color: var(--coral-600);
+  font-size: var(--fs-sm);
+}
+.cafe-process-recovery__actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+.cafe-recovery__retry,
+.cafe-recovery__adopt {
+  min-width: 0;
+  min-height: 42px;
+  padding: 5px 9px;
+  border-radius: var(--radius-md);
+  font-size: var(--fs-xs);
+  font-weight: 800;
+  line-height: 1.2;
+  cursor: pointer;
+}
+.cafe-recovery__retry {
+  border: 1px solid rgba(62, 140, 134, 0.5);
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--sea-700);
+}
+.cafe-recovery__adopt {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  border: 1px solid var(--gold-600);
+  background: linear-gradient(135deg, var(--gold-300), var(--gold-500));
+  color: var(--gold-700);
+  box-shadow: 0 2px 0 rgba(130, 86, 24, 0.16);
+}
+.cafe-recovery__adopt small {
+  font-size: 9.5px;
+  font-weight: 700;
+  opacity: 0.82;
+}
+.cafe-recovery__retry:active,
+.cafe-recovery__adopt:active {
+  transform: translateY(1px);
+}
+
+/* ---------------- 设备 ---------------- */
+.cafe-stations {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 5px;
+}
+.cafe-station {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 7px 4px 8px;
+  border-radius: var(--radius-md);
+  background: var(--paper);
+  border: var(--edge-paper);
+  text-align: center;
+  overflow: hidden;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+.cafe-station.is-active {
+  border-color: var(--sea-500);
+  box-shadow: 0 0 0 2px var(--sea-200);
+}
+.cafe-station.is-highlight {
+  border-color: var(--gold-500);
+  box-shadow: 0 0 0 2px var(--gold-200);
+}
+.cafe-station.is-highlight.is-active {
+  animation: cafe-pulse 1s ease-in-out infinite;
+}
+.cafe-station.is-occupied {
+  background: linear-gradient(135deg, var(--cream-200), var(--cream-100));
+}
+.cafe-station__icon {
+  color: var(--sea-700);
+  transform-origin: 50% 100%;
+}
+.cafe-station__fx {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.cafe-station__fx i {
+  position: absolute;
+  left: 50%;
+  bottom: 28px;
+  width: 5px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.82);
+  opacity: 0;
+}
+.cafe-station.is-busy .cafe-station__fx i {
+  animation: cafe-station-steam 1.35s ease-out infinite;
+}
+.cafe-station.is-busy .cafe-station__fx i:nth-child(2) {
+  margin-left: -8px;
+  animation-delay: 0.32s;
+}
+.cafe-station.is-busy .cafe-station__fx i:nth-child(3) {
+  margin-left: 7px;
+  animation-delay: 0.64s;
+}
+.cafe-station--machine.is-busy .cafe-station__icon {
+  animation: cafe-machine-shake 0.42s ease-in-out infinite;
+}
+.cafe-station--oven.is-busy .cafe-station__icon {
+  animation: cafe-oven-heat 0.72s ease-in-out infinite alternate;
+}
+.cafe-station--oven.is-busy .cafe-station__fx i {
+  border-radius: 2px;
+  background: var(--gold-400);
+}
+.cafe-station--assembly.is-busy .cafe-station__icon {
+  animation: cafe-assembly-turn 1.8s ease-in-out infinite;
+}
+.cafe-station--sink.is-busy .cafe-station__icon {
+  animation: cafe-sink-bob 0.8s ease-in-out infinite;
+}
+.cafe-station--sink.is-busy .cafe-station__fx i {
+  width: 7px;
+  height: 7px;
+  border: 2px solid var(--sea-400);
+  background: transparent;
+}
+.cafe-station--tray.is-busy .cafe-station__fx i {
+  width: 5px;
+  height: 5px;
+  background: var(--gold-400);
+}
+.cafe-station.is-processing {
+  animation: cafe-processing-glow 1.05s ease-in-out infinite;
+}
+.cafe-station__name {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--ink-800);
+  line-height: 1.15;
+}
+.cafe-station__level {
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--ink-500);
+}
+.cafe-station__hint {
+  font-size: 9px;
+  line-height: 1.15;
+}
+.cafe-station__pips {
+  display: flex;
+  gap: 3px;
+  margin-top: 2px;
+}
+.cafe-pip {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(120, 90, 60, 0.2);
+}
+.cafe-pip.is-on {
+  background: var(--sea-500);
+}
+.cafe-station__progress {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  bottom: 4px;
+  height: 3px;
+  border-radius: 99px;
+  background: rgba(120, 90, 60, 0.18);
+  overflow: hidden;
+}
+.cafe-station__progress i {
+  display: block;
+  height: 100%;
+  background: var(--gold-500);
+}
+.cafe-station__busy {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  padding: 1px 5px;
+  border-radius: var(--radius-pill);
+  background: var(--coral-500);
+  color: #fff;
+  font-size: 8.5px;
+  font-weight: 700;
+}
+.cafe-station__busy--own {
+  background: var(--sea-600);
+}
+
+/* ---------------- 托盘 ---------------- */
+.cafe-tray {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, var(--cream-100), var(--paper));
+  border: var(--edge-paper);
+}
+.cafe-tray__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--ink-800);
+}
+.cafe-tray__count {
+  margin-left: auto;
+  color: var(--ink-500);
+}
+.cafe-tray__slots {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.cafe-tray__slots::-webkit-scrollbar {
+  display: none;
+}
+.cafe-tray__slot {
+  flex: 0 0 auto;
+  width: 54px;
+  height: 46px;
+  border-radius: var(--radius-sm);
+  border: 1px dashed rgba(150, 112, 42, 0.35);
+  background: rgba(255, 251, 243, 0.6);
+}
+.cafe-tray__item {
+  position: relative;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--gold-400);
+  background: linear-gradient(135deg, var(--sun-100), var(--gold-100));
+}
+.cafe-tray__item.is-focused {
+  box-shadow: 0 0 0 2px var(--gold-300);
+}
+.cafe-tray__item.is-new {
+  animation: cafe-tray-drop 0.5s cubic-bezier(0.2, 1.35, 0.45, 1);
+}
+.cafe-tray__item.is-misplaced {
+  border-color: var(--coral-500);
+  background: linear-gradient(135deg, var(--coral-100), var(--sun-100));
+  box-shadow: 0 0 0 2px rgba(232, 131, 106, 0.2);
+}
+.cafe-tray__item.is-misplaced::after {
+  content: '!';
+  position: absolute;
+  top: -5px;
+  left: -4px;
+  display: grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  border: 1.5px solid var(--cream-50);
+  background: var(--coral-500);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 900;
+  pointer-events: none;
+}
+.cafe-tray__grab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  min-width: 46px;
+  min-height: 42px;
+  padding: 3px 6px;
+  border: none;
+  background: transparent;
+  color: var(--ink-800);
+  font-size: 10px;
+  cursor: grab;
+  touch-action: none;
+}
+.cafe-tray__item-name {
+  max-width: 56px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cafe-tray__serve {
+  min-height: 34px;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--gold-600);
+  background: var(--gold-500);
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.cafe-tray__serve--recover {
+  border-color: var(--coral-600);
+  background: var(--coral-500);
+  box-shadow: 0 2px 0 rgba(148, 61, 40, 0.16);
+}
+.cafe-tray__hint {
+  margin: 0;
+  font-size: 10px;
+}
+
+/* ---------------- 原料架 ---------------- */
+.cafe-shelf {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+}
+.cafe-shelf::-webkit-scrollbar {
+  display: none;
+}
+.cafe-material {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: var(--tap);
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(150, 112, 42, 0.28);
+  background: var(--paper);
+  color: var(--ink-800);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.cafe-material.is-target {
+  border-color: var(--gold-500);
+  background: linear-gradient(135deg, var(--gold-100), var(--cream-100));
+  box-shadow: 0 0 0 2px var(--gold-200);
+}
+.cafe-run.is-dragging .cafe-material.is-target {
+  animation: cafe-target-glow 0.9s ease-in-out infinite;
+}
+.cafe-material--cup {
+  border-color: var(--coral-400);
+  background: linear-gradient(135deg, var(--coral-100), var(--cream-100));
+  color: var(--coral-600);
+}
+.cafe-material:active {
+  transform: scale(0.97);
+}
+.cafe-shelf__tip {
+  flex: 0 0 auto;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+/* ---------------- 拖拽幽灵 / 暂停 ---------------- */
+.cafe-dragghost {
+  position: fixed;
+  z-index: 90;
+  transform: translate(-50%, -50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: var(--radius-pill);
+  background: rgba(45, 99, 92, 0.94);
+  color: var(--cream-50);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  box-shadow: var(--shadow-lg);
+  pointer-events: none;
+}
+
+/* ---------------- 拖拽飞行动画 / 操作反馈 ---------------- */
+.cafe-fly-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 89;
+  pointer-events: none;
+  overflow: hidden;
+}
+.cafe-flyfx {
+  --fx-from-x: 0px;
+  --fx-from-y: 0px;
+  --fx-dx: 0px;
+  --fx-dy: 0px;
+  --fx-mid-x: 0px;
+  --fx-mid-y: 0px;
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  color: #fff9e9;
+  background: linear-gradient(145deg, var(--sea-400), var(--sea-700));
+  box-shadow: 0 7px 16px rgba(45, 99, 92, 0.34);
+  animation: cafe-fly-to-target 0.92s cubic-bezier(0.2, 0.72, 0.26, 1) forwards;
+  will-change: transform, opacity;
+}
+.cafe-flyfx--plate,
+.cafe-flyfx--serve {
+  color: #5a3a10;
+  background: linear-gradient(145deg, var(--gold-200), var(--gold-500));
+  box-shadow: 0 7px 16px rgba(173, 122, 34, 0.36);
+}
+.cafe-flyfx--clean {
+  color: #f3fffc;
+  background: linear-gradient(145deg, var(--sea-300), var(--sea-600));
+}
+.cafe-flyfx > svg {
+  position: relative;
+  z-index: 1;
+}
+.cafe-flyfx > i {
+  --particle-x: 0px;
+  --particle-y: -24px;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--gold-300);
+  opacity: 0;
+  animation: cafe-fly-particle 0.72s ease-out 0.42s forwards;
+}
+.cafe-flyfx > i:nth-child(2) {
+  --particle-x: -23px;
+  --particle-y: -20px;
+}
+.cafe-flyfx > i:nth-child(3) {
+  --particle-x: 22px;
+  --particle-y: -12px;
+  animation-delay: 0.5s;
+}
+.cafe-flyfx > i:nth-child(4) {
+  --particle-x: 8px;
+  --particle-y: -29px;
+  animation-delay: 0.58s;
+}
+.cafe-flyfx--serve > i {
+  width: 9px;
+  height: 9px;
+  background: var(--coral-300);
+}
+.cafe-flyfx--clean > i {
+  width: 8px;
+  height: 8px;
+  background: var(--sea-300);
+}
+.cafe-pause {
+  position: absolute;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 24px;
+  text-align: center;
+  background: rgba(255, 251, 243, 0.88);
+  backdrop-filter: blur(3px);
+  color: var(--ink-900);
+}
+.cafe-pause h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+}
+.cafe-pause p {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--ink-600);
+}
+
+@keyframes cafe-toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 6px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+@keyframes cafe-misplaced-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 2px rgba(232, 131, 106, 0.18),
+      var(--shadow-md);
+  }
+
+  50% {
+    box-shadow:
+      0 0 0 4px rgba(232, 131, 106, 0.12),
+      var(--shadow-md);
+  }
+}
+@keyframes cafe-pop-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes cafe-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 2px var(--gold-200);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(217, 168, 78, 0.35);
+  }
+}
+@keyframes cafe-ambient-rise {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0) scale(0.62);
+  }
+  18% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(8px, -132px, 0) scale(1.35);
+  }
+}
+@keyframes cafe-customer-bob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-1deg);
+  }
+  50% {
+    transform: translateY(-3px) rotate(1.5deg);
+  }
+}
+@keyframes cafe-avatar-ring {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes cafe-happy-pop {
+  0% {
+    opacity: 0.45;
+    transform: scale(0.78) rotate(-8deg);
+  }
+  58% {
+    opacity: 1;
+    transform: scale(1.14) rotate(5deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0);
+  }
+}
+@keyframes cafe-cup-wobble {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0);
+  }
+  28% {
+    transform: translateY(-1px) rotate(-5deg);
+  }
+  66% {
+    transform: translateY(0) rotate(5deg);
+  }
+}
+@keyframes cafe-order-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(5px) scale(0.82);
+  }
+  62% {
+    opacity: 1;
+    transform: translateY(-1px) scale(1.04);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes cafe-patience-breathe {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+  50% {
+    opacity: 0.72;
+    transform: scaleX(0.94);
+  }
+}
+@keyframes cafe-served-pulse {
+  0% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.025);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes cafe-idle-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-2deg);
+  }
+  50% {
+    transform: translateY(-4px) rotate(3deg);
+  }
+}
+@keyframes cafe-progress-shine {
+  from {
+    transform: translateX(-110%);
+  }
+  to {
+    transform: translateX(210%);
+  }
+}
+@keyframes cafe-station-steam {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 4px) scale(0.55);
+  }
+  28% {
+    opacity: 0.82;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -28px) scale(1.32);
+  }
+}
+@keyframes cafe-machine-shake {
+  0%,
+  100% {
+    transform: translateX(0) rotate(0);
+  }
+  25% {
+    transform: translateX(-1.5px) rotate(-2deg);
+  }
+  75% {
+    transform: translateX(1.5px) rotate(2deg);
+  }
+}
+@keyframes cafe-oven-heat {
+  from {
+    transform: translateY(0) scale(1);
+  }
+  to {
+    transform: translateY(-2px) scale(1.08);
+  }
+}
+@keyframes cafe-assembly-turn {
+  0%,
+  100% {
+    transform: rotate(0) scale(1);
+  }
+  45% {
+    transform: rotate(12deg) scale(1.04);
+  }
+  70% {
+    transform: rotate(-8deg) scale(1.02);
+  }
+}
+@keyframes cafe-sink-bob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-2deg);
+  }
+  50% {
+    transform: translateY(2px) rotate(2deg);
+  }
+}
+@keyframes cafe-processing-glow {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-1px) scale(1.018);
+  }
+}
+@keyframes cafe-tray-drop {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.76);
+  }
+  68% {
+    opacity: 1;
+    transform: translateY(1px) scale(1.06);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes cafe-target-glow {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.045);
+  }
+}
+@keyframes cafe-fly-to-target {
+  0% {
+    opacity: 0;
+    transform: translate3d(calc(var(--fx-from-x) - 50%), calc(var(--fx-from-y) - 50%), 0) scale(0.68);
+  }
+  12% {
+    opacity: 1;
+  }
+  68% {
+    opacity: 1;
+    transform: translate3d(calc(var(--fx-mid-x) - 50%), calc(var(--fx-mid-y) - 50%), 0) scale(1.06);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(calc(var(--fx-from-x) + var(--fx-dx) - 50%), calc(var(--fx-from-y) + var(--fx-dy) - 50%), 0)
+      scale(0.78);
+  }
+}
+@keyframes cafe-fly-particle {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.35);
+  }
+  24% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(
+        calc(-50% + var(--particle-x)),
+        calc(-50% + var(--particle-y))
+      )
+      scale(1.35);
+  }
+}
+
+/* 矮屏（如 375×812）收紧间距，避免任何裁切 */
+@media (max-height: 860px) {
+  .cafe-run {
+    gap: 5px;
+    padding: 6px 8px 8px;
+  }
+  .cafe-table {
+    min-height: 76px;
+    padding: 6px 7px;
+  }
+  .cafe-station {
+    padding: 6px 3px 7px;
+  }
+  .cafe-station__hint {
+    display: none;
+  }
+}

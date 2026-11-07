@@ -1,0 +1,27 @@
+{
+  "name": "seabreeze-pet-cafe",
+  "private": true,
+  "version": "0.1.0",
+  "description": "《海风镇宠物咖啡馆》移动端竖屏垂直切片原型",
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "test": "node --test tools/test-cafe-session.mjs tools/test-story-system.mjs tools/test-user-db.mjs",
+    "build": "tsc --noEmit && node scripts/build.mjs",
+    "preview": "node scripts/preview.mjs",
+    "e2e": "node tools/e2e.mjs 390 844 mobile",
+    "e2e:desktop": "node tools/e2e.mjs 1440 900 desktop"
+  },
+  "dependencies": {
+    "lucide-react": "^0.460.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11"
+  }
+}

@@ -1,0 +1,50 @@
+# ── 依赖与构建产物 ───────────────────────────────
+node_modules/
+app/node_modules/
+dist/
+app/dist/
+dist-ssr/
+.vite/
+
+# ── 环境变量与密钥（绝不入库） ───────────────────
+.env
+.env.*
+!.env.example
+work/pi-config/models.json
+work/pi-config/auth.json
+work/pi-config/models-store.json
+work/pi-config/__write_test.tmp
+work/pi-config/shell-user-test.*
+
+# ── 数据库：SQLite 主文件与 WAL/SHM 边车 ──────────
+app/data/*.sqlite
+app/data/*.sqlite-*
+app/data/*.db
+app/data/*.db-*
+
+# ── 过程性产物：截图、日志、中间图 ───────────────
+# 体积大、可重新生成，不属于源码或交付资产
+app/work/
+!app/work/*.mjs
+work/shots/
+work/split/
+work/art/
+work/storybook/
+work/window-check/
+work/**/*.png
+work/**/*.jpg
+work/**/*.jpeg
+work/**/*.webp
+work/**/*.log
+work/codebuddy-help.*
+*.log
+*.log.*
+
+# ── 历史遗留：原 .git 目录权限损坏，已重命名留存 ──
+.git_broken/
+
+# ── 系统与编辑器垃圾 ─────────────────────────────
+$null
+.DS_Store
+Thumbs.db
+desktop.ini

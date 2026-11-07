@@ -1,0 +1,165 @@
+/* ============================================================
+   基础重置 + 桌面端手机画布居中
+   ============================================================ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+body {
+  font-family: var(--font-body);
+  color: var(--ink-800);
+  background:
+    radial-gradient(1200px 700px at 20% -10%, #f9e2bb 0%, transparent 60%),
+    radial-gradient(900px 600px at 90% 110%, #cfe6df 0%, transparent 62%),
+    linear-gradient(160deg, #e9d3ae 0%, #dcc09a 45%, #c7a988 100%);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow: hidden;
+}
+
+#root {
+  height: 100%;
+}
+
+button {
+  font-family: inherit;
+  color: inherit;
+}
+
+h1,
+h2,
+h3,
+h4,
+p {
+  margin: 0;
+}
+
+ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--coral-400);
+  outline-offset: 2px;
+}
+
+/* ---------- 舞台：桌面端居中显示手机画布 ---------- */
+.stage {
+  height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+
+/* 手机画布：375x812 (0.4618) ~ 430x932 (0.4614)，按 430x932 保持比例 */
+.phone {
+  position: relative;
+  width: min(430px, 100vw, calc((100dvh - 32px) * 0.4614));
+  min-width: 0;
+  aspect-ratio: 430 / 932;
+  max-height: calc(100dvh - 32px);
+  border-radius: 34px;
+  overflow: hidden;
+  isolation: isolate;
+  background: #1f4642;
+  box-shadow:
+    0 0 0 9px #f6ead4,
+    0 0 0 11px rgba(150, 112, 42, 0.5),
+    0 26px 60px rgba(88, 58, 30, 0.42);
+}
+
+.phone[data-tone='cafe'] {
+  background:
+    radial-gradient(110% 72% at 50% 12%, #fff4dd 0%, transparent 72%),
+    #efcf9f;
+}
+
+/* 小屏手机：铺满并可滚动兜底 */
+@media (max-width: 480px) {
+  .stage {
+    padding: 0;
+  }
+  .phone {
+    width: 100vw;
+    height: 100dvh;
+    max-height: none;
+    aspect-ratio: auto;
+    border-radius: 0;
+    box-shadow: none;
+  }
+}
+
+/* 桌面端的画布外装饰文字（贴在右下角，不遮挡手机画布） */
+.stage__badge {
+  position: fixed;
+  right: 18px;
+  bottom: 14px;
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  color: rgba(90, 64, 40, 0.45);
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+@media (max-width: 480px), (max-height: 760px) {
+  .stage__badge {
+    display: none;
+  }
+}
+
+/* ---------- 滚动条 ---------- */
+.scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(150, 112, 42, 0.45) transparent;
+}
+.scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.scroll::-webkit-scrollbar-thumb {
+  background: rgba(150, 112, 42, 0.4);
+  border-radius: 99px;
+}
+.scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ---------- 通用文本 ---------- */
+.t-num {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+}
+.t-muted {
+  color: var(--ink-500);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

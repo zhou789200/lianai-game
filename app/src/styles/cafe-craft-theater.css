@@ -1,0 +1,1189 @@
+/* 制作过程舞台：只负责步骤演出，不接管按钮、拖拽或结算。 */
+.cafe-craft-theater {
+  position: relative;
+  width: 100%;
+  height: clamp(74px, 23vw, 92px);
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 16px;
+  border: 1px solid rgba(120, 90, 60, 0.18);
+  background:
+    radial-gradient(circle at 52% 18%, rgba(255, 248, 221, 0.92), transparent 36%),
+    linear-gradient(180deg, rgba(255, 253, 246, 0.96), rgba(238, 226, 202, 0.88));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    inset 0 -12px 24px rgba(120, 84, 44, 0.08);
+  isolation: isolate;
+  contain: paint;
+  pointer-events: none;
+  user-select: none;
+}
+.cafe-craft-theater::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background:
+    linear-gradient(90deg, transparent 0 47%, rgba(62, 140, 134, 0.08) 47% 53%, transparent 53%),
+    radial-gradient(circle at 50% 48%, rgba(217, 168, 78, 0.16), transparent 37%);
+  opacity: 0.7;
+}
+.cafe-craft-theater__stage {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) clamp(58px, 19vw, 78px) minmax(0, 0.95fr);
+  align-items: center;
+  gap: 0;
+  min-width: 0;
+  animation: cafe-theater-enter 360ms cubic-bezier(0.2, 0.82, 0.28, 1) both;
+}
+.cafe-craft-theater__stage::after {
+  content: '';
+  position: absolute;
+  left: 5%;
+  right: 5%;
+  bottom: 11%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(120, 90, 60, 0.28), transparent);
+}
+.cafe-craft-theater__grid {
+  position: absolute;
+  inset: 0;
+  opacity: 0.42;
+  background-image:
+    linear-gradient(rgba(120, 90, 60, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(120, 90, 60, 0.08) 1px, transparent 1px);
+  background-size: 16px 16px;
+  mask-image: linear-gradient(180deg, transparent, #000 44%, transparent);
+}
+.cafe-craft-theater__wash {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  background: radial-gradient(circle at 50% 52%, rgba(255, 239, 173, 0.6), transparent 64%);
+  transition: opacity 220ms ease;
+}
+.cafe-craft-theater.is-active .cafe-craft-theater__wash,
+.cafe-craft-theater.is-processing .cafe-craft-theater__wash {
+  opacity: 1;
+}
+.cafe-craft-theater.is-active .cafe-craft-theater__stage {
+  filter: saturate(1.08) brightness(1.04);
+}
+.cafe-craft-theater.is-processing .cafe-craft-theater__stage {
+  filter: saturate(1.16) brightness(1.07);
+}
+.cafe-craft-theater.is-idle .cafe-craft-theater__stage {
+  animation:
+    cafe-theater-enter 360ms cubic-bezier(0.2, 0.82, 0.28, 1) both,
+    cafe-theater-idle 2.8s ease-in-out 360ms infinite;
+}
+
+.cafe-craft-theater__source,
+.cafe-craft-theater__device,
+.cafe-craft-theater__output {
+  position: relative;
+  align-self: stretch;
+  min-width: 0;
+}
+.cafe-craft-theater__source,
+.cafe-craft-theater__output {
+  display: grid;
+  place-items: center;
+}
+
+.cafe-craft-theater__puck {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: clamp(30px, 9vw, 38px);
+  height: clamp(30px, 9vw, 38px);
+  margin: -17px 0 0 -17px;
+  border-radius: 11px;
+  color: var(--tone-ink, var(--ink-800));
+  background:
+    radial-gradient(circle at 32% 24%, rgba(255, 255, 255, 0.96), transparent 27%),
+    var(--tone-bg, var(--cream-100));
+  border: 1px solid var(--tone-edge, rgba(120, 90, 60, 0.24));
+  box-shadow:
+    0 4px 9px rgba(120, 84, 44, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.78);
+}
+.cafe-craft-theater__puck > i {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--tone-dot, var(--gold-400));
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.62);
+}
+.cafe-craft-theater__puck--second {
+  z-index: 2;
+  translate: 0 18px;
+  scale: 0.86;
+}
+.cafe-tone--porcelain {
+  --tone-bg: #fdfaf2;
+  --tone-edge: rgba(62, 140, 134, 0.34);
+  --tone-ink: var(--sea-700);
+  --tone-dot: var(--sea-300);
+}
+.cafe-tone--milk {
+  --tone-bg: #fffaf0;
+  --tone-edge: rgba(217, 168, 78, 0.36);
+  --tone-ink: var(--gold-700);
+  --tone-dot: #fff6df;
+}
+.cafe-tone--coffee {
+  --tone-bg: #bb7a4f;
+  --tone-edge: rgba(104, 60, 35, 0.38);
+  --tone-ink: #fff7e8;
+  --tone-dot: #5a321f;
+}
+.cafe-tone--ice {
+  --tone-bg: #dff6f5;
+  --tone-edge: rgba(62, 140, 134, 0.34);
+  --tone-ink: var(--sea-700);
+  --tone-dot: #b8ece8;
+}
+.cafe-tone--citrus {
+  --tone-bg: #ffd98c;
+  --tone-edge: rgba(200, 125, 38, 0.38);
+  --tone-ink: #83551e;
+  --tone-dot: #f29d3c;
+}
+.cafe-tone--soda {
+  --tone-bg: #bdeae0;
+  --tone-edge: rgba(45, 99, 92, 0.34);
+  --tone-ink: var(--sea-700);
+  --tone-dot: #ffffff;
+}
+.cafe-tone--butter {
+  --tone-bg: #f4cf78;
+  --tone-edge: rgba(168, 127, 44, 0.38);
+  --tone-ink: #795519;
+  --tone-dot: #fff0ba;
+}
+.cafe-tone--leaf {
+  --tone-bg: #b9dbc5;
+  --tone-edge: rgba(62, 140, 134, 0.34);
+  --tone-ink: var(--sea-700);
+  --tone-dot: #7fb790;
+}
+
+.cafe-craft-theater__device {
+  display: grid;
+  place-items: center;
+  z-index: 3;
+}
+.cafe-craft-theater__machine {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 1;
+  width: 46px;
+  height: 48px;
+  margin: -24px 0 0 -23px;
+  border-radius: 11px 11px 8px 8px;
+  background: linear-gradient(155deg, var(--sea-500), var(--sea-700));
+  border: 1px solid rgba(31, 70, 66, 0.68);
+  box-shadow:
+    0 6px 11px rgba(64, 54, 41, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.34);
+}
+.cafe-craft-theater__machine-top {
+  position: absolute;
+  top: -6px;
+  left: 5px;
+  right: 5px;
+  height: 9px;
+  border-radius: 7px 7px 3px 3px;
+  background: linear-gradient(180deg, #d9eee9, #81bdb4);
+  border: 1px solid rgba(31, 70, 66, 0.38);
+}
+.cafe-craft-theater__machine-door {
+  position: absolute;
+  left: 7px;
+  right: 7px;
+  bottom: 7px;
+  height: 20px;
+  border-radius: 4px 4px 8px 8px;
+  background: rgba(31, 70, 66, 0.54);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+.cafe-craft-theater__machine-window {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 11px;
+  height: 11px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, rgba(255, 247, 212, 0.76), rgba(197, 127, 70, 0.7));
+}
+.cafe-craft-theater__machine-knob {
+  position: absolute;
+  top: 11px;
+  right: 7px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--gold-200);
+  box-shadow: 0 0 0 2px rgba(31, 70, 66, 0.3);
+}
+.cafe-craft-theater__machine-icon {
+  position: absolute;
+  top: 12px;
+  left: 9px;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  color: var(--cream-50);
+  background: rgba(255, 255, 255, 0.13);
+}
+
+.cafe-craft-theater--oven .cafe-craft-theater__machine {
+  width: 51px;
+  height: 43px;
+  margin: -22px 0 0 -25px;
+  border-radius: 14px 14px 7px 7px;
+  background: linear-gradient(150deg, #edb25e, #b8693c);
+  border-color: rgba(116, 63, 31, 0.54);
+}
+.cafe-craft-theater--oven .cafe-craft-theater__machine-top {
+  left: 3px;
+  right: 3px;
+  background: linear-gradient(180deg, #f8dda3, #d9974b);
+}
+.cafe-craft-theater--oven .cafe-craft-theater__machine-door {
+  left: 6px;
+  right: 6px;
+  bottom: 5px;
+  height: 24px;
+  background: rgba(92, 54, 30, 0.54);
+}
+.cafe-craft-theater--oven .cafe-craft-theater__machine-window {
+  left: 10px;
+  right: 10px;
+  bottom: 9px;
+  height: 14px;
+  background: linear-gradient(180deg, #ffe3a1, #dc793e);
+}
+.cafe-craft-theater--assembly .cafe-craft-theater__machine {
+  width: 54px;
+  height: 31px;
+  margin: -16px 0 0 -27px;
+  border-radius: 50% 50% 9px 9px;
+  background: linear-gradient(160deg, #e6e0cc, #b9ae90);
+  border-color: rgba(103, 91, 65, 0.42);
+}
+.cafe-craft-theater--assembly .cafe-craft-theater__machine-top {
+  top: -4px;
+  left: 8px;
+  right: 8px;
+  height: 10px;
+  border-radius: 50%;
+  background: #f5f0df;
+}
+.cafe-craft-theater--assembly .cafe-craft-theater__machine-door {
+  left: 9px;
+  right: 9px;
+  bottom: 3px;
+  height: 11px;
+  border-radius: 50%;
+  background: rgba(92, 75, 45, 0.18);
+}
+.cafe-craft-theater--assembly .cafe-craft-theater__machine-window,
+.cafe-craft-theater--assembly .cafe-craft-theater__machine-knob {
+  display: none;
+}
+.cafe-craft-theater--assembly .cafe-craft-theater__machine-icon {
+  top: 6px;
+  left: calc(50% - 9px);
+  color: var(--gold-700);
+  background: rgba(255, 255, 255, 0.4);
+}
+.cafe-craft-theater--tray .cafe-craft-theater__machine {
+  width: 58px;
+  height: 20px;
+  margin: -6px 0 0 -29px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #f8f0d7, #c8b68e);
+  border-color: rgba(103, 91, 65, 0.36);
+}
+.cafe-craft-theater--tray .cafe-craft-theater__machine-top {
+  top: 3px;
+  left: 8px;
+  right: 8px;
+  height: 12px;
+  border-radius: 50%;
+  background: #fff9e9;
+}
+.cafe-craft-theater--tray .cafe-craft-theater__machine-door,
+.cafe-craft-theater--tray .cafe-craft-theater__machine-window,
+.cafe-craft-theater--tray .cafe-craft-theater__machine-knob {
+  display: none;
+}
+.cafe-craft-theater--tray .cafe-craft-theater__machine-icon {
+  top: -1px;
+  left: calc(50% - 9px);
+  color: var(--gold-700);
+  background: transparent;
+}
+.cafe-craft-theater--sink .cafe-craft-theater__machine {
+  width: 53px;
+  height: 30px;
+  margin: -14px 0 0 -26px;
+  border-radius: 7px 7px 18px 18px;
+  background: linear-gradient(160deg, #d9f0ec, #76b9ae);
+  border-color: rgba(45, 99, 92, 0.46);
+}
+.cafe-craft-theater--sink .cafe-craft-theater__machine-top {
+  top: -4px;
+  left: 5px;
+  right: 5px;
+  height: 8px;
+  border-radius: 50%;
+  background: #eefaf7;
+}
+.cafe-craft-theater--sink .cafe-craft-theater__machine-door {
+  left: 9px;
+  right: 9px;
+  bottom: 4px;
+  height: 17px;
+  border-radius: 50%;
+  background: rgba(45, 99, 92, 0.22);
+}
+.cafe-craft-theater--sink .cafe-craft-theater__machine-window,
+.cafe-craft-theater--sink .cafe-craft-theater__machine-knob {
+  display: none;
+}
+.cafe-craft-theater--sink .cafe-craft-theater__machine-icon {
+  top: 3px;
+  left: calc(50% - 9px);
+  color: var(--sea-700);
+  background: rgba(255, 255, 255, 0.36);
+}
+
+.cafe-craft-theater__vessel {
+  position: absolute;
+  top: calc(50% + 5px);
+  left: 50%;
+  z-index: 4;
+  width: 28px;
+  height: 31px;
+  margin: -15px 0 0 -14px;
+  transform-origin: 50% 75%;
+}
+.cafe-craft-theater__vessel-cup {
+  position: absolute;
+  inset: 4px 2px 1px;
+  border-radius: 4px 4px 10px 10px;
+  background: rgba(255, 255, 255, 0.78);
+  border: 2px solid var(--tone-ink, var(--sea-700));
+  box-shadow: inset 0 -4px 0 rgba(120, 90, 60, 0.08);
+}
+.cafe-craft-theater__vessel-cup::after {
+  content: '';
+  position: absolute;
+  top: 7px;
+  right: -8px;
+  width: 9px;
+  height: 10px;
+  border: 2px solid var(--tone-ink, var(--sea-700));
+  border-left: 0;
+  border-radius: 0 9px 9px 0;
+}
+.cafe-craft-theater__vessel-fill {
+  position: absolute;
+  right: 5px;
+  bottom: 4px;
+  left: 5px;
+  height: 17px;
+  border-radius: 2px 2px 7px 7px;
+  background: var(--tone-bg, var(--gold-200));
+  transform: scaleY(0.72);
+  transform-origin: 50% 100%;
+  transition: transform 180ms ease;
+}
+.cafe-craft-theater__vessel-icon {
+  position: absolute;
+  top: 9px;
+  left: 7px;
+  color: rgba(255, 255, 255, 0.94);
+  filter: drop-shadow(0 1px 1px rgba(78, 46, 23, 0.32));
+}
+.cafe-craft-theater--load .cafe-craft-theater__vessel {
+  animation: cafe-theater-vessel-land 900ms 320ms cubic-bezier(0.2, 0.84, 0.3, 1) both;
+}
+.cafe-craft-theater--process .cafe-craft-theater__vessel {
+  animation: cafe-theater-vessel-work 780ms ease-in-out infinite;
+}
+.cafe-craft-theater--process .cafe-craft-theater__vessel-fill,
+.cafe-craft-theater.is-processing .cafe-craft-theater__vessel-fill {
+  animation: cafe-theater-fill-rise 1.5s ease-in-out infinite;
+}
+.cafe-craft-theater--assemble .cafe-craft-theater__vessel {
+  animation: cafe-theater-assemble-pop 1.4s 420ms ease-in-out infinite;
+}
+.cafe-craft-theater--plate .cafe-craft-theater__vessel {
+  opacity: 0.4;
+}
+
+.cafe-craft-theater__process-fx,
+.cafe-craft-theater__heat,
+.cafe-craft-theater__splash {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 5;
+  width: 1px;
+  height: 1px;
+}
+.cafe-craft-theater__process-fx i {
+  position: absolute;
+  bottom: 3px;
+  width: 5px;
+  height: 14px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.72);
+  filter: blur(0.3px);
+  opacity: 0;
+}
+.cafe-craft-theater__process-fx i:nth-child(1) {
+  left: -15px;
+}
+.cafe-craft-theater__process-fx i:nth-child(2) {
+  left: -5px;
+  height: 19px;
+}
+.cafe-craft-theater__process-fx i:nth-child(3) {
+  left: 7px;
+  height: 16px;
+}
+.cafe-craft-theater__process-fx i:nth-child(4) {
+  left: 17px;
+  height: 11px;
+}
+.cafe-craft-theater__heat i {
+  position: absolute;
+  bottom: -11px;
+  width: 12px;
+  height: 23px;
+  border: 2px solid rgba(190, 104, 53, 0.42);
+  border-right-color: transparent;
+  border-bottom-color: transparent;
+  border-radius: 50%;
+  opacity: 0;
+}
+.cafe-craft-theater__heat i:nth-child(1) {
+  left: -22px;
+}
+.cafe-craft-theater__heat i:nth-child(2) {
+  left: -5px;
+  animation-delay: -0.42s;
+}
+.cafe-craft-theater__heat i:nth-child(3) {
+  left: 12px;
+  animation-delay: -0.82s;
+}
+.cafe-craft-theater__splash i {
+  position: absolute;
+  top: -11px;
+  left: -18px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(104, 199, 198, 0.82);
+  opacity: 0;
+}
+.cafe-craft-theater__splash i:nth-child(2) {
+  left: -5px;
+  animation-delay: -0.22s;
+}
+.cafe-craft-theater__splash i:nth-child(3) {
+  left: 7px;
+  animation-delay: -0.44s;
+}
+.cafe-craft-theater__splash i:nth-child(4) {
+  left: 18px;
+  animation-delay: -0.66s;
+}
+
+.cafe-craft-theater--machine.is-processing .cafe-craft-theater__machine {
+  animation: cafe-theater-machine-work 560ms ease-in-out infinite;
+}
+.cafe-craft-theater--machine.is-processing .cafe-craft-theater__machine-knob {
+  animation: cafe-theater-knob 620ms ease-in-out infinite;
+}
+.cafe-craft-theater--machine.is-processing .cafe-craft-theater__process-fx i {
+  animation: cafe-theater-steam-rise 1.35s ease-in-out infinite;
+}
+.cafe-craft-theater--machine.is-processing .cafe-craft-theater__process-fx i:nth-child(2) {
+  animation-delay: -0.35s;
+}
+.cafe-craft-theater--machine.is-processing .cafe-craft-theater__process-fx i:nth-child(3) {
+  animation-delay: -0.7s;
+}
+.cafe-craft-theater--machine.is-processing .cafe-craft-theater__process-fx i:nth-child(4) {
+  animation-delay: -1s;
+}
+.cafe-craft-theater--oven.is-processing .cafe-craft-theater__machine {
+  animation: cafe-theater-oven-breathe 1s ease-in-out infinite;
+}
+.cafe-craft-theater--oven.is-processing .cafe-craft-theater__machine-window {
+  box-shadow: 0 0 10px rgba(255, 173, 68, 0.86);
+}
+.cafe-craft-theater--oven.is-processing .cafe-craft-theater__heat i {
+  animation: cafe-theater-heat-wave 1.15s ease-out infinite;
+}
+.cafe-craft-theater--assembly .cafe-craft-theater__machine {
+  animation: cafe-theater-assembly-turn 1.8s linear infinite;
+}
+.cafe-craft-theater--assembly .cafe-craft-theater__machine-icon {
+  animation: cafe-theater-assembly-icon 1.2s ease-in-out infinite;
+}
+.cafe-craft-theater--sink.is-processing .cafe-craft-theater__machine {
+  animation: cafe-theater-sink-bob 520ms ease-in-out infinite;
+}
+.cafe-craft-theater--sink.is-processing .cafe-craft-theater__splash i {
+  animation: cafe-theater-water-splash 760ms ease-out infinite;
+}
+.cafe-craft-theater--tray .cafe-craft-theater__tray,
+.cafe-craft-theater--tray .cafe-craft-theater__finished {
+  animation: cafe-theater-tray-lift 1.2s ease-in-out infinite;
+}
+
+.cafe-craft-theater__output {
+  z-index: 2;
+}
+.cafe-craft-theater__tray {
+  position: absolute;
+  right: 7%;
+  bottom: 21%;
+  width: clamp(45px, 14vw, 58px);
+  height: 15px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #fff4d6, #cbb889);
+  border: 1px solid rgba(120, 90, 60, 0.24);
+  box-shadow: 0 4px 7px rgba(120, 84, 44, 0.14);
+}
+.cafe-craft-theater__tray::before {
+  content: '';
+  position: absolute;
+  inset: 3px 9px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.42);
+}
+.cafe-craft-theater__finished {
+  position: absolute;
+  right: calc(7% + clamp(12px, 4vw, 17px));
+  bottom: calc(21% + 8px);
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  color: var(--gold-700);
+  background: rgba(255, 252, 238, 0.92);
+  border: 1px solid rgba(217, 168, 78, 0.4);
+  box-shadow: 0 5px 10px rgba(120, 84, 44, 0.16);
+  opacity: 0.74;
+  transform: scale(0.92);
+}
+.cafe-craft-theater--load .cafe-craft-theater__finished,
+.cafe-craft-theater--process .cafe-craft-theater__finished {
+  filter: grayscale(0.42);
+  opacity: 0.38;
+}
+.cafe-craft-theater--assemble .cafe-craft-theater__finished {
+  animation: cafe-theater-finished-breathe 1.5s ease-in-out infinite;
+}
+.cafe-craft-theater--plate .cafe-craft-theater__finished {
+  animation: cafe-theater-plate-land 1.45s cubic-bezier(0.22, 0.82, 0.32, 1) both;
+}
+.cafe-craft-theater--plate .cafe-craft-theater__tray {
+  animation: cafe-theater-tray-arrive 1.45s cubic-bezier(0.22, 0.82, 0.32, 1) both;
+}
+
+.cafe-craft-theater__burst {
+  position: absolute;
+  right: calc(7% + 15px);
+  bottom: calc(21% + 14px);
+  z-index: 6;
+  width: 1px;
+  height: 1px;
+}
+.cafe-craft-theater__burst i {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--gold-300);
+  opacity: 0;
+  transform: rotate(calc(var(--burst-index, 0) * 60deg)) translateY(-11px);
+}
+.cafe-craft-theater__burst i:nth-child(2) {
+  --burst-index: 1;
+}
+.cafe-craft-theater__burst i:nth-child(3) {
+  --burst-index: 2;
+}
+.cafe-craft-theater__burst i:nth-child(4) {
+  --burst-index: 3;
+}
+.cafe-craft-theater__burst i:nth-child(5) {
+  --burst-index: 4;
+}
+.cafe-craft-theater__burst i:nth-child(6) {
+  --burst-index: 5;
+}
+.cafe-craft-theater--plate .cafe-craft-theater__burst i {
+  animation: cafe-theater-burst 820ms 760ms ease-out both;
+}
+
+.cafe-craft-theater__beam {
+  position: absolute;
+  top: 19%;
+  bottom: 18%;
+  left: 34%;
+  z-index: 5;
+  width: 34%;
+  border-radius: 50%;
+  opacity: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 239, 172, 0.78), transparent);
+  filter: blur(2px);
+  transform: scaleX(0.2);
+}
+.cafe-craft-theater--load .cafe-craft-theater__beam {
+  animation: cafe-theater-load-beam 1.2s 280ms ease-out both;
+}
+.cafe-craft-theater--assemble .cafe-craft-theater__beam {
+  animation: cafe-theater-assemble-beam 1.35s 440ms ease-out infinite;
+}
+.cafe-craft-theater--choose .cafe-craft-theater__beam {
+  animation: cafe-theater-choice-beam 1.6s 180ms ease-in-out infinite;
+}
+
+.cafe-craft-theater__choice {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 3;
+  width: 11px;
+  height: 11px;
+  margin: -5px 0 0 -5px;
+  border-radius: 50%;
+  background: var(--tone-bg, var(--gold-200));
+  border: 1px solid var(--tone-edge, rgba(120, 90, 60, 0.24));
+  box-shadow:
+    0 0 0 4px rgba(255, 255, 255, 0.38),
+    0 3px 6px rgba(120, 84, 44, 0.14);
+  animation: cafe-theater-choice-orbit 1.65s linear infinite;
+  animation-delay: calc(var(--theater-index) * -0.55s);
+}
+
+.cafe-craft-theater--load .cafe-craft-theater__puck {
+  animation: cafe-theater-load-arc 1.12s cubic-bezier(0.22, 0.72, 0.24, 1) both;
+}
+.cafe-craft-theater--load .cafe-craft-theater__puck--second {
+  animation-delay: 0.12s;
+}
+.cafe-craft-theater--process .cafe-craft-theater__puck {
+  opacity: 0.42;
+  animation: cafe-theater-source-settle 1.1s ease-in-out infinite;
+}
+.cafe-craft-theater--assemble .cafe-craft-theater__puck {
+  animation: cafe-theater-assemble-left 1.4s 260ms ease-in-out infinite;
+}
+.cafe-craft-theater--assemble .cafe-craft-theater__puck--second {
+  animation-name: cafe-theater-assemble-right;
+  animation-delay: 260ms;
+}
+.cafe-craft-theater--plate .cafe-craft-theater__puck {
+  opacity: 0.32;
+  animation: cafe-theater-source-settle 1.1s ease-in-out infinite;
+}
+
+.cafe-craft-theater__sparks {
+  position: absolute;
+  inset: 0;
+  z-index: 7;
+}
+.cafe-craft-theater__sparks i {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--sun-200);
+  opacity: 0;
+  box-shadow: 0 0 5px rgba(255, 226, 139, 0.8);
+}
+.cafe-craft-theater__sparks i:nth-child(1) {
+  top: 25%;
+  left: 36%;
+}
+.cafe-craft-theater__sparks i:nth-child(2) {
+  top: 37%;
+  left: 62%;
+}
+.cafe-craft-theater__sparks i:nth-child(3) {
+  top: 62%;
+  left: 47%;
+}
+.cafe-craft-theater__sparks i:nth-child(4) {
+  top: 23%;
+  left: 72%;
+}
+.cafe-craft-theater--load .cafe-craft-theater__sparks i,
+.cafe-craft-theater--plate .cafe-craft-theater__sparks i,
+.cafe-craft-theater--assemble .cafe-craft-theater__sparks i {
+  animation: cafe-theater-spark 980ms ease-out both;
+}
+.cafe-craft-theater--load .cafe-craft-theater__sparks i:nth-child(2),
+.cafe-craft-theater--plate .cafe-craft-theater__sparks i:nth-child(2),
+.cafe-craft-theater--assemble .cafe-craft-theater__sparks i:nth-child(2) {
+  animation-delay: 160ms;
+}
+.cafe-craft-theater--load .cafe-craft-theater__sparks i:nth-child(3),
+.cafe-craft-theater--plate .cafe-craft-theater__sparks i:nth-child(3),
+.cafe-craft-theater--assemble .cafe-craft-theater__sparks i:nth-child(3) {
+  animation-delay: 300ms;
+}
+.cafe-craft-theater--load .cafe-craft-theater__sparks i:nth-child(4),
+.cafe-craft-theater--plate .cafe-craft-theater__sparks i:nth-child(4),
+.cafe-craft-theater--assemble .cafe-craft-theater__sparks i:nth-child(4) {
+  animation-delay: 460ms;
+}
+
+.cafe-craft-theater__flash {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  opacity: 0;
+  background: radial-gradient(circle at 55% 48%, rgba(255, 245, 190, 0.88), transparent 43%);
+}
+.cafe-craft-theater--assemble .cafe-craft-theater__flash {
+  animation: cafe-theater-success-flash 1.4s 780ms ease-out infinite;
+}
+.cafe-craft-theater--plate .cafe-craft-theater__flash {
+  animation: cafe-theater-success-flash 1.45s 820ms ease-out both;
+}
+.cafe-craft-theater--choose .cafe-craft-theater__source::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 24px;
+  height: 24px;
+  margin: -12px 0 0 -12px;
+  border-radius: 50%;
+  border: 1px dashed rgba(217, 168, 78, 0.58);
+  animation: cafe-theater-choice-ring 1.65s linear infinite;
+}
+
+@keyframes cafe-theater-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(5px) scale(0.97);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes cafe-theater-idle {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-0.7px) scale(1.004);
+  }
+}
+@keyframes cafe-theater-load-arc {
+  0% {
+    opacity: 0;
+    transform: translate(-58px, -30px) rotate(-18deg) scale(0.72);
+  }
+  18% {
+    opacity: 1;
+  }
+  62% {
+    transform: translate(-13px, -13px) rotate(8deg) scale(1.07);
+  }
+  82% {
+    opacity: 1;
+    transform: translate(4px, 3px) rotate(-4deg) scale(0.98);
+  }
+  100% {
+    opacity: 0.28;
+    transform: translate(8px, 5px) rotate(0) scale(0.82);
+  }
+}
+@keyframes cafe-theater-source-settle {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-4deg);
+  }
+  50% {
+    transform: translateY(-2px) rotate(5deg);
+  }
+}
+@keyframes cafe-theater-vessel-land {
+  0% {
+    opacity: 0;
+    transform: translateY(-14px) scale(0.78);
+  }
+  62% {
+    opacity: 1;
+    transform: translateY(2px) scale(1.06);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes cafe-theater-vessel-work {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-2deg);
+  }
+  50% {
+    transform: translateY(-2px) rotate(3deg);
+  }
+}
+@keyframes cafe-theater-fill-rise {
+  0%,
+  100% {
+    transform: scaleY(0.18);
+    opacity: 0.62;
+  }
+  50% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+@keyframes cafe-theater-machine-work {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-0.8deg);
+  }
+  50% {
+    transform: translateY(-1px) rotate(0.8deg);
+  }
+}
+@keyframes cafe-theater-knob {
+  0%,
+  100% {
+    transform: rotate(-18deg);
+  }
+  50% {
+    transform: rotate(18deg);
+  }
+}
+@keyframes cafe-theater-steam-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(4px) scale(0.66);
+  }
+  35% {
+    opacity: 0.76;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-17px) scale(1.2);
+  }
+}
+@keyframes cafe-theater-oven-breathe {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-1px) scale(1.025);
+  }
+}
+@keyframes cafe-theater-heat-wave {
+  0% {
+    opacity: 0;
+    transform: translateY(5px) scaleY(0.7);
+  }
+  35% {
+    opacity: 0.46;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-14px) scaleY(1.22);
+  }
+}
+@keyframes cafe-theater-assembly-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes cafe-theater-assembly-icon {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-5deg);
+  }
+  50% {
+    transform: translateY(-1px) rotate(7deg);
+  }
+}
+@keyframes cafe-theater-assemble-left {
+  0%,
+  100% {
+    opacity: 0.82;
+    transform: translate(-28px, 2px) rotate(-7deg);
+  }
+  54% {
+    opacity: 1;
+    transform: translate(4px, -2px) rotate(4deg) scale(0.94);
+  }
+  66% {
+    transform: translate(8px, 0) rotate(0) scale(0.84);
+  }
+}
+@keyframes cafe-theater-assemble-right {
+  0%,
+  100% {
+    opacity: 0.82;
+    transform: translate(28px, 20px) rotate(8deg) scale(0.86);
+  }
+  54% {
+    opacity: 1;
+    transform: translate(4px, -2px) rotate(-4deg) scale(0.94);
+  }
+  66% {
+    transform: translate(8px, 0) rotate(0) scale(0.84);
+  }
+}
+@keyframes cafe-theater-assemble-pop {
+  0%,
+  100% {
+    transform: scale(0.96);
+  }
+  26% {
+    transform: scale(1.08);
+  }
+  42% {
+    transform: scale(1);
+  }
+}
+@keyframes cafe-theater-assemble-beam {
+  0%,
+  100% {
+    opacity: 0;
+    transform: scaleX(0.2);
+  }
+  24%,
+  46% {
+    opacity: 0.8;
+    transform: scaleX(1);
+  }
+  68% {
+    opacity: 0;
+    transform: scaleX(0.3);
+  }
+}
+@keyframes cafe-theater-finished-breathe {
+  0%,
+  100% {
+    opacity: 0.72;
+    transform: scale(0.92);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes cafe-theater-choice-orbit {
+  from {
+    transform: rotate(0deg) translateY(-12px) rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg) translateY(-12px) rotate(-360deg);
+  }
+}
+@keyframes cafe-theater-choice-ring {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes cafe-theater-choice-beam {
+  0%,
+  100% {
+    opacity: 0;
+    transform: scaleX(0.3) rotate(-5deg);
+  }
+  50% {
+    opacity: 0.64;
+    transform: scaleX(1) rotate(5deg);
+  }
+}
+@keyframes cafe-theater-plate-land {
+  0% {
+    opacity: 0;
+    transform: translate(-70px, -28px) rotate(-8deg) scale(0.7);
+  }
+  48% {
+    opacity: 1;
+    transform: translate(-8px, -16px) rotate(4deg) scale(1.08);
+  }
+  72% {
+    transform: translate(0, 2px) rotate(-2deg) scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(0, 0) rotate(0) scale(1);
+  }
+}
+@keyframes cafe-theater-tray-arrive {
+  0% {
+    opacity: 0.35;
+    transform: translateY(-4px) scaleX(0.86);
+  }
+  58% {
+    opacity: 1;
+    transform: translateY(1px) scaleX(1.06);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scaleX(1);
+  }
+}
+@keyframes cafe-theater-tray-lift {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+}
+@keyframes cafe-theater-burst {
+  0% {
+    opacity: 0;
+    transform: rotate(calc(var(--burst-index, 0) * 60deg)) translateY(-11px) scale(0.5);
+  }
+  32% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(calc(var(--burst-index, 0) * 60deg)) translateY(-27px) scale(1.15);
+  }
+}
+@keyframes cafe-theater-spark {
+  0% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  32% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-9px) scale(1.2);
+  }
+}
+@keyframes cafe-theater-success-flash {
+  0%,
+  62% {
+    opacity: 0;
+  }
+  72% {
+    opacity: 0.7;
+  }
+  88%,
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes cafe-theater-load-beam {
+  0%,
+  100% {
+    opacity: 0;
+    transform: scaleX(0.2);
+  }
+  42% {
+    opacity: 0.82;
+    transform: scaleX(1);
+  }
+  72% {
+    opacity: 0.28;
+  }
+}
+
+@media (max-width: 390px) {
+  .cafe-craft-theater {
+    height: 78px;
+    border-radius: 14px;
+  }
+  .cafe-craft-theater__finished {
+    width: 29px;
+    height: 29px;
+  }
+  .cafe-craft-theater__machine {
+    scale: 0.94;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cafe-craft-theater,
+  .cafe-craft-theater *,
+  .cafe-craft-theater *::before,
+  .cafe-craft-theater *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  .cafe-craft-theater__stage {
+    opacity: 1;
+    transform: none;
+  }
+  .cafe-craft-theater__puck {
+    opacity: 1;
+    transform: none;
+  }
+  .cafe-craft-theater__puck--second {
+    translate: 0 16px;
+    scale: 0.86;
+  }
+  .cafe-craft-theater__vessel {
+    opacity: 1;
+    transform: none;
+  }
+  .cafe-craft-theater__vessel-fill {
+    opacity: 1;
+    transform: scaleY(0.82);
+  }
+  .cafe-craft-theater__finished {
+    opacity: 0.92;
+    transform: scale(0.96);
+  }
+  .cafe-craft-theater__process-fx i,
+  .cafe-craft-theater__heat i,
+  .cafe-craft-theater__splash i {
+    opacity: 0.7;
+  }
+  .cafe-craft-theater__beam,
+  .cafe-craft-theater__flash {
+    opacity: 0.34;
+  }
+  .cafe-craft-theater__choice {
+    opacity: 1;
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "base": "http://127.0.0.1:5173/",
+  "executedAt": "2026-10-19T16:50:21.568Z",
+  "results": [
+    {
+      "id": "PET-01 点击出声与歪头",
+      "status": "通过",
+      "notes": "振荡器 +3（应为 3）、animation=pet-meow、气泡「咪——」、状态「布丁眯起眼睛蹭了蹭你」、爱心 3"
+    },
+    {
+      "id": "PET-02 反应自动收尾",
+      "status": "通过",
+      "notes": "class=\"pet-hero\"、气泡=0、恢复文案「布丁趴在窗台上打盹」"
+    },
+    {
+      "id": "PET-03 连点限流",
+      "status": "通过",
+      "notes": "两次快速点击只出声一次：振荡器 +3（应为 3）"
+    },
+    {
+      "id": "PET-04 撸猫不改数值",
+      "status": "通过",
+      "notes": "coins 320→320、stamina 12→12、亲密度 12→12、心情 68→68、互动次数 0→0"
+    },
+    {
+      "id": "PET-05 布局与可达性",
+      "status": "通过",
+      "notes": "scrollWidth=430/innerWidth=430、按钮+aria-label=true"
+    },
+    {
+      "id": "PET-06 声音总开关静音",
+      "status": "通过",
+      "notes": "aria-pressed true→false、storage=off、开关点亮=0、振荡器 +0（应为 0）、静音时仍有动作「喵呜」"
+    },
+    {
+      "id": "PET-07 开关持久化与恢复",
+      "status": "通过",
+      "notes": "刷新后仍为 off、静音点击 +0、打开时试听 +3、再点猫 +3"
+    },
+    {
+      "id": "PET-08 饥饿时连叫两声",
+      "status": "通过",
+      "notes": "振荡器 +6（double 为 6）、状态「布丁甩了甩尾巴尖」"
+    }
+  ],
+  "consoleErrors": []
+}

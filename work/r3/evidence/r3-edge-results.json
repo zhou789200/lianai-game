@@ -1,0 +1,101 @@
+{
+  "base": "http://127.0.0.1:5173/",
+  "executedAt": "2026-10-19T09:04:16.962Z",
+  "passed": 14,
+  "failed": 0,
+  "blocked": 0,
+  "skipped": 1,
+  "results": [
+    {
+      "id": "TC-E09",
+      "title": "体力不足不能开始营业（按钮禁用/不扣体力）",
+      "status": "通过",
+      "notes": "disabled=true text=体力不足（需要 4） stamina=3 noRun=true"
+    },
+    {
+      "id": "TC-DRAG-PROBE",
+      "title": "拖放探针（正确原料→正确设备推进步骤并跟随）",
+      "status": "通过",
+      "notes": "step=把干净杯子拖到咖啡机->长按咖啡机萃取浓缩 ghost=true"
+    },
+    {
+      "id": "TC-E01a",
+      "title": "错误原料拖到设备（提示+步骤不变）",
+      "status": "通过",
+      "notes": "toast=这一步需要「干净杯子」。 stepStable=true"
+    },
+    {
+      "id": "TC-E01b",
+      "title": "正确原料拖到错误设备（提示+步骤不变）",
+      "status": "通过",
+      "notes": "toast=应该把原料放到咖啡机。 stepStable=true"
+    },
+    {
+      "id": "TC-E03",
+      "title": "上错桌恢复（双入口/及时取回/超时 -30/再次送达）",
+      "status": "通过",
+      "notes": "{\"correctTable\":1,\"wrongDrop\":\"t2\",\"misplacedToast\":\"放错到 2 号桌了，3 秒内取回不会扣分。\",\"trayMisplaced\":true,\"tableMisplaced\":true,\"tableRecoverButton\":true,\"trayRecoverButton\":true,\"recoverToast\":\"成品已经取回托盘，没有扣分。\",\"recoveredCleanly\":true,\"trayKeptAfterTimeout\":true,\"timeoutClearedMarks\":true,\"timeoutToast\":\"2 号桌拒收了这份海盐拿铁，成品已放回托盘，满意度 -30。\",\"deliveryToast\":\"海盐拿铁送到了 1 号桌，熟客还行（上菜快 + 合口味 + 上错桌 -30），小费 +3。\",\"servedAtCorrectTable\":true}"
+    },
+    {
+      "id": "TC-E02a",
+      "title": "中途取消拖拽（无状态变化/ghost 消失）",
+      "status": "通过",
+      "notes": "ghost=true->true stepStable=true toast="
+    },
+    {
+      "id": "TC-E02b",
+      "title": "长按不足（品质恢复/重做不扣分/可再次加工）",
+      "status": "通过",
+      "notes": "{\"stepBefore\":\"长按咖啡机萃取浓缩\",\"stepAfterPending\":\"长按咖啡机萃取浓缩\",\"recoveryText\":\"萃取不足 要倒掉重做，还是直接采用这份瑕疵品？ 倒掉重做 直接采用 满意度 -20\",\"hasBothActions\":true,\"stationBusy\":false,\"retryProcessVisible\":true,\"retryStationFree\":true,\"retryMessage\":\"倒掉重做，这次看准时机再松手。\"}"
+    },
+    {
+      "id": "TC-E05a",
+      "title": "失焦自动暂停（blur→冻结→继续）",
+      "status": "通过",
+      "notes": "t0=108s frozen=108s resumed=107s"
+    },
+    {
+      "id": "TC-E05b",
+      "title": "手动暂停/继续（计时冻结与恢复）",
+      "status": "通过",
+      "notes": "t0=107s frozen=107s resumed=106s"
+    },
+    {
+      "id": "TC-E04",
+      "title": "订单等待过久顾客离店（爽约计数≥1/无体力惩罚）",
+      "status": "通过",
+      "notes": "settled=true rows={\"完成订单\":\"1\",\"爽约订单\":\"2\",\"营业收入\":\"+18\",\"小费\":\"+0\",\"经验\":\"+3\",\"顾客满意\":\"1.0\"}"
+    },
+    {
+      "id": "TC-E12",
+      "title": "宠物协助与恋爱角色到店事件",
+      "status": "通过",
+      "notes": "{\"customer\":\"店里的小事 外面飘起小雨，客人说慢慢来，不用着急。\",\"pet\":\"布丁递来了东西 它把滑到桌角的餐巾推了回来，客人都笑了。\",\"equipment\":\"烤箱热气散开 黄油的味道从后厨飘到了大厅。\",\"romance\":\"林澈来了 店长，我路过，看见还亮着灯……需要帮忙吗？\"}"
+    },
+    {
+      "id": "TC-E08",
+      "title": "重复结算防护（businessRuns 恰 +1/金币不重复）",
+      "status": "通过",
+      "notes": "runs=1->1 coins=338->338 lastSettledRunId=true"
+    },
+    {
+      "id": "TC-E06",
+      "title": "离店确认（继续营业/结束并结算）",
+      "status": "通过",
+      "notes": "stillRunningAfterCancel=true modalGone=true rows={\"完成订单\":\"0\",\"爽约订单\":\"0\",\"营业收入\":\"+0\",\"小费\":\"+0\",\"经验\":\"+0\",\"顾客满意\":\"—\"}"
+    },
+    {
+      "id": "TC-E07",
+      "title": "营业中刷新（回准备页/体力归还/不重复扣/已得收益保留）",
+      "status": "通过",
+      "notes": "{\"navBack\":true,\"noRun\":true,\"stamina\":\"8->12(base 12)\",\"runs\":0,\"activeRunCleared\":true,\"coins\":\"320->358\",\"recoveredCoins\":38,\"earningsKept\":true}"
+    },
+    {
+      "id": "TC-E13",
+      "title": "营业中切页防后台计时",
+      "status": "未执行",
+      "notes": "实现将营业页设为独占视图（底部导航隐藏，App.tsx:74），无切页路径可测；失焦暂停已由 TC-E05a 覆盖"
+    }
+  ],
+  "consoleErrors": []
+}

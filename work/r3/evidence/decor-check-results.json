@@ -1,0 +1,32 @@
+{
+  "base": "http://127.0.0.1:5173/",
+  "executedAt": "2026-10-15T08:42:02.535Z",
+  "results": [
+    {
+      "id": "DECOR-01 入口与商品一一对应",
+      "status": "通过",
+      "notes": "12 个入口共 12 件不同商品；按钮均为可购买态"
+    },
+    {
+      "id": "DECOR-02 装饰栏六格各自开花",
+      "status": "通过",
+      "notes": "bar-vase→白瓷花瓶(80) | bar-cup→手绘杯具(140) | bar-crate→藤编收纳箱(200) | bar-pot→铜制手冲壶(260) | bar-chair→原木餐椅(330) | bar-sofa→绒面沙发(420)"
+    },
+    {
+      "id": "DECOR-03 购买扣费与拥有态",
+      "status": "通过",
+      "notes": "coins 9000→8580, decor=sofa, 再次点击按钮=「已拥有」"
+    },
+    {
+      "id": "DECOR-04 等级/金币不足提示",
+      "status": "通过",
+      "notes": "Lv.1 时「需要 Lv.5」/ 金币 5 时「金币不足」"
+    },
+    {
+      "id": "DECOR-05 热区反馈与体力",
+      "status": "通过",
+      "notes": "无反馈=0, 体力 12→12"
+    }
+  ],
+  "consoleErrors": []
+}

@@ -1,0 +1,157 @@
+{
+  "base": "http://127.0.0.1:5173/",
+  "executedAt": "2026-10-19T09:07:08.944Z",
+  "passed": 20,
+  "failed": 0,
+  "skipped": 0,
+  "summary": {
+    "servedRecipes": [
+      "黄油可颂",
+      "柑橘气泡水",
+      "海盐拿铁"
+    ],
+    "eventKinds": {
+      "customer": "店里的小事 外面飘起小雨，客人说慢慢来，不用着急。",
+      "pet": "布丁在提醒你 它跳上最着急那桌的椅子，蹭了蹭客人，帮你争取了一点时间。",
+      "equipment": "咖啡机预热完成 机器发出均匀的轻响，现在出杯会稳一点。",
+      "romance": "林澈来了 店长，我路过，看见还亮着灯……需要帮忙吗？"
+    },
+    "settlement": {
+      "rows": {
+        "完成订单": "6",
+        "爽约订单": "0",
+        "营业收入": "+176",
+        "小费": "+27",
+        "经验": "+31",
+        "顾客满意": "2.2"
+      },
+      "badges": [
+        "布丁在营业里帮了你一次",
+        "有人专程来看了你的店"
+      ]
+    }
+  },
+  "results": [
+    {
+      "id": "TC-F01",
+      "title": "准备页进入营业（体力-4/running/导航隐藏）",
+      "status": "通过",
+      "notes": "stamina 12->8, timer=120s, navHidden=true"
+    },
+    {
+      "id": "TC-V430",
+      "title": "430×932 布局（无横向溢出/四层可见）",
+      "status": "通过",
+      "notes": "{\"scrollWidth\":430,\"innerWidth\":430,\"noHorizontalOverflow\":true,\"orders\":true,\"counter\":true,\"shelf\":true,\"tables\":true}"
+    },
+    {
+      "id": "TC-F03",
+      "title": "顾客进店落座点单",
+      "status": "通过",
+      "notes": "一份海盐拿铁，谢谢～"
+    },
+    {
+      "id": "TC-F04",
+      "title": "接单（pending→crafting，显示偏好）",
+      "status": "通过",
+      "notes": "crafting=true pref=口味固定"
+    },
+    {
+      "id": "TC-F05",
+      "title": "取料拖拽（原料→设备，ghost 跟随）",
+      "status": "通过",
+      "notes": "把干净杯子拖到咖啡机 -> 长按咖啡机萃取浓缩, ghost=true"
+    },
+    {
+      "id": "TC-F07",
+      "title": "加工长按（hold 手势完成）",
+      "status": "通过",
+      "notes": "holdUsed=true, trayItems=1"
+    },
+    {
+      "id": "TC-F08",
+      "title": "加工连点备选（34%×3）",
+      "status": "通过",
+      "notes": "连点路径已在首单/后续订单中使用"
+    },
+    {
+      "id": "TC-F09",
+      "title": "组装与点击备选等价",
+      "status": "通过",
+      "notes": "trayItems=1"
+    },
+    {
+      "id": "TC-F10",
+      "title": "偏好选择（抹黄油/加柑橘片）",
+      "status": "通过",
+      "notes": "choose 步骤优先点偏好项"
+    },
+    {
+      "id": "TC-F11",
+      "title": "上菜（托盘→桌，金币/小费入账提示）",
+      "status": "通过",
+      "notes": "toast=海盐拿铁送到了 1 号桌，熟客很满意（上菜快 + 合口味），小费 +3。 气泡=很好吃，谢谢你～ 星星=3 金币飘字=1"
+    },
+    {
+      "id": "TC-F12",
+      "title": "顾客用餐后离店（桌转 dirty）",
+      "status": "通过",
+      "notes": ""
+    },
+    {
+      "id": "TC-F13",
+      "title": "清理桌面（回空桌，清桌小费）",
+      "status": "通过",
+      "notes": "dirtyLeft=0"
+    },
+    {
+      "id": "TC-F14",
+      "title": "三种配方全链（纯点击路径）",
+      "status": "通过",
+      "notes": "served=黄油可颂/柑橘气泡水/海盐拿铁"
+    },
+    {
+      "id": "TC-F17",
+      "title": "打烊结算（明细与徽标）",
+      "status": "通过",
+      "notes": "{\"rows\":{\"完成订单\":\"6\",\"爽约订单\":\"0\",\"营业收入\":\"+176\",\"小费\":\"+27\",\"经验\":\"+31\",\"顾客满意\":\"2.2\"},\"badges\":[\"布丁在营业里帮了你一次\",\"有人专程来看了你的店\"]}"
+    },
+    {
+      "id": "TC-E12",
+      "title": "宠物协助与恋爱角色到店（横幅+徽标）",
+      "status": "通过",
+      "notes": "{\"customer\":\"店里的小事 外面飘起小雨，客人说慢慢来，不用着急。\",\"pet\":\"布丁在提醒你 它跳上最着急那桌的椅子，蹭了蹭客人，帮你争取了一点时间。\",\"equipment\":\"咖啡机预热完成 机器发出均匀的轻响，现在出杯会稳一点。\",\"romance\":\"林澈来了 店长，我路过，看见还亮着灯……需要帮忙吗？\"}"
+    },
+    {
+      "id": "TC-SAVE1",
+      "title": "结算后存档（金币/经验/营业次数/宠物日记）",
+      "status": "通过",
+      "notes": "{\"coins\":1003,\"runs\":1,\"served\":6,\"intimacyGain\":2,\"lincheValue\":9,\"diaryCount\":2,\"lastSettledRunId\":true}"
+    },
+    {
+      "id": "TC-E10",
+      "title": "升级费用正确（扣费=各次标价合计）",
+      "status": "通过",
+      "notes": "labels=210 金币+368 金币 expected=578 actualDelta=578 upgraded=2 machineLv=3"
+    },
+    {
+      "id": "TC-E11",
+      "title": "升级改变下一次营业（等级/槽位）",
+      "status": "通过",
+      "notes": "stationLv=Lv.3 pips=2 machineLv=3"
+    },
+    {
+      "id": "TC-R06",
+      "title": "升级后再次营业并结算（回流闭环）",
+      "status": "通过",
+      "notes": "runs=2"
+    },
+    {
+      "id": "TC-V375",
+      "title": "375×812 布局（无横向溢出/关键区域可见）",
+      "status": "通过",
+      "notes": "{\"m0\":{\"scrollWidth\":375,\"innerWidth\":375,\"noHorizontalOverflow\":true},\"m1\":{\"scrollWidth\":375,\"innerWidth\":375,\"noHorizontalOverflow\":true},\"m2\":{\"scrollWidth\":375,\"innerWidth\":375,\"noHorizontalOverflow\":true},\"visible\":{\"orderChip\":true,\"craftStep\":true,\"materials\":true,\"stations\":true}}"
+    }
+  ],
+  "consoleErrors": []
+}

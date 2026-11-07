@@ -1,0 +1,568 @@
+/* ============================================================
+   CSS 场景层：暖色海风咖啡馆
+   全部由渐变 / 形状 / 纹理构成，未使用参考图位图与任何假 UI 文字
+   ============================================================ */
+
+.scene {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-scene);
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* ---------- 图层骨架 ----------
+   底图(z1) → 道具/立绘(z2) → 氛围(z3) → 暗角(z4) */
+.scene__bg-layer {
+  position: absolute;
+  inset: 0;
+}
+.scene__css {
+  position: absolute;
+  inset: 0;
+}
+.scene__props,
+.scene__figure,
+.scene__atmosphere {
+  position: absolute;
+  inset: 0;
+}
+.scene__props {
+  z-index: 2;
+}
+.scene__figure {
+  z-index: 2;
+}
+/* 注意：氛围层容器不能有 z-index（否则会自建层叠上下文，
+   使下方的 mix-blend-mode 失去可混合的背景），
+   由三个子层各自指定 z-index 参与 .scene 的层叠。 */
+.scene__atmosphere {
+  z-index: auto;
+}
+
+/* 氛围四件套：暖光 / 纸纹 / 光束 / 暗角，全部压在底图之上 */
+.scene__rays,
+.scene__sweep,
+.scene__warm,
+.scene__texture {
+  z-index: 3;
+}
+
+/* 光扫：一道缓慢从上到下掠过场景的柔光带 */
+.scene__sweep {
+  position: absolute;
+  inset: -20% 0;
+  background: linear-gradient(
+    178deg,
+    transparent 30%,
+    rgba(255, 240, 204, 0.14) 42%,
+    rgba(255, 244, 214, 0.2) 50%,
+    rgba(255, 240, 204, 0.14) 58%,
+    transparent 70%
+  );
+  mix-blend-mode: screen;
+  animation: sweep-drift 26s ease-in-out infinite;
+  will-change: transform;
+}
+
+@keyframes sweep-drift {
+  0%,
+  100% {
+    transform: translate3d(0, -8%, 0);
+  }
+  50% {
+    transform: translate3d(0, 8%, 0);
+  }
+}
+
+/* 暗角：把视线收进画面中央，让内容层更突出 */
+.scene__vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  background: radial-gradient(120% 82% at 50% 42%, transparent 52%, rgba(96, 60, 24, 0.26) 100%);
+  pointer-events: none;
+}
+
+/* 场景底图：位图就绪后淡入覆盖 CSS 底 */
+.scene__bg {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+.scene__bg.is-ready {
+  opacity: 1;
+}
+
+/* ---------- 室内墙面 ---------- */
+.scene__room {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(120% 80% at 20% 8%, #f6e2c0 0%, transparent 55%),
+    radial-gradient(120% 90% at 85% 30%, #eed4a8 0%, transparent 60%),
+    linear-gradient(165deg, #f0dcbb 0%, #e6cda4 38%, #d4b88c 68%, #bd9f76 100%);
+}
+
+/* 墙面竖向木纹 / 护墙板 */
+.scene__room::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    90deg,
+    rgba(160, 120, 70, 0.06) 0 1px,
+    transparent 1px 46px
+  );
+  opacity: 0.7;
+}
+
+/* 四周压暗，让中间的暖光更像一间被落日照亮的店 */
+.scene__room::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(120% 78% at 52% 44%, transparent 42%, rgba(112, 74, 36, 0.34) 100%);
+}
+
+/* ---------- 拱形窗 ---------- */
+.scene__win {
+  position: absolute;
+  left: 13%;
+  right: 13%;
+  top: 5%;
+  height: 60%;
+  border-radius: 48% 48% 14px 14px / 32% 32% 14px 14px;
+  overflow: hidden;
+  background: linear-gradient(180deg, #cfe6f0 0%, #e9e2c9 100%);
+  box-shadow:
+    inset 0 -20px 40px rgba(140, 100, 60, 0.18),
+    0 16px 34px rgba(120, 82, 44, 0.22);
+}
+
+.scene__win::after {
+  /* 窗棂 */
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, transparent calc(50% - 2px), rgba(255, 250, 238, 0.92) 0 calc(50% + 2px), transparent 0),
+    linear-gradient(180deg, transparent 46%, rgba(255, 250, 238, 0.92) 46% calc(46% + 4px), transparent 0),
+    linear-gradient(180deg, transparent 74%, rgba(255, 250, 238, 0.8) 74% calc(74% + 3px), transparent 0);
+  pointer-events: none;
+}
+
+.scene__sky {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    #8fbdd6 0%,
+    #c9cfd0 14%,
+    #f5cf9e 30%,
+    #f7b877 44%,
+    #ef9a5b 54%,
+    #e07f52 62%,
+    #c96a4c 70%
+  );
+}
+
+.scene__sun {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  width: 22%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fffbe8 0%, #ffe08f 38%, rgba(255, 178, 92, 0) 70%);
+  animation: sun-breathe 7s ease-in-out infinite;
+}
+
+@keyframes sun-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.95;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+}
+
+.scene__clouds {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 14%;
+  height: 34%;
+  background:
+    radial-gradient(38% 46% at 24% 40%, rgba(255, 244, 228, 0.85) 0%, transparent 70%),
+    radial-gradient(30% 40% at 62% 26%, rgba(255, 240, 220, 0.7) 0%, transparent 72%),
+    radial-gradient(34% 36% at 86% 52%, rgba(255, 236, 214, 0.6) 0%, transparent 74%);
+}
+
+.scene__sea {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 58%;
+  bottom: 0;
+  background: linear-gradient(180deg, #6fb0c6 0%, #3f89a8 34%, #2f6f8f 68%, #235a76 100%);
+}
+
+/* 海面碎光 */
+.scene__sea::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    repeating-linear-gradient(
+      92deg,
+      rgba(255, 246, 222, 0.34) 0 2px,
+      transparent 2px 9px
+    ),
+    radial-gradient(58% 62% at 52% 4%, rgba(255, 236, 190, 0.95) 0%, transparent 64%);
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.9), transparent 86%);
+  -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.9), transparent 86%);
+  filter: blur(1.2px);
+  opacity: 0.75;
+}
+
+/* 远处小镇剪影 */
+.scene__village {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 62%;
+  height: 12%;
+  background:
+    radial-gradient(9% 100% at 76% 88%, #fdf3e2 0 60%, transparent 61%),
+    radial-gradient(7% 78% at 82% 92%, #f7ead6 0 60%, transparent 61%),
+    radial-gradient(6% 62% at 70% 96%, #f2e2cc 0 60%, transparent 61%),
+    radial-gradient(8% 70% at 88% 96%, #efe0c8 0 60%, transparent 61%),
+    linear-gradient(180deg, transparent 70%, rgba(94, 106, 96, 0.35) 100%);
+  filter: blur(0.3px);
+}
+
+.scene__glow {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(42% 34% at 54% 56%, rgba(255, 240, 206, 0.85) 0%, transparent 70%);
+  mix-blend-mode: screen;
+}
+
+/* ---------- 窗帘 / 藤蔓 ---------- */
+.scene__vine {
+  position: absolute;
+  background: radial-gradient(closest-side, rgba(96, 138, 78, 0.55), transparent 78%);
+  filter: blur(1px);
+}
+.scene__vine--l {
+  left: -6%;
+  top: 2%;
+  width: 34%;
+  height: 30%;
+}
+.scene__vine--r {
+  right: -4%;
+  top: 0%;
+  width: 26%;
+  height: 22%;
+}
+
+/* ---------- 吊灯 ---------- */
+.scene__lamp {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 13%;
+  aspect-ratio: 1.25 / 1;
+  transform: translateX(-50%);
+  background: linear-gradient(180deg, #8a6a2c 0%, #c8a153 42%, #6f521d 100%);
+  border-radius: 50% 50% 46% 46% / 30% 30% 78% 78%;
+  box-shadow: 0 6px 14px rgba(90, 60, 20, 0.32);
+}
+
+.scene__lamp::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -14px;
+  width: 34%;
+  aspect-ratio: 1;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff8dd 0%, #ffce78 40%, rgba(255, 190, 110, 0) 72%);
+  box-shadow: 0 0 26px 12px rgba(255, 208, 130, 0.5);
+  animation: lamp-flicker 5s ease-in-out infinite;
+}
+
+@keyframes lamp-flicker {
+  0%,
+  100% {
+    opacity: 0.92;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* ---------- 木质吧台 ---------- */
+.scene__counter {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 24%;
+  background:
+    repeating-linear-gradient(
+      88deg,
+      rgba(120, 80, 40, 0.08) 0 3px,
+      transparent 3px 30px
+    ),
+    linear-gradient(180deg, #e9c893 0%, #dcb478 26%, #c99a5e 68%, #b07f47 100%);
+  border-top: 3px solid rgba(255, 244, 222, 0.8);
+  box-shadow: 0 -12px 26px rgba(120, 82, 44, 0.22);
+}
+
+/* 台面高光 */
+.scene__counter::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 42%;
+  background: linear-gradient(180deg, rgba(255, 240, 210, 0.55), transparent 90%);
+}
+
+/* 吧台下方护墙板 */
+.scene__wainscot {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 9%;
+  background: linear-gradient(180deg, #4e9d90 0%, #3b8076 60%, #2d635c 100%);
+}
+
+/* ---------- 植物 ---------- */
+.scene__plant {
+  position: absolute;
+  bottom: 20%;
+  width: 26%;
+  height: 32%;
+  background:
+    radial-gradient(closest-side at 30% 30%, rgba(126, 168, 96, 0.75), transparent 72%),
+    radial-gradient(closest-side at 68% 52%, rgba(96, 142, 78, 0.7), transparent 74%),
+    radial-gradient(closest-side at 46% 76%, rgba(140, 178, 108, 0.6), transparent 76%);
+  filter: blur(1.5px);
+}
+.scene__plant--l {
+  left: -8%;
+}
+.scene__plant--r {
+  right: -10%;
+  height: 26%;
+}
+
+/* ---------- 暖光 / 纹理叠加 ---------- */
+.scene__rays {
+  position: absolute;
+  inset: -10% -10% 0 -10%;
+  background: linear-gradient(
+    118deg,
+    rgba(255, 236, 194, 0) 34%,
+    rgba(255, 236, 194, 0.38) 44%,
+    rgba(255, 236, 194, 0) 54%
+  );
+  mix-blend-mode: screen;
+  opacity: 0.5;
+}
+
+.scene__texture {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(rgba(120, 84, 44, 0.05) 1px, transparent 1px),
+    radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 5px 5px, 7px 7px;
+  background-position: 0 0, 2px 3px;
+  opacity: 0.85;
+  mix-blend-mode: multiply;
+}
+
+.scene__warm {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(140% 62% at 50% 112%, rgba(255, 178, 96, 0.4) 0%, transparent 60%),
+    radial-gradient(86% 54% at 50% 44%, rgba(255, 200, 130, 0.24) 0%, transparent 72%),
+    linear-gradient(180deg, rgba(255, 214, 150, 0.2) 0%, rgba(255, 226, 178, 0.08) 32%, rgba(104, 56, 18, 0.18) 100%);
+  mix-blend-mode: soft-light;
+}
+
+
+/* ============================================================
+   立绘层：与内容层的「立绘展示区」上下对齐
+   （同用 --figure-top / --figure-h，见 tokens.css）
+   ============================================================ */
+.scene__figure {
+  top: var(--figure-top);
+  bottom: auto;
+  left: 12%;
+  right: 12%;
+  height: var(--figure-h);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.scene__figure-img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  object-position: bottom center;
+  filter: drop-shadow(0 12px 20px rgba(92, 60, 28, 0.32));
+  animation: figure-in 0.5s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+
+@keyframes figure-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* 立绘脚下的柔光站台，让立绘“站”在场景里 */
+.scene__figure-floor {
+  position: absolute;
+  left: 20%;
+  right: 20%;
+  bottom: -6px;
+  height: 22px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(96, 62, 28, 0.3), transparent 78%);
+}
+
+/* 立绘缺失时的占位：柔和站台 + 剪影图标，保证展示区不为空 */
+.scene__figure-ph {
+  display: grid;
+  place-items: center;
+  width: min(52%, 132px);
+  height: 72%;
+  border-radius: 46% 46% 30% 30% / 54% 54% 26% 26%;
+  background: radial-gradient(closest-side, rgba(255, 250, 238, 0.34), transparent 78%);
+  border: 1.5px dashed rgba(120, 90, 60, 0.28);
+}
+.scene__figure-ph-icon {
+  display: grid;
+  place-items: center;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  color: var(--gold-700);
+  background: radial-gradient(circle at 34% 28%, rgba(255, 252, 244, 0.9), rgba(238, 218, 178, 0.76));
+  border: 1px solid rgba(150, 112, 42, 0.28);
+}
+
+
+/* ============================================================
+   变体：宠物互动（窗边软座）
+   ============================================================ */
+.scene--pet .scene__win {
+  left: 7%;
+  right: 7%;
+  top: 4%;
+  height: 62%;
+  border-radius: 20px;
+}
+.scene--pet .scene__counter {
+  height: 20%;
+  background:
+    repeating-linear-gradient(92deg, rgba(150, 108, 62, 0.16) 0 2px, transparent 2px 22px),
+    linear-gradient(180deg, #f0dcb8 0%, #e2c795 40%, #cfa96f 100%);
+}
+.scene--pet .scene__cushion {
+  position: absolute;
+  left: 8%;
+  bottom: 17%;
+  width: 42%;
+  height: 12%;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #fdf4e2 0%, #eddcbe 60%, #dcc59f 100%);
+  box-shadow: 0 10px 20px rgba(120, 82, 44, 0.24), var(--shadow-inset);
+}
+.scene__cushion {
+  display: none;
+}
+.scene--pet .scene__cushion {
+  display: block;
+}
+
+/* 纱帘 */
+.scene--pet .scene__curtain {
+  position: absolute;
+  right: -6%;
+  top: -2%;
+  width: 34%;
+  height: 74%;
+  border-radius: 0 0 40% 40%;
+  background: linear-gradient(180deg, rgba(255, 252, 244, 0.85), rgba(255, 246, 228, 0.35) 70%, transparent);
+  filter: blur(0.5px);
+}
+.scene__curtain {
+  display: none;
+}
+.scene--pet .scene__curtain {
+  display: block;
+}
+
+/* ============================================================
+   变体：剧情场景（暖色内景，光线更集中）
+   ============================================================ */
+.scene--story .scene__win {
+  left: 22%;
+  right: 22%;
+  top: 3%;
+  height: 34%;
+  filter: blur(14px) saturate(0.66) brightness(1.08);
+  opacity: 0.7;
+}
+.scene--story .scene__room {
+  background:
+    radial-gradient(110% 70% at 12% 6%, #f6e2c0 0%, transparent 58%),
+    linear-gradient(165deg, #f0dcbb 0%, #e2c79c 42%, #cfb086 72%, #b99a72 100%);
+}
+.scene--story .scene__counter {
+  height: 22%;
+}
+.scene--story .scene__warm {
+  background:
+    radial-gradient(96% 74% at 50% 56%, rgba(255, 216, 158, 0.6), transparent 70%),
+    radial-gradient(140% 60% at 50% 108%, rgba(255, 178, 96, 0.5) 0%, transparent 64%);
+  mix-blend-mode: screen;
+  opacity: 0.85;
+}
+
+/* ============================================================
+   变体：经营 / 营业（空间更开阔）
+   ============================================================ */
+.scene--cafe .scene__win,
+.scene--business .scene__win {
+  left: 8%;
+  right: 8%;
+  top: 6%;
+  height: 56%;
+}

@@ -1,0 +1,130 @@
+/* ============================================================
+   设计 Token —— 从五张参考图提炼
+   奶油羊皮纸 / 海水蓝绿 / 旧金 / 珊瑚红 / 手绘描边 / 落日暖光
+   五个视图统一引用本文件，禁止散落魔法值。
+   ============================================================ */
+
+:root {
+  /* ---- 语义基础令牌（架构文档 §6 规定值）---- */
+  --paper-0: #fffbf3; /* 卡片羊皮纸底 */
+  --ink-900: #4a3b2e; /* 主文字（暖褐） */
+  --teal-700: #3e8c86; /* 主强调（青绿，对应围裙） */
+  --coral-500: #e8836a; /* 次强调（珊瑚，对应落日） */
+  --gold-500: #d9a84e; /* 金币 / 高光 */
+  --radius-panel: 22px; /* 面板圆角（描边手绘感） */
+  --stroke-hand: 2px solid rgba(120, 90, 60, 0.35); /* 手绘描边 */
+
+  /* ---- 奶油白：咖啡杯、菜单纸、墙面 ---- */
+  --cream-50: #fffcF5;
+  --cream-100: #fdf5e6;
+  --cream-200: #f8ead2;
+  --cream-300: #efdcbb;
+  --cream-400: #e4caa0;
+  --paper: rgba(255, 251, 243, 0.9);
+  --paper-deep: rgba(246, 232, 210, 0.86);
+
+  /* ---- 海水蓝绿：围裙、吧台、海面（--teal-700 的完整色阶）---- */
+  --sea-100: #d8efe9;
+  --sea-200: #b7e0d8;
+  --sea-300: #8ecdc1;
+  --sea-400: #67b3a6;
+  --sea-500: #4e9d90;
+  --sea-600: #3e8c86;
+  --sea-700: #2d635c;
+  --sea-900: #1f4642;
+
+  /* ---- 旧金：黄铜灯、拉花、描边（--gold-500 的完整色阶）---- */
+  --gold-100: #f8ecce;
+  --gold-200: #f0dca8;
+  --gold-300: #e8c579;
+  --gold-400: #e0b763;
+  --gold-500: #d9a84e;
+  --gold-600: #a87f2c;
+  --gold-700: #7d5c1c;
+
+  /* ---- 珊瑚红：强调、事件、爱心（--coral-500 的完整色阶）---- */
+  --coral-100: #fbe6de;
+  --coral-200: #f6cbbd;
+  --coral-300: #f1ac97;
+  --coral-400: #ea9376;
+  --coral-500: #e8836a;
+  --coral-600: #c25b3c;
+
+  /* ---- 落日暖光 ---- */
+  --sun-100: #fff3d4;
+  --sun-200: #ffe2ad;
+  --sun-300: #fbc978;
+  --sun-400: #f4a95c;
+  --sun-500: #e8875a;
+  --sun-600: #d16b47;
+
+  /* ---- 墨色文字 ---- */
+  --ink-800: #574635;
+  --ink-700: #6a5642;
+  --ink-600: #836f58;
+  --ink-500: #9c8770;
+  --ink-400: #b7a48d;
+
+  /* ---- 语义色 ---- */
+  --ok-500: #4e9d90;
+  --warn-500: #d9902f;
+  --danger-500: #c1523a;
+
+  /* ---- 质感 ---- */
+  --radius-xs: 8px;
+  --radius-sm: 12px;
+  --radius-md: 16px;
+  --radius-lg: var(--radius-panel);
+  --radius-xl: 30px;
+  --radius-pill: 999px;
+
+  --shadow-sm: 0 2px 6px rgba(120, 84, 44, 0.14);
+  --shadow-md: 0 6px 16px rgba(120, 84, 44, 0.18);
+  --shadow-lg: 0 14px 34px rgba(104, 70, 36, 0.24);
+  /* 悬浮面板：贴地阴影 + 顶部内高光，营造“纸片浮在场景上”的层次 */
+  --shadow-float:
+    0 12px 26px rgba(96, 64, 32, 0.28), 0 2px 0 rgba(255, 255, 255, 0.6) inset;
+  --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+
+  /* 陶瓷/纸张：柔和内高光 + 暖色描边 */
+  --edge-paper: 1px solid rgba(150, 112, 42, 0.22);
+  --edge-strong: 1px solid rgba(150, 112, 42, 0.42);
+
+  /* ---- 排版 ---- */
+  --font-display: 'Palatino Linotype', 'Songti SC', 'Noto Serif SC', 'STSong', Georgia, serif;
+  --font-body: 'Avenir Next', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', system-ui,
+    -apple-system, 'Segoe UI', sans-serif;
+
+  --fs-xs: clamp(10.5px, 2.8vw, 12px);
+  --fs-sm: clamp(12px, 3.2vw, 13.5px);
+  --fs-md: clamp(13.5px, 3.6vw, 15px);
+  --fs-lg: clamp(15px, 4vw, 17px);
+  --fs-xl: clamp(18px, 4.8vw, 21px);
+  --fs-2xl: clamp(22px, 6vw, 27px);
+
+  /* ---- 触控 ---- */
+  --tap: 44px;
+
+  /* ---- 布局骨架：悬浮顶栏高度 & 立绘展示区 ---- */
+  --header-h: 96px; /* 顶部资源栏内容高度（不含刘海安全区） */
+  --figure-top: calc(var(--header-h) + env(safe-area-inset-top)); /* 立绘展示区上沿 */
+  --figure-h: 25%; /* 立绘展示区高度（相对手机画布高度） */
+
+  /* ---- 层级 ---- */
+  --z-scene: 0;
+  --z-content: 10;
+  --z-nav: 30;
+  --z-toast: 50;
+  --z-story-overlay: 60;
+  --z-modal: 70;
+}
+
+/* 数值条配色 */
+:root {
+  --stat-hunger: linear-gradient(90deg, #f4b45e, #e8875a);
+  --stat-clean: linear-gradient(90deg, #8ecdc1, #4e9d90);
+  --stat-mood: linear-gradient(90deg, #f6c2bd, #c25b3c);
+  --stat-intimacy: linear-gradient(90deg, #f1ac97, #c1523a);
+  --stat-exp: linear-gradient(90deg, #f0dca8, #a87f2c);
+  --stat-rel: linear-gradient(90deg, #f6cbbd, #c25b3c);
+}
