@@ -10,8 +10,9 @@ import http from 'node:http'
 import fs from 'node:fs'
 import net from 'node:net'
 import path from 'node:path'
-import { spawn } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
+import { setTimeout as delay } from 'node:timers/promises'
 import { createStoryMiddleware } from '../server/story-api.mjs'
 import { createStoryVoiceMiddleware } from '../server/story-voice-api.mjs'
 import { createUserMiddleware } from '../server/user-api.mjs'
@@ -28,6 +29,8 @@ const STORY_SKIP_AUDIT =
   process.env.STORY_SKIP_AUDIT === '1' ||
   process.argv.includes('--story-skip-audit')
 const STORY_REPLAY_AUDIT = process.argv.includes('--story-replay-audit')
+const GLOBAL_TIMEOUT_MS = 10 * 60 * 1000
+const PROCESS_EXIT_TIMEOUT_MS = 5_000
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -85,6 +88,54 @@ function serve() {
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+
+function closeHttpServer(server) {
+  return new Promise((resolve) => {
+    if (!server.listening) {
+      resolve()
+      return
+    }
+    server.close(() => resolve())
+    server.closeAllConnections?.()
+  })
+}
+
+async function stopBrowser(child) {
+  if (!child || child.exitCode !== null || child.signalCode !== null) return
+
+  const waitForExit = async () => {
+    if (child.exitCode !== null || child.signalCode !== null) return true
+    try {
+      await Promise.race([
+        new Promise((resolve) => child.once('exit', resolve)),
+        delay(PROCESS_EXIT_TIMEOUT_MS).then(() => {
+          throw new Error('browser exit timeout')
+        }),
+      ])
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  if (process.platform === 'win32' && child.pid) {
+    const result = spawnSync(
+      'taskkill',
+      ['/pid', String(child.pid), '/T', '/F'],
+      { stdio: 'ignore', windowsHide: true },
+    )
+    if (result.error && child.exitCode === null && child.signalCode === null) {
+      child.kill('SIGKILL')
+    }
+    await waitForExit()
+    return
+  }
+
+  child.kill('SIGTERM')
+  if (await waitForExit()) return
+  child.kill('SIGKILL')
+  await waitForExit()
+}
 
 async function connect(debugPort) {
   for (let i = 0; i < 60; i += 1) {
@@ -176,9 +227,38 @@ async function main() {
 
   const errors = []
   let client
+  let ws
+  let cleanupStarted = false
+  let globalTimer
+  const cleanup = async () => {
+    if (cleanupStarted) return
+    cleanupStarted = true
+    if (globalTimer) clearTimeout(globalTimer)
+    try {
+      ws?.close()
+    } catch {
+      /* ignore */
+    }
+    await Promise.allSettled([stopBrowser(child), closeHttpServer(server)])
+  }
+  let rejectGlobalTimeout
+  const globalTimeout = new Promise((_, reject) => {
+    rejectGlobalTimeout = reject
+  })
+  globalTimer = setTimeout(() => {
+    rejectGlobalTimeout(new Error(`E2E 超过 ${GLOBAL_TIMEOUT_MS / 60_000} 分钟硬超时`))
+  }, GLOBAL_TIMEOUT_MS)
+  process.once('SIGINT', () => {
+    cleanup().finally(() => process.exit(130))
+  })
+  process.once('SIGTERM', () => {
+    cleanup().finally(() => process.exit(143))
+  })
   try {
+    await Promise.race([
+      (async () => {
     const wsUrl = await connect(debugPort)
-    const ws = new WebSocket(wsUrl)
+    ws = new WebSocket(wsUrl)
     await new Promise((res, rej) => {
       ws.addEventListener('open', res, { once: true })
       ws.addEventListener('error', rej, { once: true })
@@ -2439,14 +2519,11 @@ async function main() {
     console.log(`[${SUFFIX}] 控制台错误: ${errors.length ? errors.join(' || ') : '(无)'}`)
     console.log(`[${SUFFIX}] 截图: ${shots.join(', ')}`)
     if (errors.length) process.exitCode = 1
+      })(),
+      globalTimeout,
+    ])
   } finally {
-    try {
-      client?.send('Browser.close')
-    } catch {
-      /* ignore */
-    }
-    child.kill()
-    server.close()
+    await cleanup()
   }
 }
 
