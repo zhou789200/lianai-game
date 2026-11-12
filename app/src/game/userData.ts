@@ -1,5 +1,9 @@
 import type { GameState } from './types'
 
+function withCause(message: string, cause: unknown): Error {
+  return Object.assign(new Error(message), { cause })
+}
+
 const REQUEST_TIMEOUT_MS = 8_000
 
 export interface AccountUser {
@@ -93,7 +97,7 @@ async function requestJson(url: string, init: RequestInit = {}): Promise<unknown
     return payload
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') {
-      throw new Error('用户数据库连接超时')
+      throw withCause('用户数据库连接超时', error)
     }
     throw error
   } finally {

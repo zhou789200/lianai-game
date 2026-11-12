@@ -19,8 +19,18 @@ function usePrefersReducedMotion(): boolean {
 
 export function useTypewriter(text: string | null, pageKey: string) {
   const reduced = usePrefersReducedMotion()
-  const [shown, setShown] = useState(0)
+  const [typing, setTyping] = useState<{
+    pageKey: string
+    text: string | null
+    count: number
+  }>({ pageKey: '', text: null, count: 0 })
   const timerRef = useRef<number | null>(null)
+  const shown =
+    reduced || !text
+      ? text?.length ?? 0
+      : typing.pageKey === pageKey && typing.text === text
+        ? typing.count
+        : 0
 
   const stop = useCallback(() => {
     if (timerRef.current === null) return
@@ -31,16 +41,12 @@ export function useTypewriter(text: string | null, pageKey: string) {
   useEffect(() => {
     stop()
     const length = text?.length ?? 0
-    if (reduced || !text) {
-      setShown(length)
-      return
-    }
+    if (reduced || !text) return
 
-    setShown(0)
     let current = 0
     timerRef.current = window.setInterval(() => {
       current += 1
-      setShown(current)
+      setTyping({ pageKey, text, count: current })
       if (current >= length) stop()
     }, 42)
     return stop
@@ -48,8 +54,8 @@ export function useTypewriter(text: string | null, pageKey: string) {
 
   const complete = useCallback(() => {
     stop()
-    setShown(text?.length ?? 0)
-  }, [stop, text])
+    setTyping({ pageKey, text, count: text?.length ?? 0 })
+  }, [pageKey, stop, text])
 
   return {
     visible: text ? text.slice(0, shown) : '',

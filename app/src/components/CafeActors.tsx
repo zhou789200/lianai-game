@@ -81,10 +81,13 @@ export function CafeActors({ cue, onDrop }: CafeActorsProps) {
     const token = actionToken.current + 1
     actionToken.current = token
     const startX = positions[cue.actor].x
-    setFacing((current) => ({ ...current, [cue.actor]: cue.x >= startX ? 1 : -1 }))
-    setPoses((current) => ({ ...current, [cue.actor]: 'side' }))
-    setModes((current) => ({ ...current, [cue.actor]: cue.mode }))
-    setPositions((current) => ({ ...current, [cue.actor]: { x: cue.x, y: cue.y } }))
+    const frame = window.requestAnimationFrame(() => {
+      if (actionToken.current !== token) return
+      setFacing((current) => ({ ...current, [cue.actor]: cue.x >= startX ? 1 : -1 }))
+      setPoses((current) => ({ ...current, [cue.actor]: 'side' }))
+      setModes((current) => ({ ...current, [cue.actor]: cue.mode }))
+      setPositions((current) => ({ ...current, [cue.actor]: { x: cue.x, y: cue.y } }))
+    })
 
     const settle = window.setTimeout(() => {
       if (actionToken.current !== token) return
@@ -103,6 +106,7 @@ export function CafeActors({ cue, onDrop }: CafeActorsProps) {
     )
 
     return () => {
+      window.cancelAnimationFrame(frame)
       window.clearTimeout(settle)
       window.clearTimeout(finish)
     }

@@ -47,28 +47,14 @@ function Game() {
   const [guestChosen, setGuestChosen] = useState(
     () => hasChosenGuestMode() || hasGuestSave(),
   )
-  const [showIntro, setShowIntro] = useState(false)
-  const [introChecked, setIntroChecked] = useState(false)
+  const [introDismissed, setIntroDismissed] = useState(false)
 
   const showAccountGate =
     authReady && !userData.user && !guestChosen
   // 新档案先做账号选择；试玩后才看新手说明，避免两个弹窗叠在一起。
   const needsIntro =
     authReady && !hasSeenIntro() && (!!userData.user || guestChosen)
-  const introWaitingForGate = showAccountGate
-
-  useLayoutEffect(() => {
-    if (!authReady) return
-    if (introWaitingForGate) {
-      setShowIntro(false)
-      setIntroChecked(false)
-      return
-    }
-    if (!introChecked) {
-      setShowIntro(needsIntro)
-      setIntroChecked(true)
-    }
-  }, [authReady, introChecked, introWaitingForGate, needsIntro])
+  const showIntro = !showAccountGate && needsIntro && !introDismissed
 
   const zone = figureZone(view)
   const inRun = view === 'business' && runId !== null
@@ -154,9 +140,11 @@ function Game() {
           onGuest={() => {
             rememberGuestMode()
             setGuestChosen(true)
+            setIntroDismissed(false)
           }}
           onClose={() => {
             setGuestChosen(true)
+            setIntroDismissed(false)
           }}
         />
       ) : null}
@@ -177,7 +165,7 @@ function Game() {
         <IntroModal
           onClose={() => {
             rememberIntroSeen()
-            setShowIntro(false)
+            setIntroDismissed(true)
           }}
         />
       ) : null}

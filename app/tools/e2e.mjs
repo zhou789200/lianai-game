@@ -1773,7 +1773,6 @@ async function main() {
         return null;
       }
     })()`)
-    const requestsBeforeRefresh = await storyRequestCount()
     await client.send('Page.reload', { ignoreCache: true })
     await sleep(2200)
     const refreshedShellReady = await waitForSelector('.nav__item', 5000)

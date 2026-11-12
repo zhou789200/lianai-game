@@ -22,7 +22,10 @@ export function Modal({
   const dialogRef = useRef<HTMLDivElement>(null)
   const closeRef = useRef<HTMLButtonElement>(null)
   const closeHandlerRef = useRef(onClose)
-  closeHandlerRef.current = onClose
+
+  useEffect(() => {
+    closeHandlerRef.current = onClose
+  }, [onClose])
 
   useEffect(() => {
     const previousFocus =
@@ -77,7 +80,7 @@ export function Modal({
       dialog.removeEventListener('keydown', handleKeyDown)
       restoreFocus()
     }
-  }, [])
+  }, [initialFocusRef])
 
   return (
     <div

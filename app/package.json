@@ -9,6 +9,7 @@
   },
   "scripts": {
     "dev": "node scripts/dev.mjs",
+    "lint": "eslint .",
     "test": "node --test tools/test-cafe-session.mjs tools/test-story-system.mjs tools/test-story-voice.mjs tools/test-user-db.mjs",
     "build": "tsc --noEmit && node scripts/build.mjs",
     "preview": "node scripts/preview.mjs",
@@ -22,10 +23,16 @@
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@eslint/js": "10.0.1",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^5.2.0",
+    "eslint": "10.14.0",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "eslint-plugin-react-refresh": "0.5.7",
+    "globals": "17.14.0",
     "typescript": "^5.6.3",
+    "typescript-eslint": "8.72.2",
     "vite": "^7.3.8"
   }
 }

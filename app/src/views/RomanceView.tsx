@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Check, ChevronRight, Clock, Heart, Lock, SkipForward, Sparkles } from 'lucide-react'
 import { useGame } from '../game/GameContext'
 import { playSfx } from '../game/sfx'
@@ -11,6 +11,7 @@ import { useStoryVoice } from '../game/useStoryVoice'
 import type { StoryChoice } from '../game/types'
 
 interface ReplyState {
+  scope: string
   text: string
   optionText: string
   delta: number
@@ -32,9 +33,38 @@ export function RomanceView() {
     [chapter?.characterId, state.relationships],
   )
 
-  useEffect(() => {
-    setReply(null)
-  }, [state.chapterId])
+  const available = chapter ? chapterAvailable(state, chapter) : false
+  const requirement = chapter ? chapterRequirementText(state, chapter) : ''
+  const totalBeats = chapter?.beats.length ?? 0
+  const finished = state.chapterBeat >= totalBeats
+  const beat = chapter && !finished ? chapter.beats[state.chapterBeat] : null
+  const completed = chapter ? state.completedChapters.includes(chapter.id) : false
+  const progress = Math.min(state.chapterBeat, totalBeats)
+  const bond = character?.value ?? 0
+  const replyScope = chapter?.id ?? 'none'
+  const activeReply = reply?.scope === replyScope ? reply : null
+
+  const pageKey = activeReply
+    ? `reply-${activeReply.scope}`
+    : finished
+      ? `end-${chapter?.id ?? 'none'}`
+      : `beat-${beat?.id ?? 'none'}`
+
+  const storyText = activeReply
+    ? activeReply.text
+    : finished
+      ? null
+      : beat?.type === 'narration' || beat?.type === 'dialogue'
+        ? beat.text
+        : null
+
+  const typed = useTypewriter(storyText, pageKey)
+  useStoryVoice(
+    storyText,
+    activeReply || beat?.type !== 'dialogue' ? '旁白' : beat.speaker,
+    pageKey,
+    available && !catalogOpen && !confirmSkip,
+  )
 
   if (!chapter) {
     return (
@@ -50,40 +80,9 @@ export function RomanceView() {
     )
   }
 
-  const available = chapterAvailable(state, chapter)
-  const requirement = chapterRequirementText(state, chapter)
-  const totalBeats = chapter.beats.length
-  const finished = state.chapterBeat >= totalBeats
-  const beat = finished ? null : chapter.beats[state.chapterBeat]
-  const completed = state.completedChapters.includes(chapter.id)
-  const progress = Math.min(state.chapterBeat, totalBeats)
-  const bond = character?.value ?? 0
-
-  const pageKey = reply
-    ? `reply-${chapter.id}-${state.chapterBeat}`
-    : finished
-      ? `end-${chapter.id}`
-      : `beat-${beat?.id ?? 'none'}`
-
-  const storyText = reply
-    ? reply.text
-    : finished
-      ? null
-      : beat?.type === 'narration' || beat?.type === 'dialogue'
-        ? beat.text
-        : null
-
-  const typed = useTypewriter(storyText, pageKey)
-  useStoryVoice(
-    storyText,
-    reply || beat?.type !== 'dialogue' ? '旁白' : beat.speaker,
-    pageKey,
-    available && !catalogOpen && !confirmSkip,
-  )
-
   const onContinue = () => {
     if (!available) return
-    if (reply) {
+    if (activeReply) {
       playSfx('page')
       setReply(null)
       return
@@ -104,7 +103,7 @@ export function RomanceView() {
   }
 
   const onChoose = (choice: StoryChoice, optionId: string) => {
-    if (reply) return
+    if (activeReply) return
     const option = choice.options.find((item) => item.id === optionId)
     if (!option) return
     const result = actions.chooseStoryOption(option)
@@ -112,11 +111,16 @@ export function RomanceView() {
       pushNotice('error', '选择没有生效', result.message)
       return
     }
-    setReply({ text: option.reply, optionText: option.text, delta: option.effects.relationship ?? 0 })
+    setReply({
+      scope: replyScope,
+      text: option.reply,
+      optionText: option.text,
+      delta: option.effects.relationship ?? 0,
+    })
   }
 
   const catOpen = catalogOpen && available
-  const nextLabel = reply ? '继续' : finished ? (completed ? '回到章节' : '完成本章') : '继续'
+  const nextLabel = activeReply ? '继续' : finished ? (completed ? '回到章节' : '完成本章') : '继续'
 
   return (
     <div className="screen screen--romance">
@@ -184,21 +188,21 @@ export function RomanceView() {
             </span>
             <p className="story__lock-hint">{requirement ?? '继续经营和互动后再来看看。'}</p>
           </div>
-        ) : reply ? (
+        ) : activeReply ? (
           <div className="story-reply">
             <div className="story-reply__head">
               <span className="story-reply__label">你说了</span>
-              <span className="story-reply__option">{reply.optionText}</span>
+              <span className="story-reply__option">{activeReply.optionText}</span>
             </div>
             <p className="story-reply__text">
               {typed.visible}
               {typed.done ? null : <i className="storybook__caret" aria-hidden="true" />}
             </p>
-            {reply.delta !== 0 ? (
+            {activeReply.delta !== 0 ? (
               <span className="story-reply__delta">
                 <Sparkles size={13} />
-                {character?.name ?? '角色'} 关系 {reply.delta > 0 ? '+' : ''}
-                {reply.delta}
+                {character?.name ?? '角色'} 关系 {activeReply.delta > 0 ? '+' : ''}
+                {activeReply.delta}
               </span>
             ) : null}
           </div>

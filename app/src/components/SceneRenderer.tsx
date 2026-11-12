@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties } from 'react'
+import { useState, type CSSProperties } from 'react'
 import { DECOR } from '../data/content'
 import { PROPS, SCENES } from '../assets/manifest'
 import type { SceneAsset } from '../assets/manifest'
@@ -28,16 +28,21 @@ type ArtStatus = 'loading' | 'ready' | 'missing'
  * 位图加载状态：缺失或加载失败都收敛为 missing，渲染层据此回退。
  */
 function useArt(asset?: SceneAsset) {
-  const [status, setStatus] = useState<ArtStatus>(asset ? 'loading' : 'missing')
-
-  useEffect(() => {
-    setStatus(asset ? 'loading' : 'missing')
-  }, [asset?.src])
+  const source = asset?.src
+  const [loadedSource, setLoadedSource] = useState<string | null>(null)
+  const [failedSource, setFailedSource] = useState<string | null>(null)
+  const status: ArtStatus = !source
+    ? 'missing'
+    : loadedSource === source
+      ? 'ready'
+      : failedSource === source
+        ? 'missing'
+        : 'loading'
 
   return {
     status,
-    onLoad: () => setStatus('ready'),
-    onError: () => setStatus('missing'),
+    onLoad: () => setLoadedSource(source ?? null),
+    onError: () => setFailedSource(source ?? null),
   }
 }
 

@@ -84,6 +84,8 @@ export function StoryDraftSheet({ onClose }: { onClose: () => void }) {
       requestRef.current?.abort()
       prefetchRef.current?.abort()
     }
+    // The initial generation follows this render's state; later choices trigger their own loads.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const prepareNextStory = (
@@ -109,6 +111,8 @@ export function StoryDraftSheet({ onClose }: { onClose: () => void }) {
 
   const choose = (choice: GeneratedStoryChoice) => {
     if (!story || selected) return
+    // This handler only runs after a user choice, so the timestamp is stable for this trace.
+    // eslint-disable-next-line react-hooks/purity
     const trace = storyTraceFromChoice(story, choice, Date.now(), chapterNumber)
     actions.rememberStoryTrace(trace)
     void prepareNextStory(state, story, choice)

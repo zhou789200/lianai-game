@@ -279,11 +279,9 @@ export function createStoryVoiceMiddleware(options = {}) {
     bucket.push(now)
     buckets.set(key, bucket)
 
-    let disconnected = false
     let disconnectRequest = () => {}
     const disconnectedPromise = new Promise((_, reject) => {
       disconnectRequest = () => {
-        disconnected = true
         reject(new StoryVoiceApiError('语音请求已取消', 499))
       }
     })

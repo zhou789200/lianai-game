@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties } from 'react'
+import { useState, type CSSProperties } from 'react'
 import { BookOpen, Check, ChevronRight, Lock, SkipForward, Sparkles, X } from 'lucide-react'
 import { useGame } from '../game/GameContext'
 import { playSfx } from '../game/sfx'
@@ -22,6 +22,7 @@ import { useStoryVoice } from '../game/useStoryVoice'
 import type { StoryChoice } from '../game/types'
 
 interface ReplyState {
+  scope: string
   text: string
   optionText: string
 }
@@ -49,9 +50,52 @@ export function StoryView() {
       ? dynamicChapters[activeDynamicIndex + 1]
       : null
 
-  useEffect(() => {
-    setReply(null)
-  }, [state.storyChapterId, state.storyTraceId])
+  const available = chapter ? storybookChapterAvailable(state, chapter) : false
+  const requirement = chapter ? storybookChapterRequirementText(state, chapter) : ''
+  const activeBranch = getActiveStorybookBranch(state)
+  const totalBeats = chapter ? storybookTotalBeats(chapter, state) : 0
+  const branchBeat = activeBranch ? activeBranch.beats[state.storyBranchBeat] : null
+  const finished =
+    !activeBranch &&
+    !branchBeat &&
+    state.storyChapterBeat >= (chapter?.beats.length ?? 0)
+  const beat = activeBranch
+    ? branchBeat
+    : finished
+      ? null
+      : chapter?.beats[state.storyChapterBeat]
+  const completed = chapter ? state.storyCompletedChapters.includes(chapter.id) : false
+  const progress = chapter ? storybookProgress(chapter, state) : 0
+  const replyScope = `${state.storyChapterId}:${state.storyTraceId ?? 'main'}`
+  const activeReply = reply?.scope === replyScope ? reply : null
+
+  const pageKey = activeReply
+    ? `reply-${activeReply.scope}`
+    : finished
+      ? `end-${chapter?.id ?? 'none'}`
+      : activeBranch
+        ? `branch-${activeBranch.id}-${state.storyBranchBeat}`
+        : `beat-${beat?.id ?? 'none'}`
+
+  const storyText = activeReply
+    ? activeReply.text
+    : finished
+      ? null
+      : beat?.type === 'narration' || beat?.type === 'dialogue'
+        ? beat.text
+        : null
+
+  const typed = useTypewriter(storyText, pageKey)
+  useStoryVoice(
+    storyText,
+    activeReply || beat?.type !== 'dialogue' ? '旁白' : beat.speaker,
+    pageKey,
+    available &&
+      !activeDynamicChapter &&
+      !catalogOpen &&
+      !confirmSkip &&
+      !continuationOpen,
+  )
 
   if (!chapter) {
     return (
@@ -64,52 +108,9 @@ export function StoryView() {
     )
   }
 
-  const available = storybookChapterAvailable(state, chapter)
-  const requirement = storybookChapterRequirementText(state, chapter)
-  const activeBranch = getActiveStorybookBranch(state)
-  const totalBeats = storybookTotalBeats(chapter, state)
-  const branchBeat = activeBranch ? activeBranch.beats[state.storyBranchBeat] : null
-  const finished =
-    !activeBranch && !branchBeat && state.storyChapterBeat >= chapter.beats.length
-  const beat = activeBranch
-    ? branchBeat
-    : finished
-      ? null
-      : chapter.beats[state.storyChapterBeat]
-  const completed = state.storyCompletedChapters.includes(chapter.id)
-  const progress = storybookProgress(chapter, state)
-
-  const pageKey = reply
-    ? `reply-${chapter.id}-${state.storyChapterBeat}`
-    : finished
-      ? `end-${chapter.id}`
-      : activeBranch
-        ? `branch-${activeBranch.id}-${state.storyBranchBeat}`
-        : `beat-${beat?.id ?? 'none'}`
-
-  const storyText = reply
-    ? reply.text
-    : finished
-      ? null
-      : beat?.type === 'narration' || beat?.type === 'dialogue'
-        ? beat.text
-        : null
-
-  const typed = useTypewriter(storyText, pageKey)
-  useStoryVoice(
-    storyText,
-    reply || beat?.type !== 'dialogue' ? '旁白' : beat.speaker,
-    pageKey,
-    available &&
-      !activeDynamicChapter &&
-      !catalogOpen &&
-      !confirmSkip &&
-      !continuationOpen,
-  )
-
   const onContinue = () => {
     if (!available) return
-    if (reply) {
+    if (activeReply) {
       playSfx('page')
       setReply(null)
       return
@@ -133,7 +134,7 @@ export function StoryView() {
   }
 
   const onChoose = (choice: StoryChoice, optionId: string) => {
-    if (reply) return
+    if (activeReply) return
     const option = choice.options.find((item) => item.id === optionId)
     if (!option) return
     const result = actions.chooseStorybookOption(option)
@@ -141,10 +142,10 @@ export function StoryView() {
       pushNotice('error', '选择没有生效', result.message)
       return
     }
-    setReply({ text: option.reply, optionText: option.text })
+    setReply({ scope: replyScope, text: option.reply, optionText: option.text })
   }
 
-  const tone = reply
+  const tone = activeReply
     ? 'reply'
     : finished
       ? 'end'
@@ -156,7 +157,7 @@ export function StoryView() {
             ? 'character'
             : 'narration'
 
-  const pageInteractive = available && (reply !== null || beat?.type !== 'choice')
+  const pageInteractive = available && (activeReply !== null || beat?.type !== 'choice')
 
   return (
     <div
@@ -246,9 +247,9 @@ export function StoryView() {
                   <strong>这一章还没翻开</strong>
                   <p>{requirement ?? '读完上一章再回来。'}</p>
                 </div>
-              ) : reply ? (
+              ) : activeReply ? (
                 <div className="storybook__reply">
-                  <span className="storybook__reply-option">{reply.optionText}</span>
+                  <span className="storybook__reply-option">{activeReply.optionText}</span>
                   <p>
                     {typed.visible}
                     {typed.done ? null : (
@@ -317,7 +318,7 @@ export function StoryView() {
                   />
                 ))}
               </div>
-              {available && (reply || beat?.type !== 'choice') ? (
+              {available && (activeReply || beat?.type !== 'choice') ? (
                 <button
                   type="button"
                   className="storybook__next"
@@ -326,7 +327,7 @@ export function StoryView() {
                     onContinue()
                   }}
                   aria-label={
-                    reply
+                    activeReply
                       ? '继续'
                       : finished
                         ? '继续下一情节'

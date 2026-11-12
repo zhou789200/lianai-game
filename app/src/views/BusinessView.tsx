@@ -155,6 +155,10 @@ export function BusinessView({ runId, onExit }: BusinessViewProps) {
     actions.recordRunRewards(deltaCoins, deltaExp)
   }, [session.coins, session.tips, session.exp, actions])
 
+  useEffect(() => {
+    focusedRef.current = focusedOrderId
+  }, [focusedOrderId])
+
   const triggerSceneCue = useCallback(
     (kind: CafeSceneCueKind, icon?: string, label?: string) => {
       const id = sceneSeqRef.current + 1
@@ -179,8 +183,6 @@ export function BusinessView({ runId, onExit }: BusinessViewProps) {
     },
     [],
   )
-
-  focusedRef.current = focusedOrderId
 
   const pushFx = useCallback((fx: Omit<FlyFx, 'id'>) => {
     const id = fxSeqRef.current + 1
@@ -403,7 +405,10 @@ export function BusinessView({ runId, onExit }: BusinessViewProps) {
   )
 
   const applyDropRef = useRef(applyDrop)
-  applyDropRef.current = applyDrop
+
+  useEffect(() => {
+    applyDropRef.current = applyDrop
+  }, [applyDrop])
 
   useEffect(() => {
     const onMove = (e: PointerEvent) =>
@@ -1088,34 +1093,35 @@ function ProcessControl({
   }, [onComplete, onStart, stopLoop])
 
   const tick = useCallback(() => {
-    if (!holdingRef.current) return
-    const now = performance.now()
-    const heldMs = now - startTimeRef.current
-    let raw = 0
-    if (gesture === 'swipe') {
-      raw = Math.abs(lastXRef.current - startXRef.current) / 120
-    } else {
-      raw = heldMs / (gesture === 'hold' ? sweetMax : durationMs)
+    const update = () => {
+      if (!holdingRef.current) return
+      const now = performance.now()
+      const heldMs = now - startTimeRef.current
+      const raw =
+        gesture === 'swipe'
+          ? Math.abs(lastXRef.current - startXRef.current) / 120
+          : heldMs / (gesture === 'hold' ? sweetMax : durationMs)
+      const value = Math.max(0, Math.min(1, raw))
+      if (value > progressRef.current) {
+        progressRef.current = value
+        setProgress(value)
+      }
+      if (gesture === 'swipe' && value >= 1) {
+        finish()
+        return
+      }
+      if (gesture === 'hold' && toleranceMs > 0 && heldMs >= sweetMax) {
+        holdingRef.current = false
+        stopLoop()
+        progressRef.current = 1
+        setProgress(1)
+        startedRef.current = false
+        onImperfect('over')
+        return
+      }
+      rafRef.current = window.requestAnimationFrame(update)
     }
-    const value = Math.max(0, Math.min(1, raw))
-    if (value > progressRef.current) {
-      progressRef.current = value
-      setProgress(value)
-    }
-    if (gesture === 'swipe' && value >= 1) {
-      finish()
-      return
-    }
-    if (gesture === 'hold' && toleranceMs > 0 && heldMs >= sweetMax) {
-      holdingRef.current = false
-      stopLoop()
-      progressRef.current = 1
-      setProgress(1)
-      startedRef.current = false
-      onImperfect('over')
-      return
-    }
-    rafRef.current = window.requestAnimationFrame(tick)
+    update()
   }, [durationMs, finish, gesture, onImperfect, stopLoop, sweetMax, toleranceMs])
 
   const ensureStarted = () => {
@@ -1135,7 +1141,7 @@ function ProcessControl({
     startTimeRef.current = performance.now()
     startXRef.current = e.clientX
     lastXRef.current = e.clientX
-    rafRef.current = window.requestAnimationFrame(tick)
+    tick()
   }
 
   const onPointerMove = (e: ReactPointerEvent<HTMLButtonElement>) => {

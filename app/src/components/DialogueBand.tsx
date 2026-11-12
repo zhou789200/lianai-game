@@ -34,41 +34,34 @@ export interface DialogueBandProps {
 export function DialogueBand({ lines, speaker, tone = 'narration', action }: DialogueBandProps) {
   const reduced = usePrefersReducedMotion()
   const [index, setIndex] = useState(0)
-  const [shown, setShown] = useState(0)
+  const [typing, setTyping] = useState({ key: '', count: 0 })
 
   const text = lines[index] ?? ''
+  const lineKey = `${index}\u0000${text}`
+  const shown = reduced ? text.length : typing.key === lineKey ? typing.count : 0
   const done = shown >= text.length
 
-  // 换句时回到起点，重新逐字浮现
   useEffect(() => {
-    setShown(0)
-  }, [index, lines])
-
-  useEffect(() => {
-    if (!text) return
-    if (reduced) {
-      setShown(text.length)
-      return
-    }
+    if (!text || reduced) return
     let i = 0
     const id = window.setInterval(() => {
       i += 1
-      setShown(i)
+      setTyping({ key: lineKey, count: i })
       if (i >= text.length) window.clearInterval(id)
     }, 46)
     return () => window.clearInterval(id)
-  }, [text, reduced])
+  }, [lineKey, reduced, text])
 
   const advance = useCallback(() => {
     if (!done) {
-      setShown(text.length)
+      setTyping({ key: lineKey, count: text.length })
       return
     }
     if (lines.length > 1) {
       playSfx('page')
       setIndex((v) => (v + 1) % lines.length)
     }
-  }, [done, text.length, lines.length])
+  }, [done, lineKey, text.length, lines.length])
 
   return (
     <div

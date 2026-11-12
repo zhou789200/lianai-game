@@ -168,7 +168,7 @@ function applyStoryProgressionWithRewards(
 
 /** 统一处理经验与升级 */
 function applyReward(state: GameState, reward: Reward): GameState {
-  let next = { ...state }
+  const next = { ...state }
   switch (reward.kind) {
     case 'coins':
       next.coins = Math.max(0, next.coins + reward.amount)
@@ -824,6 +824,12 @@ interface GameContextValue {
 
 const GameContext = createContext<GameContextValue | null>(null)
 
+function withCause(message: string, cause: unknown): Error {
+  return Object.assign(new Error(message), { cause })
+}
+
+// Context hooks and balance helpers intentionally share this module with the provider.
+// eslint-disable-next-line react-refresh/only-export-components
 export function equipmentCost(id: string, level: number): number {
   const def = EQUIPMENT.find((e) => e.id === id)
   if (!def) return 0
@@ -1249,7 +1255,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
               conflict,
             }))
             setSaveError(message)
-            throw new Error(message)
+            throw withCause(message, error)
           }
           // 其他云端错误不阻止退出；账号本地缓存仍保留最新进度。
         }
@@ -1311,7 +1317,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
                 conflict: latestConflict,
               }))
               setSaveError(message)
-              throw new Error(message)
+              throw withCause(message, error)
             }
             throw error
           }
@@ -1493,7 +1499,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
             conflict,
           }))
           setSaveError(message)
-          throw new Error(message)
+          throw withCause(message, error)
         }
       },
       registerWithAccount,
@@ -1711,7 +1717,6 @@ export function GameProvider({ children }: { children: ReactNode }) {
     }
   }, [
     state,
-    activateGuest,
     loginWithAccount,
     logoutFromAccount,
     registerWithAccount,
@@ -1750,6 +1755,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>
 }
 
+// The paired hook must live beside the context it reads.
+// eslint-disable-next-line react-refresh/only-export-components
 export function useGame(): GameContextValue {
   const ctx = useContext(GameContext)
   if (!ctx) throw new Error('useGame 必须在 GameProvider 内部使用')

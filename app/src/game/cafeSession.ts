@@ -446,7 +446,6 @@ export function computeSettlement(state: CafeSessionState): CafeSettleSummary {
    ============================================================ */
 function fireEvent(state: CafeSessionState, event: CafeScheduledEvent): CafeSessionState {
   const now = state.elapsed
-  let next = state
 
   if (event.kind === 'pet') {
     const waiting = [...state.customers]
@@ -470,7 +469,7 @@ function fireEvent(state: CafeSessionState, event: CafeScheduledEvent): CafeSess
         helpedByPet: true,
       })
     }
-    next = withMessage(
+    return withMessage(
       {
         ...state,
         customers,
@@ -482,7 +481,6 @@ function fireEvent(state: CafeSessionState, event: CafeScheduledEvent): CafeSess
       'pet',
       target ? `${line.title}，${target.name}的耐心恢复了一些。` : line.title,
     )
-    return next
   }
 
   if (event.kind === 'romance' && state.config.relationship) {
