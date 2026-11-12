@@ -47,7 +47,14 @@ function makeState(overrides = {}) {
     recipes: [],
     decor: [],
     equipment: {},
-    stats: {},
+    stats: {
+      businessRuns: 0,
+      ordersServed: 0,
+      perfectRuns: 0,
+      petInteractions: 0,
+      choicesMade: 0,
+      coinsEarned: 0,
+    },
     ...overrides,
   }
 }
@@ -113,6 +120,130 @@ test('save validation rejects malformed and oversized payloads', () => {
       }),
     UserDataError,
   )
+})
+
+test('save validation accepts legacy saves and enforces bounded state shapes', () => {
+  const legacy = makeState()
+  for (const key of [
+    'storyChapterId',
+    'storyChapterBeat',
+    'storyBranchId',
+    'storyBranchBeat',
+    'storyCompletedChapters',
+    'storyFlags',
+    'storyTraces',
+    'storyChoices',
+    'storySeed',
+    'storyCache',
+    'storyTraceId',
+    'storyTurn',
+    'tasksDate',
+    'unlocked',
+  ]) {
+    delete legacy[key]
+  }
+  legacy.version = 1
+
+  const payload = validateSavePayload({ save: legacy })
+  assert.equal(payload.saveVersion, 1)
+  assert.equal(payload.playerName, '店长')
+
+  assert.throws(
+    () => validateSavePayload({ save: makeState({ coins: Number.NaN }) }),
+    UserDataError,
+  )
+  assert.throws(
+    () => validateSavePayload({ save: makeState({ updatedAt: Infinity }) }),
+    UserDataError,
+  )
+  assert.throws(
+    () => validateSavePayload({ save: makeState({ updatedAt: 1e300 }) }),
+    UserDataError,
+  )
+  assert.throws(
+    () => validateSavePayload({ save: makeState({ relationships: [null] }) }),
+    UserDataError,
+  )
+  assert.throws(
+    () => validateSavePayload({ save: makeState({ storyTraces: Array(31).fill({}) }) }),
+    UserDataError,
+  )
+  assert.throws(
+    () => validateSavePayload({ save: makeState({ storyTraces: [{}] }) }),
+    UserDataError,
+  )
+  assert.throws(
+    () => validateSavePayload({ save: makeState({ storyChoices: Array(31).fill({}) }) }),
+    UserDataError,
+  )
+  assert.throws(
+    () => validateSavePayload({ save: makeState({ storyChoices: [{}] }) }),
+    UserDataError,
+  )
+  assert.throws(
+    () => validateSavePayload({ save: makeState({ storyCache: Array(7).fill({}) }) }),
+    UserDataError,
+  )
+  assert.throws(
+    () => validateSavePayload({ save: makeState({ storyCache: [{}] }) }),
+    UserDataError,
+  )
+  assert.throws(
+    () => validateSavePayload({ save: makeState({ completedChapters: ['chapter-1', 1] }) }),
+    UserDataError,
+  )
+  assert.throws(
+    () => validateSavePayload({ save: makeState({ pet: { ...makeState().pet, diary: [null] } }) }),
+    UserDataError,
+  )
+  assert.throws(
+    () => validateSavePayload({ save: makeState({ equipment: { machine: '3' } }) }),
+    UserDataError,
+  )
+  assert.throws(
+    () =>
+      validateSavePayload({
+        save: makeState({
+          equipment: Object.fromEntries(
+            Array.from({ length: 65 }, (_, index) => [`machine-${index}`, 1]),
+          ),
+        }),
+      }),
+    UserDataError,
+  )
+  assert.throws(
+    () => validateSavePayload({ save: makeState({ tasks: [{ id: 'open_shop', progress: 1 }] }) }),
+    UserDataError,
+  )
+  assert.throws(
+    () =>
+      validateSavePayload({
+        save: makeState({ stats: { ...makeState().stats, coinsEarned: Number.NaN } }),
+      }),
+    UserDataError,
+  )
+})
+
+test('save validation sanitizes display names at the persistence boundary', () => {
+  const state = makeState({
+    playerName: `\u0000${'甲'.repeat(40)}`,
+    shopName: `  ${'店'.repeat(40)}  `,
+  })
+  const payload = validateSavePayload({ save: state })
+
+  assert.equal(payload.playerName, '甲'.repeat(20))
+  assert.equal(payload.shopName, '店'.repeat(32))
+
+  const db = createUserDatabase(':memory:')
+  try {
+    const result = db.save(USER_ID, { save: state, revision: 0 })
+    assert.equal(result.revision, 1)
+    const user = db.load(USER_ID).user
+    assert.equal(user.playerName, payload.playerName)
+    assert.equal(user.shopName, payload.shopName)
+  } finally {
+    db.close()
+  }
 })
 
 test('database creates, revisions, detects conflicts, and preserves 20 snapshots', () => {

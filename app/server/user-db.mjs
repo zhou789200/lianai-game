@@ -14,7 +14,24 @@ import {
 const MAX_SAVE_BYTES = 512 * 1024
 const MAX_PLAYER_NAME_LENGTH = 20
 const MAX_SHOP_NAME_LENGTH = 32
+const MAX_COLLECTION_ITEMS = 400
+const MAX_TEXT_LENGTH = 4096
+const MAX_TIMESTAMP = 8_640_000_000_000_000
+const MAX_EQUIPMENT_ITEMS = 64
+const MIN_SAVE_VERSION = 1
+const MAX_SAVE_VERSION = 4
+const STORY_TRACE_LIMIT = 30
+const STORY_CHOICE_LIMIT = 30
+const STORY_CACHE_LIMIT = 6
 const USER_ID_PATTERN = /^[a-zA-Z0-9_-]{16,64}$/
+const SAVE_STAT_KEYS = [
+  'businessRuns',
+  'ordersServed',
+  'perfectRuns',
+  'petInteractions',
+  'choicesMade',
+  'coinsEarned',
+]
 
 export class UserDataError extends Error {
   constructor(message, status = 400) {
@@ -45,22 +62,301 @@ function cleanName(value, maxLength, fallback) {
   return cleaned || fallback
 }
 
+function requireFiniteNumber(value, message) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    throw new UserDataError(message)
+  }
+  return value
+}
+
+function requireTimestamp(value, message) {
+  requireFiniteNumber(value, message)
+  if (!Number.isSafeInteger(value) || Math.abs(value) > MAX_TIMESTAMP) {
+    throw new UserDataError(message)
+  }
+  return value
+}
+
+function requireText(value, message, maxLength = MAX_TEXT_LENGTH) {
+  if (typeof value !== 'string' || value.length > maxLength) {
+    throw new UserDataError(message)
+  }
+  return value
+}
+
+function requireNonEmptyText(value, message, maxLength = MAX_TEXT_LENGTH) {
+  requireText(value, message, maxLength)
+  if (!value.trim()) throw new UserDataError(message)
+  return value
+}
+
+function requireOptionalText(value, message, maxLength = MAX_TEXT_LENGTH) {
+  if (value === undefined || value === null) return
+  requireText(value, message, maxLength)
+}
+
+function requireRecord(value, message) {
+  if (!isRecord(value)) throw new UserDataError(message)
+  return value
+}
+
+function requireArray(value, message, maxItems = MAX_COLLECTION_ITEMS) {
+  if (!Array.isArray(value) || value.length > maxItems) {
+    throw new UserDataError(message)
+  }
+  return value
+}
+
+function requireStringArray(
+  value,
+  message,
+  maxItems = MAX_COLLECTION_ITEMS,
+  maxItemLength = MAX_TEXT_LENGTH,
+) {
+  for (const item of requireArray(value, message, maxItems)) {
+    requireText(item, message, maxItemLength)
+  }
+}
+
+function requireOptionalStringArray(
+  value,
+  message,
+  maxItems = MAX_COLLECTION_ITEMS,
+  maxItemLength = MAX_TEXT_LENGTH,
+) {
+  if (value === undefined || value === null) return
+  requireStringArray(value, message, maxItems, maxItemLength)
+}
+
+function requireStringUnion(value, allowed, message) {
+  if (!allowed.includes(value)) throw new UserDataError(message)
+  return value
+}
+
+function validateStoryBeat(value, message) {
+  const beat = requireRecord(value, message)
+  requireStringUnion(beat.type, ['narration', 'dialogue'], message)
+  requireNonEmptyText(beat.text, message, 220)
+  if (beat.type === 'dialogue') requireNonEmptyText(beat.speaker, message, 20)
+}
+
+function validateGeneratedStoryChoice(value, message) {
+  const choice = requireRecord(value, message)
+  requireNonEmptyText(choice.id, message, 32)
+  requireNonEmptyText(choice.text, message, 100)
+  requireNonEmptyText(choice.reply, message, 240)
+  requireNonEmptyText(choice.consequence, message, 180)
+}
+
+function validateGeneratedStory(value, message) {
+  const story = requireRecord(value, message)
+  requireNonEmptyText(story.id, message, 64)
+  requireStringUnion(story.source, ['ai', 'local'], message)
+  if (story.degraded !== undefined && typeof story.degraded !== 'boolean') {
+    throw new UserDataError(message)
+  }
+  requireNonEmptyText(story.title, message, 36)
+  requireNonEmptyText(story.subtitle, message, 48)
+  requireNonEmptyText(story.scene, message, 48)
+  requireNonEmptyText(story.clue, message, 140)
+  requireStringArray(story.memoryAnchors, message, 3, 64)
+  const beats = requireArray(story.beats, message, 5)
+  for (const beat of beats) validateStoryBeat(beat, message)
+  if (beats.length < 3) throw new UserDataError(message)
+  const choices = requireArray(story.choices, message, 2)
+  for (const choice of choices) validateGeneratedStoryChoice(choice, message)
+  if (choices.length !== 2) throw new UserDataError(message)
+}
+
+function validateStoryTrace(value, message) {
+  const trace = requireRecord(value, message)
+  requireNonEmptyText(trace.id, message, 64)
+  requireTimestamp(trace.at, message)
+  requireNonEmptyText(trace.title, message, 36)
+  requireNonEmptyText(trace.subtitle, message, 48)
+  requireNonEmptyText(trace.scene, message, 48)
+  requireStringUnion(trace.source, ['ai', 'local'], message)
+  requireArray(trace.memoryAnchors, message, 3)
+  if (trace.memoryAnchors.length < 1) throw new UserDataError(message)
+  for (const anchor of trace.memoryAnchors) {
+    requireNonEmptyText(anchor, message, 64)
+  }
+  requireOptionalText(trace.clue, message, 140)
+  requireNonEmptyText(trace.choice, message, 100)
+  requireNonEmptyText(trace.outcome, message, 320)
+  if (trace.chapterIndex !== undefined) {
+    requireFiniteNumber(trace.chapterIndex, message)
+  }
+  if (trace.beats !== undefined) {
+    const beats = requireArray(trace.beats, message, 5)
+    for (const beat of beats) validateStoryBeat(beat, message)
+  }
+  if (trace.choices !== undefined) {
+    const choices = requireArray(trace.choices, message, 2)
+    for (const choice of choices) validateGeneratedStoryChoice(choice, message)
+  }
+  requireOptionalText(trace.selectedChoiceId, message, 32)
+}
+
+function validateStoryChoice(value, message) {
+  const choice = requireRecord(value, message)
+  requireNonEmptyText(choice.id, message, 96)
+  requireTimestamp(choice.at, message)
+  requireStringUnion(choice.source, ['romance', 'storybook'], message)
+  requireNonEmptyText(choice.chapterId, message, 64)
+  requireNonEmptyText(choice.chapterTitle, message, 48)
+  requireOptionalText(choice.scene, message, 64)
+  requireNonEmptyText(choice.beatId, message, 64)
+  requireOptionalText(choice.prompt, message, 160)
+  requireNonEmptyText(choice.optionId, message, 64)
+  requireNonEmptyText(choice.optionText, message, 120)
+  requireOptionalText(choice.reply, message, 240)
+  if (typeof choice.skipped !== 'boolean') throw new UserDataError(message)
+  requireOptionalText(choice.characterId, message, 64)
+  requireOptionalText(choice.branchId, message, 64)
+  if (choice.storyFlags !== undefined) {
+    requireStringArray(choice.storyFlags, message, 64, 64)
+  }
+}
+
+function validateStoryCacheEntry(value, message) {
+  const entry = requireRecord(value, message)
+  requireNonEmptyText(entry.key, message, 100)
+  requireTimestamp(entry.at, message)
+  validateGeneratedStory(entry.story, message)
+}
+
+function validateSaveState(state) {
+  const message = '存档内容格式不正确'
+  if (!isRecord(state)) throw new UserDataError('缺少游戏存档')
+  if (
+    typeof state.version !== 'number' ||
+    !Number.isSafeInteger(state.version) ||
+    state.version < MIN_SAVE_VERSION ||
+    state.version > MAX_SAVE_VERSION
+  ) {
+    throw new UserDataError('存档版本不正确')
+  }
+  requireTimestamp(state.updatedAt, '存档更新时间不正确')
+  requireText(state.playerName, '存档缺少玩家资料')
+  requireText(state.shopName, '存档缺少玩家资料')
+
+  // Base fields mirror the client's load gate. Newer story and business fields
+  // are optional so that declarative v1-v4 migrations remain usable.
+  if (state.createdAt !== undefined) requireTimestamp(state.createdAt, message)
+  requireFiniteNumber(state.coins, message)
+  requireFiniteNumber(state.stamina, message)
+  requireFiniteNumber(state.staminaMax, message)
+  if (state.staminaRegenAt !== undefined) requireTimestamp(state.staminaRegenAt, message)
+  requireFiniteNumber(state.level, message)
+  requireFiniteNumber(state.exp, message)
+
+  const pet = requireRecord(state.pet, message)
+  requireText(pet.name, message, 64)
+  requireOptionalText(pet.breed, message)
+  requireOptionalText(pet.age, message)
+  requireFiniteNumber(pet.intimacy, message)
+  requireFiniteNumber(pet.hunger, message)
+  requireFiniteNumber(pet.cleanliness, message)
+  requireFiniteNumber(pet.mood, message)
+  for (const entry of requireArray(pet.diary, message)) {
+    const diaryEntry = requireRecord(entry, message)
+    requireText(diaryEntry.id, message)
+    requireTimestamp(diaryEntry.at, message)
+    requireText(diaryEntry.icon, message)
+    requireText(diaryEntry.text, message)
+  }
+
+  for (const relationship of requireArray(state.relationships, message)) {
+    const record = requireRecord(relationship, message)
+    requireText(record.id, message)
+    requireText(record.name, message)
+    requireText(record.role, message)
+    requireText(record.note, message)
+    requireFiniteNumber(record.value, message)
+    if (typeof record.met !== 'boolean') throw new UserDataError(message)
+  }
+
+  requireText(state.chapterId, message)
+  requireFiniteNumber(state.chapterBeat, message)
+  requireStringArray(state.completedChapters, message)
+
+  if (state.storyChapterId !== undefined) {
+    requireText(state.storyChapterId, message)
+    if (!state.storyChapterId) throw new UserDataError(message)
+  }
+  if (state.storyChapterBeat !== undefined) requireFiniteNumber(state.storyChapterBeat, message)
+  requireOptionalText(state.storyBranchId, message)
+  if (state.storyBranchBeat !== undefined) requireFiniteNumber(state.storyBranchBeat, message)
+  requireOptionalStringArray(state.storyCompletedChapters, message)
+  requireOptionalStringArray(state.storyFlags, message)
+  if (state.storyTraces !== undefined && state.storyTraces !== null) {
+    const traces = requireArray(state.storyTraces, message, STORY_TRACE_LIMIT)
+    for (const trace of traces) validateStoryTrace(trace, message)
+  }
+  if (state.storyChoices !== undefined && state.storyChoices !== null) {
+    const choices = requireArray(state.storyChoices, message, STORY_CHOICE_LIMIT)
+    for (const choice of choices) validateStoryChoice(choice, message)
+  }
+  requireOptionalText(state.storySeed, message)
+  if (state.storyCache !== undefined && state.storyCache !== null) {
+    const cache = requireArray(state.storyCache, message, STORY_CACHE_LIMIT)
+    for (const entry of cache) validateStoryCacheEntry(entry, message)
+  }
+  requireOptionalText(state.storyTraceId, message)
+  if (state.storyTurn !== undefined) requireFiniteNumber(state.storyTurn, message)
+
+  for (const task of requireArray(state.tasks, message)) {
+    const record = requireRecord(task, message)
+    requireText(record.id, message)
+    requireFiniteNumber(record.progress, message)
+    if (typeof record.claimed !== 'boolean') throw new UserDataError(message)
+  }
+  requireOptionalText(state.tasksDate, message)
+  requireOptionalStringArray(state.unlocked, message)
+  const equipment = requireRecord(state.equipment, message)
+  if (Object.keys(equipment).length > MAX_EQUIPMENT_ITEMS) {
+    throw new UserDataError(message)
+  }
+  for (const [key, value] of Object.entries(equipment)) {
+    requireText(key, message, 64)
+    requireFiniteNumber(value, message)
+  }
+  requireStringArray(state.recipes, message)
+  requireStringArray(state.decor, message)
+  const stats = requireRecord(state.stats, message)
+  for (const key of SAVE_STAT_KEYS) requireFiniteNumber(stats[key], message)
+
+  requireOptionalText(state.activeRunId, message)
+  requireOptionalText(state.lastSettledRunId, message)
+  if (state.lastBusiness !== undefined && state.lastBusiness !== null) {
+    const business = requireRecord(state.lastBusiness, message)
+    for (const key of ['at', 'served', 'failed', 'rating', 'coins']) {
+      requireFiniteNumber(business[key], message)
+    }
+  }
+  for (const key of ['pendingRunRewards', 'recoveredRunRewards']) {
+    const value = state[key]
+    if (value === undefined || value === null) continue
+    const reward = requireRecord(value, message)
+    requireFiniteNumber(reward.coins, message)
+    requireFiniteNumber(reward.exp, message)
+  }
+}
+
 export function validateSavePayload(body) {
   if (!isRecord(body)) throw new UserDataError('存档内容格式不正确')
   if (!isRecord(body.save)) throw new UserDataError('缺少游戏存档')
 
   const state = body.save
-  if (typeof state.version !== 'number' || !Number.isSafeInteger(state.version) || state.version < 1) {
-    throw new UserDataError('存档版本不正确')
-  }
-  if (typeof state.updatedAt !== 'number' || !Number.isFinite(state.updatedAt)) {
-    throw new UserDataError('存档更新时间不正确')
-  }
-  if (typeof state.playerName !== 'string' || typeof state.shopName !== 'string') {
-    throw new UserDataError('存档缺少玩家资料')
-  }
+  validateSaveState(state)
 
-  const serialized = JSON.stringify(state)
+  let serialized
+  try {
+    serialized = JSON.stringify(state)
+  } catch {
+    throw new UserDataError('存档内容格式不正确')
+  }
   if (Buffer.byteLength(serialized, 'utf8') > MAX_SAVE_BYTES) {
     throw new UserDataError('存档内容过大', 413)
   }
