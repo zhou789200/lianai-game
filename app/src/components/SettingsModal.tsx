@@ -56,11 +56,13 @@ export function SettingsModal({
   const [actionError, setActionError] = useState<string | null>(null)
   const {
     soundEnabled: sound,
+    soundVolume,
     voiceEnabled,
     speechSupported,
     supportText,
     active: voiceActive,
     toggleSound: toggleSoundPreference,
+    changeSoundVolume,
     toggleVoice,
   } = useStoryVoicePreference()
 
@@ -68,6 +70,15 @@ export function SettingsModal({
   const account = userData.user
   const conflict = userData.conflict
   const syncBlocked = userData.syncBlocked || !!conflict
+  const volumePercent = Math.round(soundVolume * 100)
+  const volumeLabel =
+    volumePercent === 0
+      ? '静音'
+      : volumePercent < 45
+        ? '轻'
+        : volumePercent < 80
+          ? '舒适'
+          : '响亮'
 
   const toggleSound = () => {
     const next = !sound
@@ -361,6 +372,43 @@ export function SettingsModal({
           <i />
         </span>
       </button>
+
+      <div className="setting-volume" aria-disabled={!sound}>
+        <div className="setting-volume__heading">
+          <span className="setting-volume__label" id="setting-volume-label">
+            音量
+          </span>
+          <output
+            className="setting-volume__value t-num"
+            htmlFor="setting-volume"
+            aria-live="polite"
+            aria-label={`当前音量 ${volumePercent}%`}
+          >
+            {volumePercent}% · {sound ? volumeLabel : '已静音'}
+          </output>
+        </div>
+        <div className="setting-volume__control">
+          <VolumeX size={14} aria-hidden="true" />
+          <input
+            id="setting-volume"
+            className="setting-volume__range"
+            type="range"
+            min="0"
+            max="100"
+            step="1"
+            value={volumePercent}
+            aria-labelledby="setting-volume-label"
+            aria-valuetext={`${volumePercent}%，${sound ? volumeLabel : '总声音已关闭'}`}
+            onChange={(event) => changeSoundVolume(Number(event.currentTarget.value) / 100)}
+          />
+          <Volume2 size={14} aria-hidden="true" />
+        </div>
+        {!sound ? (
+          <p className="setting-volume__hint">
+            声音已关闭；拖动滑杆会重新开启声音
+          </p>
+        ) : null}
+      </div>
 
       <button
         type="button"

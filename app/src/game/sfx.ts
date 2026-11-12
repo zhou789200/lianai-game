@@ -5,7 +5,12 @@
    音色会刻意保持短、轻、颗粒清楚，避免在快速游玩时盖住猫叫或糊成噪音。
    ============================================================ */
 
-import { isSoundEnabled } from './sound'
+import {
+  getSoundVolume,
+  isSoundEnabled,
+  onSoundChange,
+  onSoundVolumeChange,
+} from './sound'
 
 export type SfxName =
   | 'tap'
@@ -71,7 +76,10 @@ interface NoiseSpec {
 let ctx: AudioContext | null = null
 let master: GainNode | null = null
 let noiseBuffer: AudioBuffer | null = null
+let detachVolumePreferences: (() => void) | null = null
 const lastPlayedAt = new Map<SfxName, number>()
+
+const SFX_MASTER_VOLUME = 0.42
 
 export interface GameAudioPlayback {
   stop: (fadeSeconds?: number) => void
@@ -115,8 +123,26 @@ function audioContext(): AudioContext | null {
       compressor.release.value = 0.16
 
       master = ctx.createGain()
-      master.gain.value = 0.42
+      master.gain.value = SFX_MASTER_VOLUME * getSoundVolume()
       master.connect(compressor).connect(ctx.destination)
+
+      const updateVolume = () => {
+        if (!ctx || !master) return
+        const now = ctx.currentTime
+        master.gain.cancelScheduledValues(now)
+        master.gain.setTargetAtTime(
+          SFX_MASTER_VOLUME * (isSoundEnabled() ? getSoundVolume() : 0),
+          now,
+          0.025,
+        )
+      }
+      detachVolumePreferences?.()
+      const removeSoundListener = onSoundChange(updateVolume)
+      const removeVolumeListener = onSoundVolumeChange(updateVolume)
+      detachVolumePreferences = () => {
+        removeSoundListener()
+        removeVolumeListener()
+      }
     } catch {
       ctx = null
       master = null

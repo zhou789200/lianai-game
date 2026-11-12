@@ -6,7 +6,12 @@
    只在主页挂载期间播放，并遵循现有全局声音开关。
    ============================================================ */
 
-import { isSoundEnabled, onSoundChange } from './sound'
+import {
+  getSoundVolume,
+  isSoundEnabled,
+  onSoundChange,
+  onSoundVolumeChange,
+} from './sound'
 
 type AudioContextCtor = typeof AudioContext
 
@@ -37,6 +42,7 @@ interface AudioSession {
   context: AudioContext
   master: GainNode
   musicBus: GainNode
+  targetVolume: number
   track: Track
   sea: AudioBufferSourceNode
   scheduler: number | null
@@ -272,6 +278,7 @@ const TRACKS: readonly Track[] = [
 
 let activeOwners = 0
 let detachSoundChange: (() => void) | null = null
+let detachVolumeChange: (() => void) | null = null
 let stopCurrentLifecycle: ((fadeSeconds?: number) => void) | null = null
 let nextCurrentTrack: (() => void) | null = null
 let currentTrackIndex = -1
@@ -429,9 +436,10 @@ function buildAudioSession(
   const targetVolume = options.masterVolume ?? track.masterVolume
   const fadeInSeconds = options.fadeInSeconds ?? FADE_IN_SECONDS
   const now = context.currentTime
+  const audibleVolume = targetVolume * getSoundVolume()
   master.gain.setValueAtTime(0.0001, now)
   master.gain.exponentialRampToValueAtTime(
-    targetVolume,
+    Math.max(0.0001, audibleVolume),
     now + Math.max(0.05, fadeInSeconds),
   )
 
@@ -439,6 +447,7 @@ function buildAudioSession(
     context,
     master,
     musicBus,
+    targetVolume,
     track,
     sea,
     scheduler: null,
@@ -607,6 +616,21 @@ function createLifecycle(): {
   let waitingForGesture = false
   let switchTimer: number | null = null
 
+  const updateVolume = () => {
+    const current = session
+    if (!current) return
+    const now = current.context.currentTime
+    current.master.gain.cancelScheduledValues(now)
+    current.master.gain.setTargetAtTime(
+      Math.max(
+        0.0001,
+        current.targetVolume * (isSoundEnabled() ? getSoundVolume() : 0),
+      ),
+      now,
+      0.04,
+    )
+  }
+
   const closeSession = (
     current: AudioSession,
     fadeSeconds: number,
@@ -721,6 +745,7 @@ function createLifecycle(): {
     passive: true,
   })
   document.addEventListener('keydown', handleUserGesture, true)
+  const removeVolumeListener = onSoundVolumeChange(updateVolume)
   openSession()
 
   return {
@@ -730,6 +755,7 @@ function createLifecycle(): {
       document.removeEventListener('visibilitychange', handleVisibilityChange)
       document.removeEventListener('pointerdown', handleUserGesture, true)
       document.removeEventListener('keydown', handleUserGesture, true)
+      removeVolumeListener()
       if (switchTimer !== null) window.clearTimeout(switchTimer)
       switchTimer = null
       if (session) closeSession(session, fadeSeconds)
@@ -764,6 +790,11 @@ export function startHomeBgm(): () => void {
       else stopLifecycle(0.05)
     })
   }
+  if (!detachVolumeChange) {
+    detachVolumeChange = onSoundVolumeChange(() => {
+      if (isSoundEnabled()) ensureLifecycle()
+    })
+  }
   ensureLifecycle()
 
   let released = false
@@ -774,6 +805,8 @@ export function startHomeBgm(): () => void {
     if (activeOwners > 0) return
     detachSoundChange?.()
     detachSoundChange = null
+    detachVolumeChange?.()
+    detachVolumeChange = null
     stopLifecycle()
   }
 }

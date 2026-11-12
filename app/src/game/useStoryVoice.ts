@@ -1,5 +1,12 @@
 import { useEffect, useId, useState } from 'react'
-import { isSoundEnabled, onSoundChange, setSoundEnabled } from './sound'
+import {
+  getSoundVolume,
+  isSoundEnabled,
+  onSoundChange,
+  onSoundVolumeChange,
+  setSoundEnabled,
+  setSoundVolume,
+} from './sound'
 import {
   getStoryVoiceCapabilities,
   getStoryVoiceSupportText,
@@ -13,6 +20,7 @@ import {
 
 export function useStoryVoicePreference() {
   const [soundEnabled, setSoundState] = useState(() => isSoundEnabled())
+  const [soundVolume, setSoundVolumeState] = useState(() => getSoundVolume())
   const [voiceEnabled, setVoiceState] = useState(() => isStoryVoiceEnabled())
   const [capabilities] = useState<StoryVoiceCapabilities>(getStoryVoiceCapabilities)
   const supported = capabilities.online || capabilities.system
@@ -27,12 +35,33 @@ export function useStoryVoicePreference() {
       }),
     [],
   )
+  useEffect(
+    () =>
+      onSoundVolumeChange(() => {
+        setSoundVolumeState(getSoundVolume())
+      }),
+    [],
+  )
   useEffect(() => onStoryVoiceChange(() => setVoiceState(isStoryVoiceEnabled())), [])
 
   const toggleSound = () => {
     const next = !soundEnabled
     setSoundEnabled(next)
     setSoundState(next)
+  }
+
+  const changeSoundVolume = (next: number) => {
+    const volume = Math.min(1, Math.max(0, next))
+    setSoundVolumeState(volume)
+    setSoundVolume(volume)
+    if (!soundEnabled && volume > 0) {
+      setSoundEnabled(true)
+      setSoundState(true)
+    }
+    if (volume === 0 && soundEnabled) {
+      setSoundEnabled(false)
+      setSoundState(false)
+    }
   }
 
   const toggleVoice = () => {
@@ -44,12 +73,14 @@ export function useStoryVoicePreference() {
 
   return {
     soundEnabled,
+    soundVolume,
     voiceEnabled,
     capabilities,
     speechSupported: supported,
     supportText: getStoryVoiceSupportText(capabilities),
     active: voiceActive,
     toggleSound,
+    changeSoundVolume,
     toggleVoice,
   }
 }

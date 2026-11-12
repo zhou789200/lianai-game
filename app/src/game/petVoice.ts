@@ -10,7 +10,7 @@
    四种语气：bright（开心长喵）、chirp（短促咪）、double（连叫两声）、soft（低落轻喵）。
    ============================================================ */
 
-import { isSoundEnabled } from './sound'
+import { getEffectiveSoundVolume, isSoundEnabled } from './sound'
 
 export type MeowKind = 'bright' | 'chirp' | 'double' | 'soft'
 
@@ -126,6 +126,7 @@ function scheduleSyllable(
   at: number,
   s: Syllable,
   detune: number,
+  volume: number,
 ): void {
   const now = at
   const start = s.f0Start * detune
@@ -133,9 +134,10 @@ function scheduleSyllable(
   const end = s.f0End * detune
 
   const out = ac.createGain()
+  const gain = s.gain * volume
   out.gain.setValueAtTime(0.0001, now)
-  out.gain.exponentialRampToValueAtTime(s.gain, now + 0.022)
-  out.gain.linearRampToValueAtTime(s.gain * 0.82, now + s.dur * 0.82)
+  out.gain.exponentialRampToValueAtTime(gain, now + 0.022)
+  out.gain.linearRampToValueAtTime(gain * 0.82, now + s.dur * 0.82)
   out.gain.exponentialRampToValueAtTime(0.0001, now + s.dur + 0.05)
 
   // 张嘴：低通从鼻音的 900Hz 打开到明亮元音
@@ -231,11 +233,13 @@ export function scheduleMeow(
   at: number,
   kind: MeowKind = 'bright',
   detune = 1,
+  volume = 1,
 ): void {
   let cursor = at
+  const outputVolume = Math.min(1, Math.max(0, volume))
   SYLLABLES[kind].forEach((syllable, index) => {
     if (index > 0) cursor += 0.055
-    scheduleSyllable(ac, cursor, syllable, detune)
+    scheduleSyllable(ac, cursor, syllable, detune, outputVolume)
     cursor += syllable.dur
   })
 }
@@ -270,6 +274,12 @@ export function playMeow(kind?: MeowKind): boolean {
   if (wallClock - lastPlayedAt < MEOW_COOLDOWN_MS) return false
   lastPlayedAt = wallClock
 
-  scheduleMeow(ac, ac.currentTime, kind ?? pickKind(), 0.95 + Math.random() * 0.1)
+  scheduleMeow(
+    ac,
+    ac.currentTime,
+    kind ?? pickKind(),
+    0.95 + Math.random() * 0.1,
+    getEffectiveSoundVolume(),
+  )
   return true
 }

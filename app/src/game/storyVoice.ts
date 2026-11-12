@@ -6,7 +6,7 @@
    不同的声线，并且每次翻页只保留当前一句。
    ============================================================ */
 
-import { isSoundEnabled } from './sound'
+import { getEffectiveSoundVolume, isSoundEnabled } from './sound'
 import {
   decodeGameAudio,
   isGameAudioSupported,
@@ -449,7 +449,8 @@ function speakWithSystemVoice(
   utterance.lang = 'zh-CN'
   utterance.pitch = profile.pitch
   utterance.rate = profile.rate
-  utterance.volume = speaker === '旁白' ? 0.9 : 0.94
+  utterance.volume =
+    (speaker === '旁白' ? 0.9 : 0.94) * getEffectiveSoundVolume()
 
   currentOwner = owner
   currentUtterance = utterance
@@ -522,6 +523,8 @@ export function speakStoryText({
   }
 
   stopStoryVoice()
+  const volume = getEffectiveSoundVolume()
+  if (volume <= 0) return false
   if (!isGameAudioSupported()) {
     const id = playbackId
     currentOwner = owner
@@ -537,7 +540,7 @@ export function speakStoryText({
   if (cachedAudio) {
     rememberAudio(voiceKey, cachedAudio)
     const playback = playGameAudio(cachedAudio, {
-      volume: 0.92,
+      volume: 0.92 * volume,
       onEnded: () => {
         if (id !== playbackId) return
         currentOwner = null
@@ -563,7 +566,7 @@ export function speakStoryText({
         return
       }
       const playback = playGameAudio(buffer, {
-        volume: 0.92,
+        volume: 0.92 * volume,
         onEnded: () => {
           if (id !== playbackId) return
           currentOwner = null
