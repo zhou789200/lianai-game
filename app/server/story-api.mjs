@@ -74,6 +74,7 @@ const SYSTEM_PROMPT = `你是《海风镇宠物咖啡馆》的动态剧情编剧
 8. 读完后对玩家给出两个有真实取舍的选择，每个选项不超过 24 个汉字。
 9. 最多留下一个新线索。
 10. 连续承接优先于换题材。接住上一章后，可以避免重复旧标题、句式和新线索结构，但不得为了避开重复而切断因果。
+11. storySeed 用于保持同一存档的叙事走向稳定；不要把它当成角色或世界观设定，也不要直接展示给玩家。
 
 禁止：
 - 失忆、强迫式嫉妒、突然出现的豪门继承人、频繁英雄救美。
@@ -202,6 +203,7 @@ export function sanitizeGenerationRequest(body) {
     )
 
   return {
+    storySeed: cleanText(body.storySeed, 80) || 'legacy',
     playerName: cleanText(body.playerName, 20, '店长') || '店长',
     shopName: cleanText(body.shopName, 32, '海风镇宠物咖啡馆') || '海风镇宠物咖啡馆',
     petName: cleanText(body.petName, 16, '布丁') || '布丁',
@@ -471,7 +473,8 @@ export function createStoryMiddleware() {
   const buckets = new Map()
 
   return async function storyMiddleware(req, res, next) {
-    if (!req.url?.startsWith('/api/story/generate')) {
+    const pathname = new URL(req.url ?? '/', 'http://localhost').pathname
+    if (pathname !== '/api/story/generate') {
       next()
       return
     }

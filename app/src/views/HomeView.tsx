@@ -21,7 +21,7 @@ function currentSlotIndex(): number {
  * 以及最该做的两件事。
  */
 export function HomeView({ onNavigate }: { onNavigate: (v: ViewKey) => void }) {
-  const { state, actions } = useGame()
+  const { state } = useGame()
   const [sheet, setSheet] = useState(false)
 
   const storyChapter = getCurrentStorybookChapter(state)
@@ -56,11 +56,6 @@ export function HomeView({ onNavigate }: { onNavigate: (v: ViewKey) => void }) {
   const speaker = petUrgent ? state.pet.name : '旁白'
   const tone = petUrgent ? 'pet' : 'narration'
 
-  const petAction = () => {
-    if (state.pet.hunger < 35) return actions.petAction('feed')
-    if (state.pet.cleanliness < 35) return actions.petAction('groom')
-    return actions.petAction('play')
-  }
   const petLabel =
     state.pet.hunger < 35 ? '喂布丁' : state.pet.cleanliness < 35 ? '给布丁梳毛' : '陪布丁玩'
 
@@ -132,9 +127,7 @@ export function HomeView({ onNavigate }: { onNavigate: (v: ViewKey) => void }) {
         <button
           type="button"
           className="home2__act home2__act--sea"
-          onClick={() => {
-            void petAction()
-          }}
+          onClick={() => onNavigate('pet')}
         >
           <span className="home2__act-icon">
             <PawPrint size={20} />

@@ -1,6 +1,7 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { BookOpen, Check, ChevronRight, Lock, SkipForward, Sparkles, X } from 'lucide-react'
 import { useGame } from '../game/GameContext'
+import { playSfx } from '../game/sfx'
 import {
   STORYBOOK_CHAPTERS,
   getActiveStorybookBranch,
@@ -15,7 +16,9 @@ import { useTypewriter } from '../game/useTypewriter'
 import { Modal } from '../components/Modal'
 import { StoryArchiveSheet } from '../components/StoryArchiveSheet'
 import { StoryDraftSheet } from '../components/StoryDraftSheet'
+import { StoryVoiceButton } from '../components/StoryVoiceButton'
 import { UiButton } from '../components/UiButton'
+import { useStoryVoice } from '../game/useStoryVoice'
 import type { StoryChoice } from '../game/types'
 
 interface ReplyState {
@@ -93,10 +96,21 @@ export function StoryView() {
         : null
 
   const typed = useTypewriter(storyText, pageKey)
+  useStoryVoice(
+    storyText,
+    reply || beat?.type !== 'dialogue' ? '旁白' : beat.speaker,
+    pageKey,
+    available &&
+      !activeDynamicChapter &&
+      !catalogOpen &&
+      !confirmSkip &&
+      !continuationOpen,
+  )
 
   const onContinue = () => {
     if (!available) return
     if (reply) {
+      playSfx('page')
       setReply(null)
       return
     }
@@ -169,6 +183,7 @@ export function StoryView() {
             <span className="storybook__top-progress t-num">
               CH.{chapter.index} · {progress}/{totalBeats}
             </span>
+            <StoryVoiceButton />
             <button
               type="button"
               className="storybook__icon-btn"
@@ -347,7 +362,10 @@ export function StoryView() {
               <button
                 type="button"
                 className="storybook__icon-btn"
-                onClick={() => setCatalogOpen(false)}
+                onClick={() => {
+                  playSfx('tap')
+                  setCatalogOpen(false)
+                }}
                 aria-label="关闭章节目录"
               >
                 <X size={16} />
@@ -373,7 +391,12 @@ export function StoryView() {
                     disabled={!open}
                     aria-current={isCurrent ? 'page' : undefined}
                     onClick={() => {
-                      if (!isCurrent) actions.selectStorybookChapter(item.id)
+                      if (!isCurrent) {
+                        actions.selectStorybookChapter(item.id)
+                        playSfx('page')
+                      } else {
+                        playSfx('tap')
+                      }
                       setCatalogOpen(false)
                     }}
                   >
@@ -416,7 +439,12 @@ export function StoryView() {
                   }`}
                   aria-current={trace.id === state.storyTraceId ? 'page' : undefined}
                   onClick={() => {
-                    actions.selectStoryTrace(trace.id)
+                    if (trace.id !== state.storyTraceId) {
+                      actions.selectStoryTrace(trace.id)
+                      playSfx('page')
+                    } else {
+                      playSfx('tap')
+                    }
                     setCatalogOpen(false)
                   }}
                 >
@@ -477,6 +505,7 @@ export function StoryView() {
           key={activeDynamicChapter.trace.id}
           trace={activeDynamicChapter.trace}
           chapterIndex={activeDynamicChapter.chapterIndex}
+          voiceEnabled={!catalogOpen && !continuationOpen}
           onContinueLatest={
             activeDynamicIndex === dynamicChapters.length - 1
               ? () => setContinuationOpen(true)

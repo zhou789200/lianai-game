@@ -36,7 +36,7 @@ import {
   TASKS,
 } from '../data/content'
 import { RATING_LABELS } from '../data/cafeContent'
-import { appendStoryTrace } from './dynamicStory'
+import { appendStoryTrace, upsertStoryCache } from './dynamicStory'
 import {
   applyRomanceChoice,
   applyStoryProgression,
@@ -66,12 +66,14 @@ import {
   storybookChapterAvailable,
   storybookChapterRequirementText,
 } from './storybook'
+import { playPetActionSfx, playSfx } from './sfx'
 import type { CafeSettleSummary } from './cafeTypes'
 import type {
   GameState,
   Notice,
   NoticeKind,
   Reward,
+  GeneratedStory,
   StoryOption,
   StoryTrace,
 } from './types'
@@ -121,6 +123,7 @@ type Action =
   | { type: 'chooseStorybook'; option: StoryOption }
   | { type: 'selectStoryTrace'; id: string }
   | { type: 'rememberStoryTrace'; trace: StoryTrace }
+  | { type: 'cacheGeneratedStory'; key: string; story: GeneratedStory }
   | { type: 'claimTask'; id: string; coins: number; exp: number }
   | { type: 'bumpTask'; id: string; amount: number }
   | { type: 'beginCafeRun'; runId: string }
@@ -619,6 +622,30 @@ function reducer(runtime: Runtime, action: Action): Runtime {
       }
     }
 
+    case 'cacheGeneratedStory': {
+      const storyCache = upsertStoryCache(
+        s.storyCache,
+        action.key,
+        action.story,
+      )
+      if (
+        storyCache.length === s.storyCache.length &&
+        storyCache.every(
+          (entry, index) =>
+            entry.key === s.storyCache[index]?.key &&
+            entry.at === s.storyCache[index]?.at &&
+            JSON.stringify(entry.story) ===
+              JSON.stringify(s.storyCache[index]?.story),
+        )
+      ) {
+        return runtime
+      }
+      return {
+        state: { ...s, storyCache, updatedAt: Date.now() },
+        notices: runtime.notices,
+      }
+    }
+
     case 'claimTask': {
       let nextState: GameState = {
         ...s,
@@ -790,6 +817,7 @@ interface GameContextValue {
     chooseStorybookOption: (option: StoryOption) => ActionResult
     selectStoryTrace: (id: string) => void
     rememberStoryTrace: (trace: StoryTrace) => void
+    cacheGeneratedStory: (key: string, story: GeneratedStory) => void
     claimTask: (id: string) => ActionResult
   }
 }
@@ -1393,7 +1421,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const dismissNotice = useCallback((id: string) => dispatch({ type: 'dismissNotice', id }), [])
 
   const actions = useMemo<GameContextValue['actions']>(() => {
-    const fail = (message: string): ActionResult => ({ ok: false, message })
+    const fail = (message: string): ActionResult => {
+      playSfx('error')
+      return { ok: false, message }
+    }
     const done = (message: string): ActionResult => ({ ok: true, message })
 
     return {
@@ -1486,6 +1517,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
           return fail(msg)
         }
         dispatch({ type: 'beginCafeRun', runId })
+        playSfx('start')
         return done('ok')
       },
       settleCafe: (summary) => {
@@ -1500,6 +1532,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
           return fail(msg)
         }
         dispatch({ type: 'spendStamina', amount: BUSINESS_STAMINA_COST })
+        playSfx('start')
         return done('ok')
       },
 
@@ -1515,6 +1548,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
           return fail(msg)
         }
         dispatch({ type: 'upgradeEquipment', id, cost })
+        playSfx('unlock')
         return done('ok')
       },
 
@@ -1533,6 +1567,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
           return fail(msg)
         }
         dispatch({ type: 'researchRecipe', id, cost: def.unlockCost })
+        playSfx('unlock')
         return done('ok')
       },
 
@@ -1551,6 +1586,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
           return fail(msg)
         }
         dispatch({ type: 'buyDecor', id, cost: def.cost })
+        playSfx('sparkle')
         return done('ok')
       },
 
@@ -1577,6 +1613,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
           diaryText,
           icon: def.icon,
         })
+        playPetActionSfx(def.id)
         return done(diaryText)
       },
 
@@ -1587,6 +1624,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         const beat = chapter.beats[state.chapterBeat]
         if (beat.type === 'choice') return fail('请先做出选择')
         dispatch({ type: 'advanceStory' })
+        playSfx('page')
         return done('ok')
       },
 
@@ -1605,6 +1643,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
           chapterId: chapter.id,
           characterId: chapter.characterId,
         })
+        playSfx('choice')
         return done('ok')
       },
 
@@ -1618,6 +1657,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
           if (beat.type === 'choice') return fail('请先做出选择')
         }
         dispatch({ type: 'advanceStorybook' })
+        playSfx('page')
         return done('ok')
       },
 
@@ -1631,6 +1671,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
           return fail('这一章还没有解锁')
         }
         dispatch({ type: 'completeStorybookChapter', skipped })
+        playSfx('reward')
         return done('ok')
       },
 
@@ -1648,10 +1689,14 @@ export function GameProvider({ children }: { children: ReactNode }) {
           return fail('这个选项不属于当前节点')
         }
         dispatch({ type: 'chooseStorybook', option })
+        playSfx('choice')
         return done('ok')
       },
 
       rememberStoryTrace: (trace) => dispatch({ type: 'rememberStoryTrace', trace }),
+
+      cacheGeneratedStory: (key, story) =>
+        dispatch({ type: 'cacheGeneratedStory', key, story }),
 
       claimTask: (id) => {
         const def = TASKS.find((t) => t.id === id)
@@ -1660,6 +1705,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         if (t.claimed) return fail('奖励已经领取过了')
         if (t.progress < def.target) return fail('任务还没完成')
         dispatch({ type: 'claimTask', id, coins: def.rewardCoins, exp: def.rewardExp })
+        playSfx('coin')
         return done('ok')
       },
     }

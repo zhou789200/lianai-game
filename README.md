@@ -4,9 +4,9 @@
 
 ## 技术栈
 
-- 前端：React 18 + TypeScript + Vite 5，移动端竖屏（390 × 844）优先
+- 前端：React 18 + TypeScript + Vite 7，移动端竖屏（390 × 844）优先
 - 服务端：Vite 中间件承载 `/api/story/*` 与 `/api/auth/*`、`/api/me/save`
-- 数据库：Node.js 内置 `node:sqlite`（需 Node ≥ 22.5），Session 走 `HttpOnly` Cookie
+- 数据库：Node.js 内置 `node:sqlite`（需 Node ≥ 22.12），Session 走 `HttpOnly` Cookie
 - 剧情生成：兼容 OpenAI 协议的第三方模型，不可用时自动回退到 `shared/localStoryBank.mjs` 内置剧情
 
 ## 目录结构
@@ -31,7 +31,7 @@ lianai-game/
 
 ```powershell
 cd app
-npm install     # 仅首次，需 Node.js >= 22.5
+npm install     # 仅首次，需 Node.js >= 22.12
 npm run dev     # http://127.0.0.1:5173/
 ```
 

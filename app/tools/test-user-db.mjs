@@ -216,8 +216,11 @@ test('database survives a restart with account and save intact', async () => {
   }
 })
 
-async function startApiServer(database = createUserDatabase(':memory:')) {
-  const middleware = createUserMiddleware({ database })
+async function startApiServer(
+  database = createUserDatabase(':memory:'),
+  middlewareOptions = {},
+) {
+  const middleware = createUserMiddleware({ database, ...middlewareOptions })
   const server = http.createServer((req, res) => {
     middleware(req, res, () => {
       res.statusCode = 404
@@ -362,6 +365,38 @@ test('HTTP account flow supports sessions, isolation, conflicts, and save cleari
         .get(hashSessionToken(token)).count,
       1,
     )
+  } finally {
+    await app.close()
+  }
+})
+
+test('login rate limit ignores spoofed forwarding headers by default', async () => {
+  const app = await startApiServer()
+  const base = `http://127.0.0.1:${app.server.address().port}`
+  try {
+    await register(base, 'rate-limit-user')
+
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+      const response = await request(base, '/api/auth/login', {
+        method: 'POST',
+        headers: { 'X-Forwarded-For': `203.0.113.${attempt + 1}` },
+        body: JSON.stringify({
+          username: 'rate-limit-user',
+          password: 'wrong-password',
+        }),
+      })
+      assert.equal(response.status, 401)
+    }
+
+    const blocked = await request(base, '/api/auth/login', {
+      method: 'POST',
+      headers: { 'X-Forwarded-For': '203.0.113.200' },
+      body: JSON.stringify({
+        username: 'rate-limit-user',
+        password: 'wrong-password',
+      }),
+    })
+    assert.equal(blocked.status, 429)
   } finally {
     await app.close()
   }

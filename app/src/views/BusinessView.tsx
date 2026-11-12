@@ -39,6 +39,8 @@ import {
   type CafeSceneCue,
   type CafeSceneCueKind,
 } from '../components/CafeScenePerformance'
+import { playMeow } from '../game/petVoice'
+import { playSfx, type SfxName } from '../game/sfx'
 
 interface DragView {
   kind: 'material' | 'tray' | 'cup'
@@ -88,6 +90,25 @@ function hashSeed(text: string): number {
     h = Math.imul(h, 16777619)
   }
   return h >>> 0
+}
+
+function loadSound(station: StationId, material: MaterialId): SfxName {
+  if (station === 'oven') return 'oven'
+  if (station === 'machine') return material === 'milk' ? 'steam' : 'brew'
+  if (station === 'assembly') {
+    if (material === 'ice') return 'bubble'
+    if (material === 'syrup') return 'pour'
+    return 'plate'
+  }
+  return 'tap'
+}
+
+function processSound(step: CraftStep): SfxName {
+  if (step.station === 'oven') return 'oven'
+  if (step.station === 'assembly') {
+    return step.label.includes('气泡') ? 'bubble' : 'whisk'
+  }
+  return step.label.includes('奶泡') ? 'steam' : 'brew'
 }
 
 export function BusinessView({ runId, onExit }: BusinessViewProps) {
@@ -142,6 +163,15 @@ export function BusinessView({ runId, onExit }: BusinessViewProps) {
       if (sceneTimerRef.current !== null) {
         window.clearTimeout(sceneTimerRef.current)
       }
+      if (kind === 'arrival') playSfx('arrival')
+      if (kind === 'order') playSfx('tap')
+      if (kind === 'serving') playSfx('serve')
+      if (kind === 'cleaning') playSfx('clean')
+      if (kind === 'pet') {
+        playSfx('cafe-pet')
+        playMeow('chirp')
+      }
+      if (kind === 'romance') playSfx('cafe-romance')
       sceneTimerRef.current = window.setTimeout(() => {
         setSceneCue((cue) => (cue?.id === id ? null : cue))
         sceneTimerRef.current = null
@@ -240,6 +270,7 @@ export function BusinessView({ runId, onExit }: BusinessViewProps) {
     if (session.phase !== 'settled') return
     if (settledRef.current === session.runId) return
     settledRef.current = session.runId
+    playSfx('settle')
     actions.settleCafe(computeSettlement(session))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session.phase, session.runId])
@@ -346,12 +377,14 @@ export function BusinessView({ runId, onExit }: BusinessViewProps) {
         if (current.material === material && current.station === id && payload.origin && target) {
           pushFx({ kind: 'material', icon: payload.kind === 'material' ? MATERIALS[material].icon : 'Coffee', label: MATERIALS[material].name, from: payload.origin, to: target })
         }
+        playSfx(loadSound(id as StationId, material))
         dispatch({ type: 'LOAD', orderId: order.id, material, station: id as StationId })
       } else if (current.kind === 'assemble') {
         if (current.station === id && current.inputs?.includes(material)) {
           if (payload.origin && target) {
             pushFx({ kind: 'material', icon: MATERIALS[material].icon, label: MATERIALS[material].name, from: payload.origin, to: target })
           }
+          playSfx('whisk')
           dispatch({ type: 'ASSEMBLE', orderId: order.id, station: id as StationId })
         } else {
           dispatch({ type: 'ASSEMBLE', orderId: order.id, station: id as StationId, material })
@@ -361,6 +394,7 @@ export function BusinessView({ runId, onExit }: BusinessViewProps) {
           if (payload.origin && target) {
             pushFx({ kind: 'plate', icon: MATERIALS[material].icon, label: MATERIALS[material].name, from: payload.origin, to: target })
           }
+          playSfx('plate')
           dispatch({ type: 'PLATE', orderId: order.id })
         }
       }
@@ -418,8 +452,10 @@ export function BusinessView({ runId, onExit }: BusinessViewProps) {
             to: targetCenter,
           })
         }
+        playSfx(loadSound(current.station, current.material))
         dispatch({ type: 'LOAD', orderId: order.id, material: current.material, station: current.station })
       } else if (current.kind === 'assemble' && current.station) {
+        playSfx('whisk')
         dispatch({ type: 'ASSEMBLE', orderId: order.id, station: current.station })
       } else if (current.kind === 'plate') {
         const source = document.querySelector('.cafe-craft__step')
@@ -433,6 +469,7 @@ export function BusinessView({ runId, onExit }: BusinessViewProps) {
             to: targetCenter,
           })
         }
+        playSfx('plate')
         dispatch({ type: 'PLATE', orderId: order.id })
       }
     },
@@ -517,7 +554,10 @@ export function BusinessView({ runId, onExit }: BusinessViewProps) {
             type="button"
             className="icon-btn icon-btn--sm"
             aria-label={session.paused ? '继续营业' : '暂停营业'}
-            onClick={() => dispatch({ type: 'PAUSE', paused: !session.paused })}
+            onClick={() => {
+              playSfx('tap')
+              dispatch({ type: 'PAUSE', paused: !session.paused })
+            }}
           >
             {session.paused ? <Play size={15} /> : <Pause size={15} />}
           </button>
@@ -656,7 +696,10 @@ export function BusinessView({ runId, onExit }: BusinessViewProps) {
                       key={opt.id}
                       type="button"
                       className="cafe-option"
-                      onClick={() => dispatch({ type: 'CHOOSE', orderId: focusedOrder.id, optionId: opt.id })}
+                      onClick={() => {
+                        playSfx('choice')
+                        dispatch({ type: 'CHOOSE', orderId: focusedOrder.id, optionId: opt.id })
+                      }}
                     >
                       {opt.label}
                     </button>
@@ -697,12 +740,19 @@ export function BusinessView({ runId, onExit }: BusinessViewProps) {
                   durationMs={step.durationMs ?? 1200}
                   toleranceMs={step.toleranceMs ?? 0}
                   disabled={!canProcess || session.phase === 'settled'}
-                  onStart={() => dispatch({ type: 'PROCESS_START', orderId: focusedOrder.id })}
-                  onComplete={() => dispatch({ type: 'PROCESS_DONE', orderId: focusedOrder.id })}
+                  onStart={() => {
+                    playSfx(processSound(step))
+                    dispatch({ type: 'PROCESS_START', orderId: focusedOrder.id })
+                  }}
+                  onComplete={() => {
+                    playSfx('success')
+                    dispatch({ type: 'PROCESS_DONE', orderId: focusedOrder.id })
+                  }}
                   onCancel={() => dispatch({ type: 'PROCESS_CANCEL', orderId: focusedOrder.id })}
-                  onImperfect={(quality) =>
+                  onImperfect={(quality) => {
+                    playSfx('error')
                     dispatch({ type: 'PROCESS_IMPERFECT', orderId: focusedOrder.id, quality })
-                  }
+                  }}
                 />
               ) : (
                 <button
@@ -723,7 +773,14 @@ export function BusinessView({ runId, onExit }: BusinessViewProps) {
                 <p>等待新鲜订单</p>
               </div>
               <div className="cafe-craft__util">
-                <button type="button" className="cafe-mini" onClick={() => dispatch({ type: 'TIDY' })}>
+                <button
+                  type="button"
+                  className="cafe-mini"
+                  onClick={() => {
+                    playSfx('pour')
+                    dispatch({ type: 'TIDY' })
+                  }}
+                >
                   给客人续水
                 </button>
                 {session.tables.some((t) => t.status === 'dirty') ? (

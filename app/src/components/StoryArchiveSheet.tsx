@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { BookOpen, ChevronRight, X } from 'lucide-react'
 import { useTypewriter } from '../game/useTypewriter'
+import { useStoryVoice } from '../game/useStoryVoice'
 import type { GeneratedStoryBeat, StoryTrace } from '../game/types'
+import { StoryVoiceButton } from './StoryVoiceButton'
 
 interface ArchivePage {
   key: string
@@ -16,12 +18,14 @@ export function StoryArchiveSheet({
   onContinueLatest,
   onOpenNext,
   onClose,
+  voiceEnabled = true,
 }: {
   trace: StoryTrace
   chapterIndex: number
   onContinueLatest?: () => void
   onOpenNext?: () => void
   onClose: () => void
+  voiceEnabled?: boolean
 }) {
   const [pageIndex, setPageIndex] = useState(0)
   const selectedChoice = trace.choices?.find(
@@ -49,7 +53,14 @@ export function StoryArchiveSheet({
     },
   ]
   const page = pages[Math.min(pageIndex, pages.length - 1)]
-  const typed = useTypewriter(page.beat.text, `${trace.id}-${page.key}`)
+  const pageKey = `${trace.id}-${page.key}`
+  const typed = useTypewriter(page.beat.text, pageKey)
+  useStoryVoice(
+    page.beat.text,
+    page.speaker ?? (page.beat.type === 'dialogue' ? page.beat.speaker : '旁白'),
+    pageKey,
+    voiceEnabled,
+  )
   const tone =
     page.beat.type === 'dialogue'
       ? page.beat.speaker === '你'
@@ -93,6 +104,7 @@ export function StoryArchiveSheet({
           <span className="storybook__chapter-progress t-num">
             {pageIndex}/{pages.length}
           </span>
+          <StoryVoiceButton className="storybook__icon-btn storybook__draft-reader-voice" />
           <button
             type="button"
             className="storybook__icon-btn storybook__draft-reader-close"

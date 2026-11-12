@@ -6,15 +6,19 @@ import {
   RefreshCw,
   X,
 } from 'lucide-react'
+import { StoryVoiceButton } from './StoryVoiceButton'
 import {
   fetchGeneratedStory,
   nextDynamicStoryChapterIndex,
+  prepareContinuationState,
   reuseStoryPrefetch,
+  storyCacheKey,
   storyTraceFromChoice,
   type StoryPrefetch,
 } from '../game/dynamicStory'
 import { useGame } from '../game/GameContext'
 import { useTypewriter } from '../game/useTypewriter'
+import { useStoryVoice } from '../game/useStoryVoice'
 import type {
   GameState,
   GeneratedStory,
@@ -36,6 +40,16 @@ export function StoryDraftSheet({ onClose }: { onClose: () => void }) {
   const requestRef = useRef<AbortController | null>(null)
   const prefetchRef = useRef<StoryPrefetch | null>(null)
 
+  const loadStory = async (
+    sourceState: GameState,
+    signal?: AbortSignal,
+  ): Promise<GeneratedStory> => {
+    const nextStory = await fetchGeneratedStory(sourceState, { signal })
+    if (signal?.aborted) return nextStory
+    actions.cacheGeneratedStory(storyCacheKey(sourceState), nextStory)
+    return nextStory
+  }
+
   const generate = async () => {
     requestRef.current?.abort()
     prefetchRef.current?.abort()
@@ -50,7 +64,7 @@ export function StoryDraftSheet({ onClose }: { onClose: () => void }) {
     setError('')
 
     try {
-      const nextStory = await fetchGeneratedStory(state, { signal: controller.signal })
+      const nextStory = await loadStory(state, controller.signal)
       if (controller.signal.aborted) return
       setStory(nextStory)
       setDraftState('ready')
@@ -77,8 +91,19 @@ export function StoryDraftSheet({ onClose }: { onClose: () => void }) {
     sourceStory: GeneratedStory,
     choice: GeneratedStoryChoice,
   ) => {
-    const prefetch = reuseStoryPrefetch(prefetchRef.current, sourceState, sourceStory, choice)
+    const prefetch = reuseStoryPrefetch(
+      prefetchRef.current,
+      sourceState,
+      sourceStory,
+      choice,
+    )
     prefetchRef.current = prefetch
+    void prefetch.promise.then(
+      (nextStory) => {
+        actions.cacheGeneratedStory(prefetch.cacheKey, nextStory)
+      },
+      () => undefined,
+    )
     return prefetch
   }
 
@@ -101,6 +126,8 @@ export function StoryDraftSheet({ onClose }: { onClose: () => void }) {
     try {
       const nextStory = await prefetch.promise
       if (prefetchRef.current?.key !== prefetch.key) return
+      const continuationState = prepareContinuationState(state, story, selected)
+      actions.cacheGeneratedStory(storyCacheKey(continuationState), nextStory)
       prefetchRef.current = null
       setStory(nextStory)
       setSelected(null)
@@ -136,6 +163,12 @@ export function StoryDraftSheet({ onClose }: { onClose: () => void }) {
     ? `outcome-${story?.id ?? 'story'}`
     : `beat-${story?.id ?? 'story'}-${pageIndex}`
   const typed = useTypewriter(pageText, pageKey)
+  useStoryVoice(
+    pageText,
+    selected ? '旁白' : currentBeat?.speaker,
+    pageKey,
+    draftState === 'ready' && !isChoicePage,
+  )
   const tone = selected
     ? 'narration'
     : currentBeat?.type === 'dialogue'
@@ -182,6 +215,7 @@ export function StoryDraftSheet({ onClose }: { onClose: () => void }) {
             <span className="storybook__chapter-progress t-num">
               {completedPages}/{totalPages}
             </span>
+            <StoryVoiceButton className="storybook__icon-btn storybook__draft-reader-voice story-voice-btn--compact" />
             <button
               type="button"
               className="storybook__icon-btn storybook__draft-reader-close"
@@ -197,14 +231,17 @@ export function StoryDraftSheet({ onClose }: { onClose: () => void }) {
               <Feather size={15} />
               故事续页
             </span>
-            <button
-              type="button"
-              className="storybook__icon-btn storybook__draft-reader-close"
-              onClick={close}
-              aria-label="关闭故事续页"
-            >
-              <X size={14} />
-            </button>
+            <div className="storybook__draft-reader-minihead-actions">
+              <StoryVoiceButton className="storybook__icon-btn storybook__draft-reader-voice" />
+              <button
+                type="button"
+                className="storybook__icon-btn storybook__draft-reader-close"
+                onClick={close}
+                aria-label="关闭故事续页"
+              >
+                <X size={14} />
+              </button>
+            </div>
           </header>
         )}
 

@@ -1,8 +1,9 @@
 import { build } from 'vite'
+import { fileURLToPath } from 'node:url'
 
 await build({
   configFile: false,
-  root: new URL('..', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'),
+  root: fileURLToPath(new URL('..', import.meta.url)),
   plugins: (await import('@vitejs/plugin-react')).default(),
   base: './',
   build: {

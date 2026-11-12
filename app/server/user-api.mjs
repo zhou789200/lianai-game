@@ -72,9 +72,14 @@ function isSecureRequest(req) {
   )
 }
 
-function clientIp(req) {
-  const forwarded = req.headers['x-forwarded-for']
-  if (typeof forwarded === 'string') return forwarded.split(',')[0].trim()
+function clientIp(req, trustProxy) {
+  if (trustProxy) {
+    const forwarded = req.headers['x-forwarded-for']
+    if (typeof forwarded === 'string') {
+      const first = forwarded.split(',')[0].trim()
+      if (first) return first
+    }
+  }
   return req.socket?.remoteAddress ?? 'unknown'
 }
 
@@ -115,6 +120,8 @@ export function createUserMiddleware(options = {}) {
     options.dbPath ?? process.env.USER_DB_PATH ?? DEFAULT_DB_PATH,
   )
   const ownsDatabase = !options.database
+  const trustProxy =
+    options.trustProxy ?? process.env.TRUST_PROXY === '1'
   const loginLimiter = createLoginLimiter()
 
   function currentSession(req) {
@@ -147,9 +154,9 @@ export function createUserMiddleware(options = {}) {
 
     if (url.pathname === '/api/auth/login' && req.method === 'POST') {
       const body = await readJsonBody(req)
-      let key = `${clientIp(req)}|unknown`
+      let key = `${clientIp(req, trustProxy)}|unknown`
       try {
-        key = `${clientIp(req)}|${usernameKey(body?.username)}`
+        key = `${clientIp(req, trustProxy)}|${usernameKey(body?.username)}`
       } catch {
         /* validation below returns the generic credentials error */
       }

@@ -5,6 +5,7 @@ export interface LocalStoryMemory {
 }
 
 export interface LocalStoryRequest {
+  storySeed?: string
   petName?: string
   storyTurn?: number
   memories?: LocalStoryMemory[]

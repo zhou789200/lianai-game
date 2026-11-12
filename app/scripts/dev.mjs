@@ -1,6 +1,7 @@
 import { fileURLToPath } from 'node:url'
 import { createServer, loadEnv } from 'vite'
 import { createStoryMiddleware } from '../server/story-api.mjs'
+import { createStoryVoiceMiddleware } from '../server/story-voice-api.mjs'
 import { createUserMiddleware } from '../server/user-api.mjs'
 
 const root = fileURLToPath(new URL('..', import.meta.url))
@@ -15,6 +16,7 @@ const storyApiPlugin = {
   name: 'seabreeze-story-api',
   configureServer(server) {
     server.middlewares.use(createStoryMiddleware())
+    server.middlewares.use(createStoryVoiceMiddleware())
   },
 }
 

@@ -90,13 +90,15 @@ function generatedStory() {
   }
 }
 
-test('v1 saves migrate to v3 and receive empty dynamic and static story records', () => {
+test('v1 saves migrate to v4 with a stable seed and empty story cache', () => {
   const current = storage.createInitialState()
   const legacy = { ...current, version: 1 }
   delete legacy.storyTraces
   delete legacy.storyChoices
   delete legacy.storyTurn
   delete legacy.storyTraceId
+  delete legacy.storySeed
+  delete legacy.storyCache
   globalThis.window = {
     localStorage: {
       getItem: (key) => (key === storage.SAVE_KEY ? JSON.stringify(legacy) : null),
@@ -110,15 +112,22 @@ test('v1 saves migrate to v3 and receive empty dynamic and static story records'
     assert.deepEqual(loaded.storyChoices, [])
     assert.equal(loaded.storyTurn, 0)
     assert.equal(loaded.storyTraceId, null)
+    assert.match(loaded.storySeed, /^seed_/)
+    assert.deepEqual(loaded.storyCache, [])
+
+    const reloaded = storage.parseGameState(loaded)
+    assert.equal(reloaded.storySeed, loaded.storySeed)
   } finally {
     delete globalThis.window
   }
 })
 
-test('v2 saves receive an empty static story choice list', () => {
+test('v2 and v3 saves receive a stable seed and clean cache', () => {
   const current = storage.createInitialState()
   const legacy = { ...current, version: 2 }
   delete legacy.storyChoices
+  delete legacy.storySeed
+  delete legacy.storyCache
   globalThis.window = {
     localStorage: {
       getItem: (key) => (key === storage.SAVE_KEY ? JSON.stringify(legacy) : null),
@@ -129,6 +138,108 @@ test('v2 saves receive an empty static story choice list', () => {
     const loaded = storage.loadState()
     assert.equal(loaded.version, storage.SAVE_VERSION)
     assert.deepEqual(loaded.storyChoices, [])
+    assert.match(loaded.storySeed, /^seed_/)
+
+    const v3 = { ...loaded, version: 3, storySeed: '', storyCache: 'dirty' }
+    const migrated = storage.parseGameState(v3)
+    assert.match(migrated.storySeed, /^seed_migrated_/)
+    assert.deepEqual(migrated.storyCache, [])
+    assert.equal(
+      storage.parseGameState(migrated).storySeed,
+      migrated.storySeed,
+    )
+  } finally {
+    delete globalThis.window
+  }
+})
+
+test('initial state has a stable story seed and an empty cache', () => {
+  const first = storage.createInitialState()
+  const second = storage.createInitialState()
+
+  assert.equal(storage.SAVE_VERSION, 4)
+  assert.match(first.storySeed, /^seed_/)
+  assert.notEqual(first.storySeed, second.storySeed)
+  assert.deepEqual(first.storyCache, [])
+  assert.equal(storage.parseGameState(first).storySeed, first.storySeed)
+})
+
+test('story cache is normalized, deduplicated, and limited to six entries', () => {
+  const story = generatedStory()
+  const dirty = [
+    { key: 'story-one', at: 1, story },
+    { key: 'story-one', at: 2, story: { ...story, id: 'duplicate' } },
+    { key: '', at: 3, story },
+    { key: 'story-broken', at: 4, story: { ...story, beats: [] } },
+    null,
+    ...Array.from({ length: 8 }, (_, index) => ({
+      key: `story-${index + 2}`,
+      at: index + 5,
+      story: { ...story, id: `story-${index + 2}` },
+    })),
+  ]
+  const normalized = dynamicStory.normalizeStoryCache(dirty)
+
+  assert.equal(normalized.length, 6)
+  assert.equal(normalized[0].key, 'story-one')
+  assert.equal(normalized[0].at, 1)
+  assert.equal(normalized[1].key, 'story-2')
+  assert.equal(new Set(normalized.map((entry) => entry.key)).size, 6)
+
+  const upserted = dynamicStory.upsertStoryCache(
+    normalized,
+    'story-two',
+    {
+      ...story,
+      id: 'story-two-updated',
+      choices: story.choices.map((choice) => ({
+        ...choice,
+        consequence: `${choice.consequence} 已更新。`,
+      })),
+    },
+    100,
+  )
+  assert.equal(upserted.length, 6)
+  assert.equal(upserted[0].key, 'story-two')
+  assert.equal(upserted[0].at, 100)
+  assert.match(upserted[0].story.choices[0].consequence, /已更新/)
+  assert.equal(upserted.filter((entry) => entry.key === 'story-two').length, 1)
+})
+
+test('cached stories are returned without a network request and survive loading', async () => {
+  const state = storage.createInitialState()
+  const story = generatedStory()
+  const key = dynamicStory.storyCacheKey(state)
+  const stateWithCache = {
+    ...state,
+    storyCache: dynamicStory.upsertStoryCache([], key, story, 100),
+  }
+  const legacy = { ...stateWithCache, version: 3 }
+  let calls = 0
+  const fetchImpl = async () => {
+    calls += 1
+    throw new Error('should not fetch')
+  }
+
+  const cached = await dynamicStory.fetchGeneratedStory(stateWithCache, {
+    fetchImpl,
+  })
+  assert.equal(cached.id, story.id)
+  assert.equal(calls, 0)
+
+  globalThis.window = {
+    localStorage: {
+      getItem: (keyName) =>
+        keyName === storage.SAVE_KEY ? JSON.stringify(legacy) : null,
+    },
+  }
+  try {
+    const loaded = storage.loadState()
+    const restored = await dynamicStory.fetchGeneratedStory(loaded, {
+      fetchImpl,
+    })
+    assert.equal(restored.id, story.id)
+    assert.equal(calls, 0)
   } finally {
     delete globalThis.window
   }
@@ -357,6 +468,12 @@ test('choice prefetch starts immediately, carries continuity, and reuses its pro
   })
   assert.equal(calls, 1)
   assert.equal(prefetch.key, 'story-test-1:choice-a')
+  assert.equal(
+    prefetch.cacheKey,
+    dynamicStory.storyCacheKey(
+      dynamicStory.prepareContinuationState(state, story, story.choices[0]),
+    ),
+  )
 
   const reused = dynamicStory.reuseStoryPrefetch(
     prefetch,
@@ -372,6 +489,7 @@ test('choice prefetch starts immediately, carries continuity, and reuses its pro
   const generated = await reused.promise
   assert.equal(generated.title, '风铃响过之后')
   assert.equal(capturedRequest.storyTurn, 5)
+  assert.equal(capturedRequest.storySeed, state.storySeed)
   assert.equal(capturedRequest.continuity.previousChoice, story.choices[0].text)
   assert.equal(
     capturedRequest.continuity.previousOutcome,
@@ -571,6 +689,7 @@ test('static story choices are sent as structured continuity memories', () => {
 
 test('client serves a local next page when the story API is unavailable', async () => {
   const state = storage.createInitialState()
+  state.storySeed = 'legacy'
   state.pet.name = '团子'
   state.storyTraces = [trace(1)]
   state.storyTurn = 1
@@ -607,6 +726,7 @@ test('local fallback advances to a different page on the next story turn', () =>
 
 test('local fallback keeps the first 24 chapters distinct', () => {
   const state = storage.createInitialState()
+  state.storySeed = 'legacy'
   const stories = Array.from({ length: 24 }, (_, storyTurn) => {
     state.storyTurn = storyTurn
     state.storyTraces = storyTurn > 0 ? [trace(storyTurn - 1)] : []
@@ -620,9 +740,36 @@ test('local fallback keeps the first 24 chapters distinct', () => {
   assert.equal(stories[23].source, 'local')
 })
 
+test('local fallback is stable for one seed and varies across seeds', () => {
+  const state = storage.createInitialState()
+  state.storyTurn = 7
+  state.storySeed = 'seed_story_test_alpha'
+
+  const repeated = dynamicStory.createLocalStoryFallback(state, 1_790_200_000_000)
+  const repeatedAgain = dynamicStory.createLocalStoryFallback(state, 1_790_200_000_000)
+  assert.deepEqual(repeatedAgain, repeated)
+
+  const titles = new Set(
+    [
+      'seed_story_test_alpha',
+      'seed_story_test_beta',
+      'seed_story_test_gamma',
+      'seed_story_test_delta',
+      'seed_story_test_epsilon',
+      'seed_story_test_zeta',
+      'seed_story_test_eta',
+      'seed_story_test_theta',
+    ].map((storySeed) =>
+      dynamicStory.createLocalStoryFallback({ ...state, storySeed }, 1_790_200_000_000).title,
+    ),
+  )
+  assert.ok(titles.size > 1)
+})
+
 test('server sanitizes oversized input and rejects non-object bodies', () => {
   const long = '海'.repeat(400)
   const request = sanitizeGenerationRequest({
+    storySeed: long,
     playerName: long,
     shopName: long,
     petName: long,
@@ -649,6 +796,7 @@ test('server sanitizes oversized input and rejects non-object bodies', () => {
     },
   })
 
+  assert.equal(request.storySeed.length, 80)
   assert.equal(request.playerName.length, 20)
   assert.equal(request.shopName.length, 32)
   assert.equal(request.petName.length, 16)
@@ -664,6 +812,7 @@ test('server sanitizes oversized input and rejects non-object bodies', () => {
   assert.equal(request.continuity.previousOutcome.length, 160)
   assert.equal(request.continuity.previousClue.length, 120)
   assert.equal(request.continuity.previousAnchors.length, 3)
+  assert.equal(sanitizeGenerationRequest({}).storySeed, 'legacy')
 
   assert.throws(() => sanitizeGenerationRequest(null), (error) => error.status === 400)
   assert.throws(() => sanitizeGenerationRequest('not-json'), (error) => error.status === 400)
@@ -811,6 +960,12 @@ test('middleware rejects wrong methods and invalid JSON, then serves the local d
     await withStoryServer(async (baseUrl) => {
       const getResponse = await fetch(`${baseUrl}/api/story/generate`)
       assert.equal(getResponse.status, 405)
+
+      const lookalikeResponse = await fetch(
+        `${baseUrl}/api/story/generate-extra`,
+        { method: 'POST' },
+      )
+      assert.equal(lookalikeResponse.status, 404)
 
       const invalidResponse = await fetch(`${baseUrl}/api/story/generate`, {
         method: 'POST',

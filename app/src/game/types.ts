@@ -140,6 +140,10 @@ export interface GameState {
   storyTraces: StoryTrace[]
   /** 静态章节选择；与动态章节快照分开保存，避免污染章节目录 */
   storyChoices: StoryChoiceRecord[]
+  /** 存档创建时固定下来的剧情种子，保证同一份存档的生成结果可复现 */
+  storySeed: string
+  /** 已生成但尚未消费的动态章节缓存，避免刷新后重复请求模型 */
+  storyCache: StoryCacheEntry[]
   /** 当前正在阅读的动态剧情 id；null 表示停留在静态剧情本章节 */
   storyTraceId: string | null
   /** 动态剧情已经推进的页数，不受剧情痕迹 30 条上限影响 */
@@ -357,4 +361,12 @@ export interface GeneratedStory {
   choices: GeneratedStoryChoice[]
   memoryAnchors: string[]
   clue?: string
+}
+
+/** 随存档持久化的动态章节缓存条目 */
+export interface StoryCacheEntry {
+  /** 由 Seed、剧情轮次和连续性上下文生成 */
+  key: string
+  at: number
+  story: GeneratedStory
 }

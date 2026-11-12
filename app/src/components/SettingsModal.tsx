@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import {
   AlertCircle,
+  AudioLines,
   Check,
   Cloud,
   Database,
@@ -15,8 +16,8 @@ import {
   VolumeX,
 } from 'lucide-react'
 import { useGame } from '../game/GameContext'
-import { playMeow } from '../game/petVoice'
-import { isSoundEnabled, onSoundChange, setSoundEnabled } from '../game/sound'
+import { playSfx } from '../game/sfx'
+import { useStoryVoicePreference } from '../game/useStoryVoice'
 import type { GameState } from '../game/types'
 import { Modal } from './Modal'
 import { UiButton } from './UiButton'
@@ -53,9 +54,13 @@ export function SettingsModal({
   const [confirmReset, setConfirmReset] = useState(false)
   const [pendingAction, setPendingAction] = useState<PendingAction>(null)
   const [actionError, setActionError] = useState<string | null>(null)
-  const [sound, setSound] = useState(() => isSoundEnabled())
-
-  useEffect(() => onSoundChange(() => setSound(isSoundEnabled())), [])
+  const {
+    soundEnabled: sound,
+    voiceEnabled,
+    speechSupported,
+    toggleSound: toggleSoundPreference,
+    toggleVoice,
+  } = useStoryVoicePreference()
 
   const busy = authBusy || pendingAction !== null
   const account = userData.user
@@ -64,9 +69,15 @@ export function SettingsModal({
 
   const toggleSound = () => {
     const next = !sound
-    setSoundEnabled(next)
-    setSound(next)
-    if (next) playMeow('chirp')
+    toggleSoundPreference()
+    if (next) playSfx('success')
+  }
+
+  const toggleStoryVoice = () => {
+    if (!speechSupported) return
+    const next = !voiceEnabled
+    toggleVoice()
+    if (next && sound) playSfx('tap')
   }
 
   const resetGame = async () => {
@@ -335,10 +346,50 @@ export function SettingsModal({
         </span>
         <span className="setting-row__body">
           <strong>声音</strong>
-          <small>{sound ? '小猫叫声与互动音效已开启' : '已静音，点小猫只保留动作'}</small>
+          <small>
+            {sound
+              ? '经营、宠物与剧情音效已开启'
+              : '已静音，游戏操作只保留视觉反馈'}
+          </small>
         </span>
         <span
           className={`setting-switch${sound ? ' is-on' : ''}`}
+          aria-hidden="true"
+        >
+          <i />
+        </span>
+      </button>
+
+      <button
+        type="button"
+        className="setting-row"
+        onClick={toggleStoryVoice}
+        aria-pressed={voiceEnabled}
+        disabled={!speechSupported}
+      >
+        <span className="setting-row__icon">
+          {voiceEnabled && speechSupported ? (
+            <AudioLines size={16} />
+          ) : (
+            <VolumeX size={16} />
+          )}
+        </span>
+        <span className="setting-row__body">
+          <strong>剧情角色朗读</strong>
+          <small>
+            {!speechSupported
+              ? '当前浏览器不支持语音合成'
+              : !sound
+                ? '总声音已关闭，开启声音后才会朗读剧情'
+                : voiceEnabled
+                  ? '优先使用在线自然语音；网络不可用时改用本机朗读'
+                  : '剧情文字会保持安静，不自动发声'}
+          </small>
+        </span>
+        <span
+          className={`setting-switch${
+            voiceEnabled && speechSupported ? ' is-on' : ''
+          }`}
           aria-hidden="true"
         >
           <i />

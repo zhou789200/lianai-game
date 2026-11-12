@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { playSfx } from '../game/sfx'
 
 /**
  * 剧情旁白条：把「说明性文字」改成一句可逐字浮现的剧情台词。
@@ -64,6 +65,7 @@ export function DialogueBand({ lines, speaker, tone = 'narration', action }: Dia
       return
     }
     if (lines.length > 1) {
+      playSfx('page')
       setIndex((v) => (v + 1) % lines.length)
     }
   }, [done, text.length, lines.length])

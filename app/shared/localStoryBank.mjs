@@ -968,6 +968,24 @@ function fillPlaceholders(value, context) {
     .replaceAll('{previous}', context.previousTitle)
 }
 
+function storySeedOffset(value) {
+  const seed =
+    typeof value === 'string'
+      ? value
+          .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, '')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .slice(0, 80)
+      : ''
+  if (!seed || seed === 'legacy') return 0
+  let hash = 2166136261
+  for (let index = 0; index < seed.length; index += 1) {
+    hash ^= seed.charCodeAt(index)
+    hash = Math.imul(hash, 16777619)
+  }
+  return hash >>> 0
+}
+
 export function buildLocalStory(request = {}, degraded = false, at = Date.now()) {
   const petName =
     typeof request.petName === 'string' && request.petName.trim()
@@ -984,8 +1002,11 @@ export function buildLocalStory(request = {}, degraded = false, at = Date.now())
     previous && typeof previous.title === 'string' && previous.title.trim()
       ? previous.title.trim().slice(0, 36)
       : '上一页'
+  const seedOffset = storySeedOffset(request.storySeed)
+  const start = seedOffset % LOCAL_STORY_BANK.length
   const cycle = Math.floor(storyTurn / LOCAL_STORY_BANK.length)
-  const template = LOCAL_STORY_BANK[storyTurn % LOCAL_STORY_BANK.length]
+  const template =
+    LOCAL_STORY_BANK[(start + storyTurn) % LOCAL_STORY_BANK.length]
   const context = { petName, anchor: previousAnchor, previousTitle }
   const fill = (value) => fillPlaceholders(value, context)
   const title = cycle === 0 ? template.title : `${template.title} · 潮汐${cycle + 1}`

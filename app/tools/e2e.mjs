@@ -13,6 +13,7 @@ import path from 'node:path'
 import { spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { createStoryMiddleware } from '../server/story-api.mjs'
+import { createStoryVoiceMiddleware } from '../server/story-voice-api.mjs'
 import { createUserMiddleware } from '../server/user-api.mjs'
 import { createUserDatabase } from '../server/user-db.mjs'
 
@@ -52,18 +53,24 @@ function findChrome() {
 function serve() {
   return new Promise((resolve) => {
     const storyMiddleware = createStoryMiddleware()
+    // E2E 不依赖外网，返回极短的合法 MP3 占位音频，同时仍走真实播放链路。
+    const storyVoiceMiddleware = createStoryVoiceMiddleware({
+      synthesize: async () => Buffer.from([0xff, 0xf3, 0xa4, 0xc4, ...Buffer.alloc(256)]),
+    })
     const userDatabase = createUserDatabase(':memory:')
     const userMiddleware = createUserMiddleware({ database: userDatabase })
     const server = http.createServer((req, res) => {
       userMiddleware(req, res, () => {
         storyMiddleware(req, res, () => {
-          const url = decodeURIComponent((req.url ?? '/').split('?')[0])
-          let file = path.join(DIST, url === '/' ? 'index.html' : url)
-          if (!file.startsWith(DIST) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) {
-            file = path.join(DIST, 'index.html')
-          }
-          res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] ?? 'application/octet-stream' })
-          fs.createReadStream(file).pipe(res)
+          storyVoiceMiddleware(req, res, () => {
+            const url = decodeURIComponent((req.url ?? '/').split('?')[0])
+            let file = path.join(DIST, url === '/' ? 'index.html' : url)
+            if (!file.startsWith(DIST) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) {
+              file = path.join(DIST, 'index.html')
+            }
+            res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] ?? 'application/octet-stream' })
+            fs.createReadStream(file).pipe(res)
+          })
         })
       }).catch((error) => {
         if (!res.headersSent) {
@@ -288,6 +295,77 @@ async function main() {
         return !!b;
       })()`)
       await sleep(500)
+    }
+
+    const clickNavAtCenter = async (label) => {
+      const result = await evaluate(`(() => {
+        const button = [...document.querySelectorAll('.nav__item')].find(
+          (item) => item.textContent.includes(${JSON.stringify(label)}),
+        );
+        if (!button) return { found: false };
+        const rect = button.getBoundingClientRect();
+        const x = rect.left + rect.width / 2;
+        const y = rect.top + rect.height / 2;
+        const hit = document.elementFromPoint(x, y);
+        if (hit) hit.closest('.nav__item')?.click();
+        return {
+          found: true,
+          hitNav: hit === button || hit?.closest('.nav__item') === button,
+          hitClass: hit?.getAttribute('class') ?? '',
+          x,
+          y,
+        };
+      })()`)
+      await sleep(500)
+      return result
+    }
+
+    const auditStoryNav = async () => {
+      const auditErrors = []
+      const expectedScreen = {
+        主页: '.screen--home',
+        剧情: '.screen--storybook',
+        咖啡店: '.screen--cafe',
+        宠物: '.screen--pet',
+        恋爱: '.screen--romance',
+      }
+      const routeChecks = []
+
+      for (const label of ['剧情', '主页', '剧情', '咖啡店', '宠物', '恋爱']) {
+        const clicked = await clickNavAtCenter(label)
+        const screenVisible = await waitForSelector(expectedScreen[label], 1600)
+        const geometry = await evaluate(`(() => {
+          const button = [...document.querySelectorAll('.nav__item')].find(
+            (item) => item.textContent.includes(${JSON.stringify(label)}),
+          );
+          if (!button) return null;
+          const rect = button.getBoundingClientRect();
+          const x = rect.left + rect.width / 2;
+          const y = rect.top + rect.height / 2;
+          const hit = document.elementFromPoint(x, y);
+          return {
+            hitNav: hit === button || hit?.closest('.nav__item') === button,
+            inViewport:
+              x >= 0 && y >= 0 && x <= innerWidth && y <= innerHeight,
+          };
+        })()`)
+        routeChecks.push({ label, screenVisible, ...clicked, ...geometry })
+        if (
+          !clicked?.found ||
+          !clicked?.hitNav ||
+          !screenVisible ||
+          !geometry?.hitNav ||
+          !geometry?.inViewport
+        ) {
+          auditErrors.push(`${label} 导航不可用: ${JSON.stringify(routeChecks.at(-1))}`)
+        }
+      }
+
+      await clickNavAtCenter('剧情')
+      const storyRestored = await waitForSelector('.screen--storybook', 1600)
+      if (!storyRestored) auditErrors.push('切回剧情页后没有恢复剧情本')
+
+      return { auditErrors, routeChecks, storyRestored }
     }
 
     /* ---------- 已记录选项重读审计 ---------- */
@@ -836,6 +914,25 @@ async function main() {
           card?.querySelector('.home2__chapter-progress')?.textContent?.trim() ?? '',
       };
     })()`)
+    const homePetJump = await evaluate(`(() => {
+      const button = document.querySelector('.home2__act--sea');
+      if (!button) return { found: false };
+      const rect = button.getBoundingClientRect();
+      const x = rect.left + rect.width / 2;
+      const y = rect.top + rect.height / 2;
+      const hit = document.elementFromPoint(x, y);
+      const hitButton = hit === button || hit?.closest('.home2__act--sea') === button;
+      if (hitButton) hit.closest('.home2__act--sea')?.click();
+      return {
+        found: true,
+        label: button.textContent?.trim() ?? '',
+        hitButton,
+        hitClass: hit?.getAttribute('class') ?? '',
+      };
+    })()`)
+    const homePetScreenReady = await waitForSelector('.screen--pet', 1800)
+    await clickNav('主页')
+    const homeRestoredAfterPetJump = await waitForSelector('.screen--home', 1800)
 
     /* ---------- 营业关卡（咖啡店） ---------- */
     await clickNav('咖啡店')
@@ -1239,6 +1336,17 @@ async function main() {
       })()`,
     )
     const secondChoiceReady = await advanceDraftToChoice()
+    const storyCacheBeforeSecondChoice = await evaluate(`(() => {
+      try {
+        const save = JSON.parse(localStorage.getItem('seabreeze-pet-cafe.save'));
+        return {
+          length: Array.isArray(save?.storyCache) ? save.storyCache.length : 0,
+          storyTurn: save?.storyTurn ?? 0,
+        };
+      } catch {
+        return null;
+      }
+    })()`)
     const choseSecondDraft = await evaluate(`(() => {
       const b = document.querySelector('.storybook__draft-reader-option');
       if (b) b.click();
@@ -1263,6 +1371,41 @@ async function main() {
         return layer?.querySelector('.storybook__draft-reader-outcome p')?.textContent ?? '';
       })(),
     }))()`)
+    let persistedContinuationCache = null
+    for (let step = 0; step < 50; step += 1) {
+      persistedContinuationCache = await evaluate(`(() => {
+        try {
+          const save = JSON.parse(localStorage.getItem('seabreeze-pet-cafe.save'));
+          const cache = Array.isArray(save?.storyCache) ? save.storyCache : [];
+          const latestTrace = save?.storyTraces?.[0] ?? null;
+          return {
+            length: cache.length,
+            storyTurn: save?.storyTurn ?? 0,
+            storyTraceId: save?.storyTraceId ?? null,
+            latestTraceTitle: latestTrace?.title ?? '',
+            top: cache[0]
+              ? {
+                  key: cache[0].key,
+                  at: cache[0].at,
+                  title: cache[0].story?.title ?? '',
+                  id: cache[0].story?.id ?? '',
+                }
+              : null,
+          };
+        } catch {
+          return null;
+        }
+      })()`)
+      if (
+        (persistedContinuationCache?.length ?? 0) >
+          (storyCacheBeforeSecondChoice?.length ?? 0) &&
+        persistedContinuationCache?.top?.key &&
+        persistedContinuationCache?.top?.title
+      ) {
+        break
+      }
+      await sleep(200)
+    }
 
     const storyTraceAudit = await evaluate(`(() => {
       try {
@@ -1337,6 +1480,7 @@ async function main() {
     })()`)
     const archiveReady = await waitForSelector('.storybook__archive', 2500)
     await sleep(450)
+    const storyNavAudit = await auditStoryNav()
     const archiveAudit = await evaluate(`(() => ({
       chapter:
         document.querySelector(
@@ -1528,6 +1672,66 @@ async function main() {
     shots.push('13b-story-catalog-archive')
     await shoot('13c-story-catalog-latest-end')
     shots.push('13c-story-catalog-latest-end')
+    const cacheBeforeRefresh = await evaluate(`(() => {
+      try {
+        const save = JSON.parse(localStorage.getItem('seabreeze-pet-cafe.save'));
+        const cache = Array.isArray(save?.storyCache) ? save.storyCache : [];
+        return {
+          length: cache.length,
+          storyTurn: save?.storyTurn ?? 0,
+          storyTraceId: save?.storyTraceId ?? null,
+          top: cache[0]
+            ? {
+                key: cache[0].key,
+                at: cache[0].at,
+                title: cache[0].story?.title ?? '',
+                id: cache[0].story?.id ?? '',
+              }
+            : null,
+        };
+      } catch {
+        return null;
+      }
+    })()`)
+    const requestsBeforeRefresh = await storyRequestCount()
+    await client.send('Page.reload', { ignoreCache: true })
+    await sleep(2200)
+    const refreshedShellReady = await waitForSelector('.nav__item', 5000)
+    await clickNav('剧情')
+    const refreshedArchiveReady = await waitForSelector('.storybook__archive', 5000)
+    const refreshedArchiveAudit = await evaluate(`(() => ({
+      chapter:
+        document.querySelector(
+          '.storybook__archive .storybook__chapter-index',
+        )?.textContent?.trim() ?? '',
+      title:
+        document.querySelector(
+          '.storybook__archive .storybook__chapter-copy strong',
+        )?.textContent?.trim() ?? '',
+      cache: (() => {
+        try {
+          const save = JSON.parse(localStorage.getItem('seabreeze-pet-cafe.save'));
+          const cache = Array.isArray(save?.storyCache) ? save.storyCache : [];
+          return {
+            length: cache.length,
+            storyTurn: save?.storyTurn ?? 0,
+            storyTraceId: save?.storyTraceId ?? null,
+            top: cache[0]
+              ? {
+                  key: cache[0].key,
+                  at: cache[0].at,
+                  title: cache[0].story?.title ?? '',
+                  id: cache[0].story?.id ?? '',
+                }
+              : null,
+          };
+        } catch {
+          return null;
+        }
+      })(),
+    }))()`)
+    const refreshedChapterEndAudit = await advanceArchiveToEnd()
+    const requestsBeforeRefreshedContinue = await storyRequestCount()
     const continuedFromArchive = await evaluate(`(() => {
       const button = document.querySelector('.storybook__archive-action');
       if (button) button.click();
@@ -1537,6 +1741,57 @@ async function main() {
       '.storybook__draft-layer[aria-label="故事续页"]',
       2500,
     )
+    let cachedContinuationReady = false
+    for (let step = 0; step < 25; step += 1) {
+      cachedContinuationReady = await evaluate(`(() => {
+        const layers = [...document.querySelectorAll('.storybook__draft-layer')];
+        const topLayer = layers[layers.length - 1];
+        return (
+          topLayer?.getAttribute('aria-label') === '故事续页' &&
+          !!topLayer.querySelector(
+            '.storybook__draft-reader-chapterbar .storybook__chapter-copy strong',
+          )
+        );
+      })()`)
+      if (cachedContinuationReady) break
+      await sleep(200)
+    }
+    const cachedContinuationTitle = await evaluate(`(() => {
+      const layers = [...document.querySelectorAll('.storybook__draft-layer')];
+      const topLayer = layers[layers.length - 1];
+      return topLayer?.querySelector(
+        '.storybook__draft-reader-chapterbar .storybook__chapter-copy strong',
+      )?.textContent?.trim() ?? '';
+    })()`)
+    let requestsAfterRefreshedContinue = requestsBeforeRefreshedContinue
+    for (let step = 0; step < 20; step += 1) {
+      await sleep(100)
+      requestsAfterRefreshedContinue = await storyRequestCount()
+      if (requestsAfterRefreshedContinue > requestsBeforeRefreshedContinue) break
+    }
+    const cacheAfterRefreshedContinue = await evaluate(`(() => {
+      try {
+        const save = JSON.parse(localStorage.getItem('seabreeze-pet-cafe.save'));
+        const cache = Array.isArray(save?.storyCache) ? save.storyCache : [];
+        return {
+          length: cache.length,
+          storyTurn: save?.storyTurn ?? 0,
+          storyTraceId: save?.storyTraceId ?? null,
+          top: cache[0]
+            ? {
+                key: cache[0].key,
+                at: cache[0].at,
+                title: cache[0].story?.title ?? '',
+                id: cache[0].story?.id ?? '',
+              }
+            : null,
+        };
+      } catch {
+        return null;
+      }
+    })()`)
+    await shoot('13d-story-cache-after-refresh')
+    shots.push('13d-story-cache-after-refresh')
     await sleep(180)
     const continuationLayerAudit = await evaluate(`(() => {
       const layers = [...document.querySelectorAll('.storybook__draft-layer')];
@@ -1590,6 +1845,36 @@ async function main() {
     if (!secondOutcomeReady) errors.push('第二次剧情选择后没有出现结果页')
     if ((storyTraceAudit?.count ?? 0) < 2) errors.push('连续两段剧情没有写入 storyTraces')
     if ((storyTraceAudit?.storyTurn ?? 0) < 2) errors.push('剧情推进计数没有增长')
+    if (
+      (persistedContinuationCache?.length ?? 0) <=
+        (storyCacheBeforeSecondChoice?.length ?? 0) ||
+      (persistedContinuationCache?.storyTurn ?? 0) <=
+        (storyCacheBeforeSecondChoice?.storyTurn ?? 0) ||
+      !persistedContinuationCache?.top?.key?.startsWith('story_') ||
+      !persistedContinuationCache?.top?.id ||
+      !persistedContinuationCache?.top?.title
+    ) {
+      errors.push(
+        `第二次选择后没有写入持久续章缓存: ${JSON.stringify({
+          storyCacheBeforeSecondChoice,
+          persistedContinuationCache,
+        })}`,
+      )
+    }
+    if (persistedContinuationCache?.latestTraceTitle !== storyTraceAudit?.first?.title) {
+      errors.push(
+        `持久续章缓存没有记录最新剧情痕迹: ${JSON.stringify({
+          latestTraceTitle: persistedContinuationCache?.latestTraceTitle,
+          expected: storyTraceAudit?.first?.title,
+        })}`,
+      )
+    }
+    if (storyNavAudit?.auditErrors?.length) {
+      errors.push(...storyNavAudit.auditErrors)
+    }
+    if (!storyNavAudit?.storyRestored) {
+      errors.push('剧情页主入口切换审计没有恢复到剧情页')
+    }
     if (storyTraceAudit?.first?.chapterIndex !== 4) {
       errors.push(`最新动态章节序号应接着剧情本为 CH.04，实际 ${storyTraceAudit?.first?.chapterIndex}`)
     }
@@ -1703,6 +1988,74 @@ async function main() {
       secondChapterEndAudit?.returnLabel !== '返回剧情本'
     ) {
       errors.push(`最新动态章节末页缺少后续剧情入口: ${JSON.stringify(secondChapterEndAudit)}`)
+    }
+    if (
+      !refreshedShellReady ||
+      !refreshedArchiveReady ||
+      refreshedArchiveAudit?.chapter !== 'CH.04' ||
+      refreshedArchiveAudit?.title !== secondDraftOutcome?.title
+    ) {
+      errors.push(
+        `刷新后没有恢复最新动态章节: ${JSON.stringify({
+          refreshedShellReady,
+          refreshedArchiveReady,
+          refreshedArchiveAudit,
+          expectedTitle: secondDraftOutcome?.title,
+        })}`,
+      )
+    }
+    if (
+      cacheBeforeRefresh?.top?.key !== persistedContinuationCache?.top?.key ||
+      cacheBeforeRefresh?.top?.id !== persistedContinuationCache?.top?.id ||
+      cacheBeforeRefresh?.top?.key !== refreshedArchiveAudit?.cache?.top?.key ||
+      cacheBeforeRefresh?.top?.id !== refreshedArchiveAudit?.cache?.top?.id ||
+      cacheBeforeRefresh?.top?.title !== refreshedArchiveAudit?.cache?.top?.title ||
+      cacheBeforeRefresh?.storyTraceId !== refreshedArchiveAudit?.cache?.storyTraceId
+    ) {
+      errors.push(
+        `刷新前后持久剧情缓存不一致: ${JSON.stringify({
+          persistedContinuationCache,
+          cacheBeforeRefresh,
+          cacheAfterRefresh: refreshedArchiveAudit?.cache,
+        })}`,
+      )
+    }
+    if (refreshedChapterEndAudit?.primaryLabel !== '继续下一情节') {
+      errors.push(
+        `刷新后的动态章节末页缺少后续剧情入口: ${JSON.stringify(refreshedChapterEndAudit)}`,
+      )
+    }
+    if (
+      !cachedContinuationReady ||
+      cachedContinuationTitle !== `《${cacheBeforeRefresh?.top?.title ?? ''}》`
+    ) {
+      errors.push(
+        `刷新后没有从持久缓存打开续页: ${JSON.stringify({
+          cachedContinuationReady,
+          cachedContinuationTitle,
+          expectedTitle: `《${cacheBeforeRefresh?.top?.title ?? ''}》`,
+        })}`,
+      )
+    }
+    if (requestsAfterRefreshedContinue !== requestsBeforeRefreshedContinue) {
+      errors.push(
+        `刷新后继续读取没有命中持久缓存: ${JSON.stringify({
+          requestsBeforeRefreshedContinue,
+          requestsAfterRefreshedContinue,
+        })}`,
+      )
+    }
+    if (
+      cacheAfterRefreshedContinue?.length !== cacheBeforeRefresh?.length ||
+      cacheAfterRefreshedContinue?.top?.key !== cacheBeforeRefresh?.top?.key ||
+      cacheAfterRefreshedContinue?.top?.id !== cacheBeforeRefresh?.top?.id
+    ) {
+      errors.push(
+        `读取持久缓存后改写了缓存条目: ${JSON.stringify({
+          cacheBeforeRefresh,
+          cacheAfterRefreshedContinue,
+        })}`,
+      )
     }
     if (
       continuedFromArchive !== '继续下一情节' ||
@@ -1926,6 +2279,20 @@ async function main() {
     ) {
       errors.push(`主页剧情本入口不明显: ${JSON.stringify(homeStorybookEntry)}`)
     }
+    if (
+      !homePetJump?.found ||
+      !homePetJump?.hitButton ||
+      !homePetScreenReady ||
+      !homeRestoredAfterPetJump
+    ) {
+      errors.push(
+        `主页宠物快捷入口未跳转到宠物页: ${JSON.stringify({
+          homePetJump,
+          homePetScreenReady,
+          homeRestoredAfterPetJump,
+        })}`,
+      )
+    }
 
     for (const ev of client.events) {
       if (ev.method === 'Runtime.exceptionThrown') {
@@ -1947,6 +2314,31 @@ async function main() {
     console.log(`[${SUFFIX}] 关键状态: ${JSON.stringify(stats)}`)
     console.log(`[${SUFFIX}] 剧情续页: ${JSON.stringify(draftGeometry)}`)
     console.log(`[${SUFFIX}] 剧情痕迹: ${JSON.stringify(storyTraceAudit)}`)
+    console.log(
+      `[${SUFFIX}] 剧情持久缓存: ${JSON.stringify({
+        storyCacheBeforeSecondChoice,
+        persistedContinuationCache,
+      })}`,
+    )
+    console.log(
+      `[${SUFFIX}] 刷新恢复: ${JSON.stringify({
+        cacheBeforeRefresh,
+        refreshedArchiveAudit,
+        refreshedChapterEndAudit,
+        cachedContinuationTitle,
+        requestsBeforeRefreshedContinue,
+        requestsAfterRefreshedContinue,
+        cacheAfterRefreshedContinue,
+      })}`,
+    )
+    console.log(`[${SUFFIX}] 剧情页导航切换: ${JSON.stringify(storyNavAudit?.routeChecks ?? [])}`)
+    console.log(
+      `[${SUFFIX}] 主页宠物快捷入口: ${JSON.stringify({
+        homePetJump,
+        homePetScreenReady,
+        homeRestoredAfterPetJump,
+      })}`,
+    )
     console.log(`[${SUFFIX}] 控制台错误: ${errors.length ? errors.join(' || ') : '(无)'}`)
     console.log(`[${SUFFIX}] 截图: ${shots.join(', ')}`)
     if (errors.length) process.exitCode = 1

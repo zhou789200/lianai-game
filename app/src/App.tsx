@@ -8,6 +8,8 @@ import { ToastStack } from './components/ToastStack'
 import { SettingsModal } from './components/SettingsModal'
 import { IntroModal } from './components/IntroModal'
 import { AccountModal } from './components/AccountModal'
+import { playSfx } from './game/sfx'
+import { stopStoryVoice } from './game/storyVoice'
 import { HomeView } from './views/HomeView'
 import { BusinessView } from './views/BusinessView'
 import { CafeView } from './views/CafeView'
@@ -73,7 +75,15 @@ function Game() {
   const useImmersiveCafe = view === 'cafe'
   const guestGateOpen = showAccountGate
 
+  const navigate = (next: ViewKey) => {
+    if (next === view) return
+    stopStoryVoice()
+    playSfx('navigate')
+    setView(next)
+  }
+
   const openAccount = (mode: 'register' | 'login') => {
+    stopStoryVoice()
     setAccountStartMode(mode)
     setShowSettings(false)
     setShowAccount(true)
@@ -95,16 +105,19 @@ function Game() {
         {inRun || useImmersiveCafe || !authReady ? null : (
           <AppHeader
             onOpenSettings={() => {
-              if (!guestGateOpen) setShowSettings(true)
+              if (!guestGateOpen) {
+                stopStoryVoice()
+                setShowSettings(true)
+              }
             }}
-            onOpenRomance={() => setView('romance')}
+            onOpenRomance={() => navigate('romance')}
           />
         )}
 
         {/* 立绘留白区：透明，只负责把内容压到画面下半部分 */}
         {zone ? <div className={`figure-zone figure-zone--${zone}`} aria-hidden="true" /> : null}
 
-        {view === 'home' ? <HomeView onNavigate={setView} /> : null}
+        {view === 'home' ? <HomeView onNavigate={navigate} /> : null}
         {inRun && runId ? (
           <BusinessView key={runId} runId={runId} onExit={() => setView('cafe')} />
         ) : null}
@@ -119,11 +132,11 @@ function Game() {
         {view === 'pet' ? <PetView /> : null}
         {view === 'romance' ? <RomanceView /> : null}
         {view === 'story' ? <StoryView /> : null}
-      </div>
 
-      {inRun || !authReady || guestGateOpen ? null : (
-        <BottomNav active={view} onChange={setView} />
-      )}
+        {inRun || !authReady || guestGateOpen ? null : (
+          <BottomNav active={view} onChange={navigate} />
+        )}
+      </div>
 
       <ToastStack notices={notices} onDismiss={dismissNotice} />
 

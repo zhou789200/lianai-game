@@ -5,7 +5,11 @@ import {
   STORYBOOK_CHAPTERS,
   TASKS,
 } from '../data/content'
-import { DYNAMIC_STORY_START_INDEX, normalizeStoryTrace } from './dynamicStory'
+import {
+  DYNAMIC_STORY_START_INDEX,
+  normalizeStoryCache,
+  normalizeStoryTrace,
+} from './dynamicStory'
 import { normalizeStoryChoices } from './storyProgression'
 import type { GameState, TaskState } from './types'
 
@@ -13,8 +17,8 @@ export const SAVE_KEY = 'seabreeze-pet-cafe.save'
 export const ACCOUNT_SAVE_PREFIX = 'seabreeze-pet-cafe.account.'
 export const GUEST_MODE_KEY = 'seabreeze-pet-cafe.guest-mode'
 export const INTRO_SEEN_KEY = 'seabreeze-pet-cafe.intro-seen'
-export const SAVE_VERSION = 3
-const SUPPORTED_SAVE_VERSIONS = new Set([1, 2, 3])
+export const SAVE_VERSION = 4
+const SUPPORTED_SAVE_VERSIONS = new Set([1, 2, 3, 4])
 
 export const STAMINA_REGEN_MS = 90_000 // 每 90 秒回复 1 点体力
 export const BUSINESS_STAMINA_COST = 4
@@ -32,6 +36,28 @@ export function expForLevel(level: number): number {
 
 export function createInitialTasks(): TaskState[] {
   return TASKS.map((t) => ({ id: t.id, progress: 0, claimed: false }))
+}
+
+function createStorySeed(now = Date.now()): string {
+  return `seed_${now.toString(36)}_${Math.random().toString(36).slice(2, 10)}`
+}
+
+function stableStorySeed(value: string): string {
+  let hash = 2166136261
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index)
+    hash = Math.imul(hash, 16777619)
+  }
+  return `seed_migrated_${(hash >>> 0).toString(36)}`
+}
+
+function cleanStorySeed(value: unknown): string {
+  if (typeof value !== 'string') return ''
+  return value
+    .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 80)
 }
 
 export function createInitialState(): GameState {
@@ -91,6 +117,8 @@ export function createInitialState(): GameState {
     storyFlags: [],
     storyTraces: [],
     storyChoices: [],
+    storySeed: createStorySeed(now),
+    storyCache: [],
     storyTraceId: null,
     storyTurn: 0,
 
@@ -216,6 +244,15 @@ function normalizeState(state: GameState): GameState {
     ? storedStoryTraceId
     : null
   const storyChoices = normalizeStoryChoices(state.storyChoices)
+  const storedStorySeed = cleanStorySeed(state.storySeed)
+  const migrationSeedSource = [
+    typeof state.createdAt === 'number' ? state.createdAt : 0,
+    storyTurn,
+    storyChoices.map((choice) => choice.id).join(','),
+    retainedTraces.map((trace) => trace.id).join(','),
+  ].join('|')
+  const storySeed = storedStorySeed || stableStorySeed(migrationSeedSource)
+  const storyCache = normalizeStoryCache(state.storyCache)
 
   return {
     ...state,
@@ -238,6 +275,8 @@ function normalizeState(state: GameState): GameState {
       : [],
     storyTraces,
     storyChoices,
+    storySeed,
+    storyCache,
     storyTraceId,
     storyTurn: Math.max(0, storyTurn),
     activeRunId: state.activeRunId ?? null,

@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Check, ChevronRight, Clock, Heart, Lock, SkipForward, Sparkles } from 'lucide-react'
 import { useGame } from '../game/GameContext'
+import { playSfx } from '../game/sfx'
 import { CHAPTERS, chapterAvailable, chapterRequirementText, getChapter } from '../game/story'
 import { useTypewriter } from '../game/useTypewriter'
 import { Modal } from '../components/Modal'
+import { StoryVoiceButton } from '../components/StoryVoiceButton'
 import { UiButton } from '../components/UiButton'
+import { useStoryVoice } from '../game/useStoryVoice'
 import type { StoryChoice } from '../game/types'
 
 interface ReplyState {
@@ -71,15 +74,23 @@ export function RomanceView() {
         : null
 
   const typed = useTypewriter(storyText, pageKey)
+  useStoryVoice(
+    storyText,
+    reply || beat?.type !== 'dialogue' ? '旁白' : beat.speaker,
+    pageKey,
+    available && !catalogOpen && !confirmSkip,
+  )
 
   const onContinue = () => {
     if (!available) return
     if (reply) {
+      playSfx('page')
       setReply(null)
       return
     }
     if (finished) {
       actions.completeChapter(false)
+      playSfx('reward')
       return
     }
     if (!beat) return
@@ -117,15 +128,21 @@ export function RomanceView() {
             <h2 className="story-head__title">《{chapter.title}》</h2>
             <p className="story-head__sub">{chapter.subtitle}</p>
           </div>
-          <button
-            type="button"
-            className="story-head__menu"
-            onClick={() => setCatalogOpen(true)}
-            aria-label="打开章节目录"
-            title="章节目录"
-          >
-            <ChevronRight size={16} />
-          </button>
+          <div className="story-head__actions">
+            <StoryVoiceButton className="story-head__menu" />
+            <button
+              type="button"
+              className="story-head__menu"
+              onClick={() => {
+                playSfx('tap')
+                setCatalogOpen(true)
+              }}
+              aria-label="打开章节目录"
+              title="章节目录"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
         </div>
 
         <p className="story-head__scene">
@@ -255,7 +272,10 @@ export function RomanceView() {
           block
           icon={<SkipForward size={15} />}
           disabled={!available || completed}
-          onClick={() => setConfirmSkip(true)}
+          onClick={() => {
+            playSfx('tap')
+            setConfirmSkip(true)
+          }}
         >
           {completed ? '本章已完成' : '跳过本章'}
         </UiButton>
@@ -279,7 +299,12 @@ export function RomanceView() {
                   disabled={!open}
                   aria-current={isCurrent ? 'page' : undefined}
                   onClick={() => {
-                    if (!isCurrent) actions.selectChapter(item.id)
+                    if (!isCurrent) {
+                      actions.selectChapter(item.id)
+                      playSfx('page')
+                    } else {
+                      playSfx('tap')
+                    }
                     setCatalogOpen(false)
                   }}
                 >
@@ -326,6 +351,7 @@ export function RomanceView() {
                 onClick={() => {
                   setConfirmSkip(false)
                   actions.completeChapter(true)
+                  playSfx('reward')
                 }}
               >
                 确认跳过

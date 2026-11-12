@@ -160,6 +160,7 @@ export function PetView() {
         actionTimer.current = null
         return
       }
+      playMeow('chirp')
       setFeedback({ icon: def.icon, text: r.message, at: Date.now() })
       actionTimer.current = null
     }, 620)

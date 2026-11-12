@@ -3,6 +3,7 @@ import type {
   GeneratedStory,
   GeneratedStoryBeat,
   GeneratedStoryChoice,
+  StoryCacheEntry,
   StorybookChapterDef,
   StoryTrace,
 } from './types'
@@ -10,6 +11,7 @@ import { buildLocalStory } from '../../shared/localStoryBank.mjs'
 import { STORYBOOK_CHAPTERS } from '../data/content'
 
 export const STORY_GENERATE_ENDPOINT = './api/story/generate'
+export const STORY_CACHE_LIMIT = 6
 export const DYNAMIC_STORY_START_INDEX =
   Math.max(0, ...STORYBOOK_CHAPTERS.map((chapter: StorybookChapterDef) => chapter.index)) + 1
 
@@ -19,6 +21,7 @@ export interface DynamicStoryChapter {
 }
 
 export interface StoryGenerationRequest {
+  storySeed: string
   playerName: string
   shopName: string
   petName: string
@@ -63,12 +66,26 @@ interface FetchStoryOptions {
 
 export interface StoryPrefetch {
   key: string
+  cacheKey: string
   promise: Promise<GeneratedStory>
   abort: () => void
 }
 
 interface StoryPrefetchOptions {
   fetchImpl?: typeof fetch
+}
+
+function hashString(value: string): string {
+  let hash = 2166136261
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index)
+    hash = Math.imul(hash, 16777619)
+  }
+  return (hash >>> 0).toString(36)
+}
+
+function cleanStorySeed(value: unknown): string {
+  return cleanText(value, 80)
 }
 
 function cleanText(value: unknown, maxLength: number): string {
@@ -177,6 +194,7 @@ export function buildStoryGenerationRequest(state: GameState): StoryGenerationRe
   const latestMemory = allMemories[0]
 
   return {
+    storySeed: cleanStorySeed(state.storySeed) || 'legacy',
     playerName: cleanText(state.playerName, 20) || '店长',
     shopName: cleanText(state.shopName, 32) || '海风镇宠物咖啡馆',
     petName: cleanText(state.pet.name, 16) || '布丁',
@@ -206,6 +224,16 @@ export function buildStoryGenerationRequest(state: GameState): StoryGenerationRe
   }
 }
 
+/**
+ * The key deliberately includes the complete request context, not only the
+ * turn. This prevents a stale cache entry from leaking into a different
+ * branch or a different save that happens to be on the same chapter number.
+ */
+export function storyCacheKey(state: GameState): string {
+  const request = buildStoryGenerationRequest(state)
+  return `story_${hashString(JSON.stringify(request))}`
+}
+
 function normalizeBeat(value: unknown): GeneratedStoryBeat | null {
   if (!isRecord(value)) return null
   const type = value.type === 'dialogue' ? 'dialogue' : value.type === 'narration' ? 'narration' : null
@@ -226,6 +254,69 @@ function normalizeChoice(value: unknown, index: number): GeneratedStoryChoice | 
   const consequence = cleanText(value.consequence, 180)
   if (!text || !reply || !consequence) return null
   return { id, text, reply, consequence }
+}
+
+function normalizeStoryCacheEntry(value: unknown): StoryCacheEntry | null {
+  if (!isRecord(value) || typeof value.key !== 'string') return null
+  const key = cleanText(value.key, 100)
+  if (!key) return null
+  try {
+    return {
+      key,
+      at:
+        typeof value.at === 'number' && Number.isFinite(value.at)
+          ? value.at
+          : 0,
+      story: normalizeGeneratedStory(value.story),
+    }
+  } catch {
+    return null
+  }
+}
+
+export function normalizeStoryCache(value: unknown): StoryCacheEntry[] {
+  if (!Array.isArray(value)) return []
+  const seen = new Set<string>()
+  const entries: StoryCacheEntry[] = []
+  for (const item of value) {
+    const entry = normalizeStoryCacheEntry(item)
+    if (!entry || seen.has(entry.key)) continue
+    seen.add(entry.key)
+    entries.push(entry)
+    if (entries.length >= STORY_CACHE_LIMIT) break
+  }
+  return entries
+}
+
+export function findCachedGeneratedStory(state: GameState): GeneratedStory | null {
+  const key = storyCacheKey(state)
+  const entry = state.storyCache.find((item) => item.key === key)
+  if (!entry) return null
+  try {
+    return normalizeGeneratedStory(entry.story)
+  } catch {
+    return null
+  }
+}
+
+export function upsertStoryCache(
+  value: unknown,
+  key: string,
+  story: GeneratedStory,
+  at = Date.now(),
+): StoryCacheEntry[] {
+  const normalizedKey = cleanText(key, 100)
+  if (!normalizedKey) return normalizeStoryCache(value)
+  try {
+    const normalizedStory = normalizeGeneratedStory(story)
+    const existing = normalizeStoryCache(value)
+    return [
+      { key: normalizedKey, at, story: normalizedStory },
+      ...existing.filter((entry) => entry.key !== normalizedKey),
+    ].slice(0, STORY_CACHE_LIMIT)
+  } catch {
+    return normalizeStoryCache(value)
+  }
 }
 
 /**
@@ -362,6 +453,7 @@ export function createLocalStoryFallback(
     {
       petName: state.pet.name,
       storyTurn: state.storyTurn,
+      storySeed: request.storySeed,
       memories: request.memories,
     },
     true,
@@ -373,6 +465,9 @@ export async function fetchGeneratedStory(
   state: GameState,
   options: FetchStoryOptions = {},
 ): Promise<GeneratedStory> {
+  const cached = findCachedGeneratedStory(state)
+  if (cached) return cached
+
   try {
     const requestFetch = options.fetchImpl ?? fetch
     const response = await requestFetch(STORY_GENERATE_ENDPOINT, {
@@ -472,7 +567,9 @@ export function createStoryPrefetch(
   options: StoryPrefetchOptions = {},
 ): StoryPrefetch {
   const controller = new AbortController()
-  const promise = prefetchStoryAfterChoice(state, story, choice, {
+  const continuationState = prepareContinuationState(state, story, choice)
+  const cacheKey = storyCacheKey(continuationState)
+  const promise = fetchGeneratedStory(continuationState, {
     fetchImpl: options.fetchImpl,
     signal: controller.signal,
   })
@@ -483,6 +580,7 @@ export function createStoryPrefetch(
 
   return {
     key: storyPrefetchKey(story, choice),
+    cacheKey,
     promise,
     abort: () => controller.abort(),
   }

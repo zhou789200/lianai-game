@@ -14,6 +14,8 @@ import { DECOR, EQUIPMENT, RECIPES } from '../data/content'
 import { CAFE_RECIPES } from '../data/cafeContent'
 import { deriveFromEquipment } from '../game/cafeSession'
 import { equipmentCost, useGame } from '../game/GameContext'
+import { playMeow } from '../game/petVoice'
+import { playSfx, type SfxName } from '../game/sfx'
 import { BUSINESS_STAMINA_COST } from '../game/storage'
 import {
   CafeActors,
@@ -80,6 +82,18 @@ const SPOT_BY_ID = Object.fromEntries(SCENE_SPOTS.map((spot) => [spot.id, spot])
   SpotId,
   (typeof SCENE_SPOTS)[number]
 >
+
+const FX_SOUND: Record<FxKind, SfxName> = {
+  coffee: 'brew',
+  pastry: 'oven',
+  sparkle: 'sparkle',
+  heart: 'heart',
+  ring: 'tap',
+  fish: 'bubble',
+  flower: 'flutter',
+  paw: 'cafe-pet',
+  clock: 'tick',
+}
 
 /**
  * 可购买装饰的入口表：点哪一个就买哪一件。
@@ -215,8 +229,11 @@ export function CafePlayScene({ canStart, onStart }: CafePlaySceneProps) {
   const nextRecipe =
     RECIPES.find((recipe) => !state.recipes.includes(recipe.id)) ?? RECIPES[RECIPES.length - 1]
   const triggerFx = (spot: SpotId, text: string, duration = 2100) => {
+    const kind = SPOT_BY_ID[spot].fx
+    playSfx(FX_SOUND[kind])
+    if (kind === 'paw') playMeow('chirp')
     fxSeed.current += 1
-    setFx({ id: fxSeed.current, spot, kind: SPOT_BY_ID[spot].fx, text })
+    setFx({ id: fxSeed.current, spot, kind, text })
     if (fxTimer.current !== null) window.clearTimeout(fxTimer.current)
     fxTimer.current = window.setTimeout(() => setFx(null), duration)
   }
