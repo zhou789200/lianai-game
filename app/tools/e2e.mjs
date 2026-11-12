@@ -2101,11 +2101,108 @@ async function main() {
     /* ---------- 存档与设置 ---------- */
     await evaluate(`(() => {
       const b = document.querySelector('.appbar__actions .icon-btn:last-child');
-      if (b) b.click(); return !!b;
+      if (!b) return false;
+      b.focus();
+      b.click();
+      return true;
     })()`)
     await sleep(400)
     await shoot('14-settings')
     shots.push('14-settings')
+
+    const settingsFocusAudit = await evaluate(`(() => {
+      const dialog = document.querySelector('.modal[role="dialog"]');
+      const close = dialog?.querySelector('.modal__close');
+      const active = document.activeElement;
+      const focusables = dialog
+        ? [...dialog.querySelectorAll(
+            'button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [href], [tabindex]:not([tabindex="-1"])',
+          )]
+        : [];
+      return {
+        labeledBy:
+          dialog?.getAttribute('aria-labelledby') ===
+          dialog?.querySelector('.modal__title')?.id,
+        initialCloseFocus: active === close,
+        firstIsClose: focusables[0] === close,
+        lastLabel: focusables.at(-1)?.getAttribute('aria-label') ?? '',
+      };
+    })()`)
+    if (
+      !settingsFocusAudit?.labeledBy ||
+      !settingsFocusAudit?.initialCloseFocus ||
+      !settingsFocusAudit?.firstIsClose
+    ) {
+      errors.push(`设置弹窗焦点初始化不正确: ${JSON.stringify(settingsFocusAudit)}`)
+    }
+
+    await client.send('Input.dispatchKeyEvent', {
+      type: 'keyDown',
+      key: 'Tab',
+      code: 'Tab',
+      modifiers: 8,
+    })
+    await client.send('Input.dispatchKeyEvent', {
+      type: 'keyUp',
+      key: 'Tab',
+      code: 'Tab',
+      modifiers: 8,
+    })
+    const reverseTabAudit = await evaluate(`(() => {
+      const dialog = document.querySelector('.modal[role="dialog"]');
+      const focusables = dialog
+        ? [...dialog.querySelectorAll(
+            'button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [href], [tabindex]:not([tabindex="-1"])',
+          )]
+        : [];
+      return {
+        trapped: dialog?.contains(document.activeElement) ?? false,
+        onLast: document.activeElement === focusables.at(-1),
+        activeLabel: document.activeElement?.getAttribute('aria-label') ?? '',
+      };
+    })()`)
+    if (
+      !reverseTabAudit?.trapped ||
+      !reverseTabAudit?.onLast ||
+      (reverseTabAudit?.activeLabel &&
+        reverseTabAudit.activeLabel !== settingsFocusAudit?.lastLabel)
+    ) {
+      errors.push(`设置弹窗反向焦点循环不正确: ${JSON.stringify(reverseTabAudit)}`)
+    }
+
+    await client.send('Input.dispatchKeyEvent', {
+      type: 'keyDown',
+      key: 'Escape',
+      code: 'Escape',
+    })
+    await client.send('Input.dispatchKeyEvent', {
+      type: 'keyUp',
+      key: 'Escape',
+      code: 'Escape',
+    })
+    await sleep(250)
+    const escapeCloseAudit = await evaluate(`(() => ({
+      closed: !document.querySelector('.modal[role="dialog"]'),
+      focusClass: document.activeElement?.className ?? '',
+      focusLabel: document.activeElement?.getAttribute('aria-label') ?? '',
+    }))()`)
+    if (
+      !escapeCloseAudit?.closed ||
+      !String(escapeCloseAudit?.focusClass).includes('icon-btn')
+    ) {
+      errors.push(`Escape 关闭设置后未恢复触发按钮: ${JSON.stringify(escapeCloseAudit)}`)
+    }
+    console.log(`[${SUFFIX}] 设置弹窗键盘审计: ${JSON.stringify({
+      settingsFocusAudit,
+      reverseTabAudit,
+      escapeCloseAudit,
+    })}`)
+
+    await evaluate(`(() => {
+      const b = document.querySelector('.appbar__actions .icon-btn:last-child');
+      if (b) b.click(); return !!b;
+    })()`)
+    await sleep(400)
 
     // 存档是否真的写进了 localStorage
     const saved = await evaluate(`!!localStorage.getItem('seabreeze-pet-cafe.save')`)

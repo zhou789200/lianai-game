@@ -66,7 +66,9 @@ export function AccountModal({
   const usernameRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    const timer = window.setTimeout(() => usernameRef.current?.focus(), 120)
+    const timer = window.setTimeout(() => {
+      if (document.activeElement !== usernameRef.current) usernameRef.current?.focus()
+    }, 120)
     return () => window.clearTimeout(timer)
   }, [])
 
@@ -124,6 +126,7 @@ export function AccountModal({
           : '登录后读取账号里的咖啡馆存档'
       }
       onClose={dismissible && !busy ? onClose : undefined}
+      initialFocusRef={usernameRef}
     >
       <div className="account-tabs" role="tablist" aria-label="账号方式">
         <button
