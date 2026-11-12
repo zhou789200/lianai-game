@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { BookOpen, ChevronRight, Coffee, PawPrint, Sparkles } from 'lucide-react'
 import { useGame } from '../game/GameContext'
 import { DialogueBand } from '../components/DialogueBand'
 import { QuestSheet } from '../components/QuestSheet'
 import { RHYTHM, TASKS } from '../data/content'
+import { startHomeBgm } from '../game/homeBgm'
 import { getCurrentStorybookChapter, storybookProgress } from '../game/storybook'
 import type { ViewKey } from '../game/types'
 
@@ -23,6 +24,8 @@ function currentSlotIndex(): number {
 export function HomeView({ onNavigate }: { onNavigate: (v: ViewKey) => void }) {
   const { state } = useGame()
   const [sheet, setSheet] = useState(false)
+
+  useEffect(() => startHomeBgm(), [])
 
   const storyChapter = getCurrentStorybookChapter(state)
   const slotIndex = currentSlotIndex()

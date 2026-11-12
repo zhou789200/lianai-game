@@ -350,7 +350,7 @@ export function SettingsModal({
           <strong>声音</strong>
           <small>
             {sound
-              ? '经营、宠物与剧情音效已开启'
+              ? '主页音乐、经营、宠物与剧情音效已开启'
               : '已静音，游戏操作只保留视觉反馈'}
           </small>
         </span>
