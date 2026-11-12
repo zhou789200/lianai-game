@@ -1,10 +1,24 @@
-import { useEffect, useMemo, useState } from 'react'
-import { BookOpen, ChevronRight, Coffee, PawPrint, Sparkles } from 'lucide-react'
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
+import {
+  BookOpen,
+  ChevronRight,
+  Coffee,
+  Disc3,
+  PawPrint,
+  SkipForward,
+  Sparkles,
+} from 'lucide-react'
 import { useGame } from '../game/GameContext'
 import { DialogueBand } from '../components/DialogueBand'
 import { QuestSheet } from '../components/QuestSheet'
 import { RHYTHM, TASKS } from '../data/content'
-import { startHomeBgm } from '../game/homeBgm'
+import {
+  getHomeBgmTrack,
+  getHomeBgmTrackIndex,
+  onHomeBgmChange,
+  playNextHomeBgm,
+  startHomeBgm,
+} from '../game/homeBgm'
 import { getCurrentStorybookChapter, storybookProgress } from '../game/storybook'
 import type { ViewKey } from '../game/types'
 
@@ -24,8 +38,20 @@ function currentSlotIndex(): number {
 export function HomeView({ onNavigate }: { onNavigate: (v: ViewKey) => void }) {
   const { state } = useGame()
   const [sheet, setSheet] = useState(false)
+  const bgmTrackIndex = useSyncExternalStore(onHomeBgmChange, getHomeBgmTrackIndex)
+  const bgm = getHomeBgmTrack(bgmTrackIndex)
 
-  useEffect(() => startHomeBgm(), [])
+  useEffect(() => {
+    let release: (() => void) | null = null
+    const timer = window.setTimeout(() => {
+      release = startHomeBgm()
+    }, 0)
+    return () => {
+      window.clearTimeout(timer)
+      release?.()
+      release = null
+    }
+  }, [])
 
   const storyChapter = getCurrentStorybookChapter(state)
   const slotIndex = currentSlotIndex()
@@ -76,18 +102,39 @@ export function HomeView({ onNavigate }: { onNavigate: (v: ViewKey) => void }) {
 
   return (
     <div className="screen screen--home">
-      <button
-        type="button"
-        className={`home2__quest${claimable > 0 ? ' is-hot' : ''}`}
-        onClick={() => setSheet(true)}
-      >
-        <Sparkles size={14} />
-        <span className="home2__quest-label">今日安排</span>
-        <b className="t-num">
-          {taskDone}/{taskTotal}
-        </b>
-        {claimable > 0 ? <i className="home2__quest-dot" aria-hidden="true" /> : null}
-      </button>
+      <div className="home2__tools">
+        <button
+          type="button"
+          className="home2__music"
+          onClick={playNextHomeBgm}
+          aria-label={`当前背景音乐：${bgm.title}，点击切换下一首`}
+          title={`${bgm.title} · ${bgm.mood} · 点击切换`}
+        >
+          <span className="home2__music-disc" aria-hidden="true">
+            <Disc3 size={17} />
+          </span>
+          <span className="home2__music-copy">
+            <span className="home2__music-title">{bgm.title}</span>
+            <span className="home2__music-meta t-num">
+              {bgm.trackIndex + 1}/{bgm.trackCount}
+            </span>
+          </span>
+          <SkipForward size={13} className="home2__music-next" aria-hidden="true" />
+        </button>
+
+        <button
+          type="button"
+          className={`home2__quest${claimable > 0 ? ' is-hot' : ''}`}
+          onClick={() => setSheet(true)}
+        >
+          <Sparkles size={14} />
+          <span className="home2__quest-label">今日安排</span>
+          <b className="t-num">
+            {taskDone}/{taskTotal}
+          </b>
+          {claimable > 0 ? <i className="home2__quest-dot" aria-hidden="true" /> : null}
+        </button>
+      </div>
 
       <div className="home2__grow" />
 

@@ -1,8 +1,8 @@
 /* ============================================================
    主页背景音乐
    ------------------------------------------------------------
-   四小节循环的原创轻音乐，使用 Web Audio 实时合成：
-   暖色铺底、轻低音、钟琴旋律和一点海风噪声。
+   四首原创轻音乐，使用 Web Audio 实时合成。
+   进入主页随机选曲，用户也可以从主页唱片按钮切歌。
    只在主页挂载期间播放，并遵循现有全局声音开关。
    ============================================================ */
 
@@ -23,66 +23,249 @@ interface ChordBar {
   melody: readonly MelodyNote[]
 }
 
+interface Track {
+  id: string
+  title: string
+  mood: string
+  bpm: number
+  masterVolume: number
+  seaVolume: number
+  bars: readonly ChordBar[]
+}
+
 interface AudioSession {
   context: AudioContext
   master: GainNode
   musicBus: GainNode
-  noiseBuffer: AudioBuffer
+  track: Track
+  sea: AudioBufferSourceNode
   scheduler: number | null
   closeTimer: number | null
   nextBarTime: number
   nextBarIndex: number
 }
 
-const BPM = 74
-const BEAT_SECONDS = 60 / BPM
-const BAR_SECONDS = BEAT_SECONDS * 4
+interface SessionOptions {
+  masterVolume?: number
+  fadeInSeconds?: number
+  onFadeOutComplete?: () => void
+}
+
+export interface HomeBgmState {
+  trackIndex: number
+  trackCount: number
+  title: string
+  mood: string
+}
+
 const SCHEDULER_INTERVAL_MS = 250
 const SCHEDULE_AHEAD_SECONDS = 0.7
-const MASTER_VOLUME = 0.5
 const FADE_IN_SECONDS = 1.8
-const FADE_OUT_SECONDS = 0.65
+const FADE_OUT_SECONDS = 0.85
+const TRACK_SWITCH_FADE_SECONDS = 0.55
+const TRACK_SWITCH_OVERLAP_SECONDS = 0.3
+const STORAGE_KEY = 'seabreeze-pet-cafe.last-home-track'
 
-// D 大调色彩的四小节循环，旋律落在五声音阶内，适合轻松但不空泛的咖啡馆氛围。
-const BARS: readonly ChordBar[] = [
+// 四首曲子都使用原创和声进行与五声音阶旋律，但速度、调式和配器气质不同。
+const TRACKS: readonly Track[] = [
   {
-    bass: 38,
-    pad: [50, 57, 61, 66],
-    melody: [
-      { midi: 78, beat: 0, duration: 1.15, gain: 0.021 },
-      { midi: 81, beat: 0.9, duration: 0.75, gain: 0.013 },
-      { midi: 76, beat: 1.7, duration: 1.35, gain: 0.018 },
-      { midi: 74, beat: 2.9, duration: 0.95, gain: 0.014 },
+    id: 'sea-breeze',
+    title: '海风来信',
+    mood: 'D 大调 · 温柔钟琴',
+    bpm: 74,
+    masterVolume: 0.5,
+    seaVolume: 0.008,
+    bars: [
+      {
+        bass: 38,
+        pad: [50, 57, 61, 66],
+        melody: [
+          { midi: 78, beat: 0, duration: 1.15, gain: 0.021 },
+          { midi: 81, beat: 0.9, duration: 0.75, gain: 0.013 },
+          { midi: 76, beat: 1.7, duration: 1.35, gain: 0.018 },
+          { midi: 74, beat: 2.9, duration: 0.95, gain: 0.014 },
+        ],
+      },
+      {
+        bass: 35,
+        pad: [47, 54, 57, 62],
+        melody: [
+          { midi: 74, beat: 0, duration: 1.05, gain: 0.016 },
+          { midi: 78, beat: 0.95, duration: 0.8, gain: 0.014 },
+          { midi: 76, beat: 1.75, duration: 1.25, gain: 0.018 },
+          { midi: 71, beat: 2.9, duration: 0.9, gain: 0.013 },
+        ],
+      },
+      {
+        bass: 31,
+        pad: [43, 50, 54, 59],
+        melody: [
+          { midi: 71, beat: 0, duration: 1, gain: 0.015 },
+          { midi: 74, beat: 0.9, duration: 0.8, gain: 0.014 },
+          { midi: 79, beat: 1.7, duration: 1.35, gain: 0.02 },
+          { midi: 78, beat: 2.85, duration: 0.95, gain: 0.014 },
+        ],
+      },
+      {
+        bass: 33,
+        pad: [45, 52, 55, 61],
+        melody: [
+          { midi: 76, beat: 0, duration: 1.1, gain: 0.017 },
+          { midi: 73, beat: 0.95, duration: 0.8, gain: 0.013 },
+          { midi: 69, beat: 1.7, duration: 1.35, gain: 0.016 },
+          { midi: 71, beat: 2.9, duration: 0.9, gain: 0.012 },
+        ],
+      },
     ],
   },
   {
-    bass: 35,
-    pad: [47, 54, 57, 62],
-    melody: [
-      { midi: 74, beat: 0, duration: 1.05, gain: 0.016 },
-      { midi: 78, beat: 0.95, duration: 0.8, gain: 0.014 },
-      { midi: 76, beat: 1.75, duration: 1.25, gain: 0.018 },
-      { midi: 71, beat: 2.9, duration: 0.9, gain: 0.013 },
+    id: 'sunset-cup',
+    title: '落日与白瓷杯',
+    mood: 'G 大调 · 暖木琴',
+    bpm: 82,
+    masterVolume: 0.46,
+    seaVolume: 0.005,
+    bars: [
+      {
+        bass: 43,
+        pad: [55, 59, 62, 67],
+        melody: [
+          { midi: 74, beat: 0, duration: 0.85, gain: 0.018 },
+          { midi: 79, beat: 0.8, duration: 0.7, gain: 0.015 },
+          { midi: 81, beat: 1.65, duration: 1.15, gain: 0.018 },
+          { midi: 83, beat: 2.8, duration: 1.05, gain: 0.014 },
+        ],
+      },
+      {
+        bass: 40,
+        pad: [52, 55, 59, 64],
+        melody: [
+          { midi: 79, beat: 0, duration: 0.9, gain: 0.017 },
+          { midi: 76, beat: 0.85, duration: 0.75, gain: 0.014 },
+          { midi: 74, beat: 1.7, duration: 1.2, gain: 0.018 },
+          { midi: 71, beat: 2.9, duration: 0.85, gain: 0.012 },
+        ],
+      },
+      {
+        bass: 36,
+        pad: [48, 55, 60, 64],
+        melody: [
+          { midi: 76, beat: 0, duration: 0.9, gain: 0.017 },
+          { midi: 79, beat: 0.85, duration: 0.75, gain: 0.015 },
+          { midi: 83, beat: 1.7, duration: 1.1, gain: 0.019 },
+          { midi: 81, beat: 2.85, duration: 1.05, gain: 0.014 },
+        ],
+      },
+      {
+        bass: 38,
+        pad: [50, 57, 62, 66],
+        melody: [
+          { midi: 81, beat: 0, duration: 0.85, gain: 0.017 },
+          { midi: 79, beat: 0.8, duration: 0.7, gain: 0.014 },
+          { midi: 74, beat: 1.65, duration: 1.25, gain: 0.018 },
+          { midi: 76, beat: 2.9, duration: 0.9, gain: 0.013 },
+        ],
+      },
     ],
   },
   {
-    bass: 31,
-    pad: [43, 50, 54, 59],
-    melody: [
-      { midi: 71, beat: 0, duration: 1, gain: 0.015 },
-      { midi: 74, beat: 0.9, duration: 0.8, gain: 0.014 },
-      { midi: 79, beat: 1.7, duration: 1.35, gain: 0.02 },
-      { midi: 78, beat: 2.85, duration: 0.95, gain: 0.014 },
+    id: 'rain-window',
+    title: '雨落在玻璃窗',
+    mood: 'A 小调 · 雾感音粒',
+    bpm: 68,
+    masterVolume: 0.5,
+    seaVolume: 0.014,
+    bars: [
+      {
+        bass: 33,
+        pad: [45, 52, 57, 60],
+        melody: [
+          { midi: 69, beat: 0, duration: 1.4, gain: 0.016 },
+          { midi: 72, beat: 1.1, duration: 0.9, gain: 0.013 },
+          { midi: 76, beat: 2.15, duration: 1.4, gain: 0.018 },
+          { midi: 74, beat: 3.15, duration: 0.75, gain: 0.011 },
+        ],
+      },
+      {
+        bass: 29,
+        pad: [41, 48, 52, 57],
+        melody: [
+          { midi: 72, beat: 0, duration: 1.2, gain: 0.015 },
+          { midi: 69, beat: 1.15, duration: 1, gain: 0.014 },
+          { midi: 67, beat: 2.25, duration: 1.3, gain: 0.017 },
+          { midi: 71, beat: 3.25, duration: 0.65, gain: 0.011 },
+        ],
+      },
+      {
+        bass: 36,
+        pad: [48, 55, 60, 64],
+        melody: [
+          { midi: 64, beat: 0, duration: 1.35, gain: 0.014 },
+          { midi: 67, beat: 1.1, duration: 0.9, gain: 0.014 },
+          { midi: 72, beat: 2.1, duration: 1.45, gain: 0.019 },
+          { midi: 71, beat: 3.2, duration: 0.7, gain: 0.011 },
+        ],
+      },
+      {
+        bass: 31,
+        pad: [43, 50, 55, 59],
+        melody: [
+          { midi: 71, beat: 0, duration: 1.25, gain: 0.015 },
+          { midi: 67, beat: 1.1, duration: 1.05, gain: 0.014 },
+          { midi: 64, beat: 2.15, duration: 1.45, gain: 0.017 },
+          { midi: 69, beat: 3.25, duration: 0.65, gain: 0.011 },
+        ],
+      },
     ],
   },
   {
-    bass: 33,
-    pad: [45, 52, 55, 61],
-    melody: [
-      { midi: 76, beat: 0, duration: 1.1, gain: 0.017 },
-      { midi: 73, beat: 0.95, duration: 0.8, gain: 0.013 },
-      { midi: 69, beat: 1.7, duration: 1.35, gain: 0.016 },
-      { midi: 71, beat: 2.9, duration: 0.9, gain: 0.012 },
+    id: 'starlight',
+    title: '星夜慢板',
+    mood: 'C 大调 · 清亮夜铃',
+    bpm: 62,
+    masterVolume: 0.45,
+    seaVolume: 0.003,
+    bars: [
+      {
+        bass: 36,
+        pad: [48, 55, 60, 64],
+        melody: [
+          { midi: 79, beat: 0, duration: 1.5, gain: 0.017 },
+          { midi: 76, beat: 1.25, duration: 1.1, gain: 0.014 },
+          { midi: 72, beat: 2.45, duration: 1.35, gain: 0.016 },
+          { midi: 74, beat: 3.35, duration: 0.6, gain: 0.01 },
+        ],
+      },
+      {
+        bass: 33,
+        pad: [45, 52, 57, 60],
+        melody: [
+          { midi: 76, beat: 0, duration: 1.35, gain: 0.016 },
+          { midi: 72, beat: 1.25, duration: 1.15, gain: 0.013 },
+          { midi: 74, beat: 2.4, duration: 1.4, gain: 0.016 },
+          { midi: 69, beat: 3.35, duration: 0.6, gain: 0.01 },
+        ],
+      },
+      {
+        bass: 29,
+        pad: [41, 48, 52, 57],
+        melody: [
+          { midi: 72, beat: 0, duration: 1.4, gain: 0.015 },
+          { midi: 74, beat: 1.2, duration: 1.05, gain: 0.013 },
+          { midi: 76, beat: 2.35, duration: 1.4, gain: 0.017 },
+          { midi: 79, beat: 3.35, duration: 0.55, gain: 0.01 },
+        ],
+      },
+      {
+        bass: 31,
+        pad: [43, 50, 55, 59],
+        melody: [
+          { midi: 74, beat: 0, duration: 1.35, gain: 0.015 },
+          { midi: 71, beat: 1.2, duration: 1.1, gain: 0.013 },
+          { midi: 67, beat: 2.35, duration: 1.45, gain: 0.016 },
+          { midi: 72, beat: 3.35, duration: 0.55, gain: 0.01 },
+        ],
+      },
     ],
   },
 ]
@@ -90,6 +273,10 @@ const BARS: readonly ChordBar[] = [
 let activeOwners = 0
 let detachSoundChange: (() => void) | null = null
 let stopCurrentLifecycle: ((fadeSeconds?: number) => void) | null = null
+let nextCurrentTrack: (() => void) | null = null
+let currentTrackIndex = -1
+let snapshotTrackIndex = -1
+const bgmStateListeners = new Set<() => void>()
 
 function audioContextConstructor(): AudioContextCtor | null {
   if (typeof window === 'undefined') return null
@@ -102,6 +289,61 @@ function audioContextConstructor(): AudioContextCtor | null {
 
 function midiFrequency(midi: number): number {
   return 440 * 2 ** ((midi - 69) / 12)
+}
+
+function lastPlayedTrackIndex(): number {
+  try {
+    const value = Number.parseInt(window.localStorage.getItem(STORAGE_KEY) ?? '', 10)
+    return Number.isInteger(value) && value >= 0 && value < TRACKS.length ? value : -1
+  } catch {
+    return -1
+  }
+}
+
+function rememberTrack(index: number): void {
+  try {
+    window.localStorage.setItem(STORAGE_KEY, String(index))
+  } catch {
+    /* 隐私模式下本地存储不可用，本次会话仍然可以正常切歌 */
+  }
+}
+
+function chooseRandomTrack(): number {
+  const previous = lastPlayedTrackIndex()
+  const candidates = TRACKS.map((_, index) => index).filter((index) => index !== previous)
+  const pool = candidates.length > 0 ? candidates : TRACKS.map((_, index) => index)
+  return pool[Math.floor(Math.random() * pool.length)]
+}
+
+function setCurrentTrack(index: number): void {
+  snapshotTrackIndex = index
+  if (currentTrackIndex === index) return
+  currentTrackIndex = index
+  rememberTrack(index)
+  bgmStateListeners.forEach((listener) => listener())
+}
+
+export function getHomeBgmTrackIndex(): number {
+  if (snapshotTrackIndex < 0) {
+    const storedIndex = lastPlayedTrackIndex()
+    snapshotTrackIndex = storedIndex >= 0 ? storedIndex : 0
+  }
+  return snapshotTrackIndex
+}
+
+export function getHomeBgmTrack(index: number): HomeBgmState {
+  const track = TRACKS[index] ?? TRACKS[0]
+  return {
+    trackIndex: TRACKS.indexOf(track),
+    trackCount: TRACKS.length,
+    title: track.title,
+    mood: track.mood,
+  }
+}
+
+export function onHomeBgmChange(listener: () => void): () => void {
+  bgmStateListeners.add(listener)
+  return () => bgmStateListeners.delete(listener)
 }
 
 function createNoiseBuffer(context: AudioContext): AudioBuffer {
@@ -133,7 +375,19 @@ function createReverbImpulse(context: AudioContext): AudioBuffer {
   return impulse
 }
 
-function buildAudioSession(context: AudioContext): AudioSession {
+function beatDuration(track: Track): number {
+  return 60 / track.bpm
+}
+
+function barDuration(track: Track): number {
+  return beatDuration(track) * 4
+}
+
+function buildAudioSession(
+  context: AudioContext,
+  track: Track,
+  options: SessionOptions = {},
+): AudioSession {
   const compressor = context.createDynamicsCompressor()
   compressor.threshold.value = -28
   compressor.knee.value = 20
@@ -160,27 +414,36 @@ function buildAudioSession(context: AudioContext): AudioSession {
   musicBus.connect(dry)
   musicBus.connect(reverb)
 
-  const noiseBuffer = createNoiseBuffer(context)
   const sea = context.createBufferSource()
   const seaFilter = context.createBiquadFilter()
   const seaGain = context.createGain()
-  sea.buffer = noiseBuffer
+  sea.buffer = createNoiseBuffer(context)
   sea.loop = true
   seaFilter.type = 'bandpass'
   seaFilter.frequency.value = 720
   seaFilter.Q.value = 0.45
-  seaGain.gain.value = 0.008
+  seaGain.gain.value = track.seaVolume
   sea.connect(seaFilter).connect(seaGain).connect(musicBus)
   sea.start()
+
+  const targetVolume = options.masterVolume ?? track.masterVolume
+  const fadeInSeconds = options.fadeInSeconds ?? FADE_IN_SECONDS
+  const now = context.currentTime
+  master.gain.setValueAtTime(0.0001, now)
+  master.gain.exponentialRampToValueAtTime(
+    targetVolume,
+    now + Math.max(0.05, fadeInSeconds),
+  )
 
   return {
     context,
     master,
     musicBus,
-    noiseBuffer,
+    track,
+    sea,
     scheduler: null,
     closeTimer: null,
-    nextBarTime: context.currentTime + 0.12,
+    nextBarTime: now + 0.12,
     nextBarIndex: 0,
   }
 }
@@ -249,7 +512,11 @@ function addBell(
 }
 
 function scheduleBar(session: AudioSession, bar: ChordBar, start: number): void {
-  const releaseEnd = start + BAR_SECONDS + 0.4
+  const beatSeconds = beatDuration(session.track)
+  const barSeconds = barDuration(session.track)
+  const releaseEnd = start + barSeconds + 0.4
+  const isRainWindow = session.track.id === 'rain-window'
+  const isStarlight = session.track.id === 'starlight'
 
   bar.pad.forEach((midi, index) => {
     addTone(session, {
@@ -257,8 +524,8 @@ function scheduleBar(session: AudioSession, bar: ChordBar, start: number): void 
       start,
       duration: releaseEnd - start,
       gain: 0.009 - index * 0.0011,
-      type: index === 0 ? 'triangle' : 'sine',
-      attack: 0.52,
+      type: isRainWindow ? 'sine' : index === 0 ? 'triangle' : 'sine',
+      attack: isStarlight ? 0.72 : 0.52,
       detune: index % 2 === 0 ? -2 : 2,
     })
   })
@@ -266,16 +533,16 @@ function scheduleBar(session: AudioSession, bar: ChordBar, start: number): void 
   addTone(session, {
     frequency: midiFrequency(bar.bass),
     start,
-    duration: BEAT_SECONDS * 1.75,
-    gain: 0.021,
+    duration: beatSeconds * 1.75,
+    gain: isStarlight ? 0.018 : 0.021,
     type: 'sine',
-    attack: 0.035,
+    attack: isStarlight ? 0.08 : 0.035,
   })
   addTone(session, {
     frequency: midiFrequency(bar.bass + 7),
-    start: start + BEAT_SECONDS * 2,
-    duration: BEAT_SECONDS * 1.6,
-    gain: 0.012,
+    start: start + beatSeconds * 2,
+    duration: beatSeconds * 1.6,
+    gain: isRainWindow ? 0.009 : 0.012,
     type: 'sine',
     attack: 0.04,
   })
@@ -284,7 +551,7 @@ function scheduleBar(session: AudioSession, bar: ChordBar, start: number): void 
     addBell(
       session,
       note.midi,
-      start + note.beat * BEAT_SECONDS,
+      start + note.beat * beatSeconds,
       note.duration,
       note.gain,
     )
@@ -305,7 +572,7 @@ function startScheduler(session: AudioSession): void {
   )
 
   const schedule = () => {
-    const { context } = session
+    const { context, track } = session
     if (context.state !== 'running') return
     if (document.hidden) {
       session.nextBarTime = context.currentTime + 0.1
@@ -315,14 +582,15 @@ function startScheduler(session: AudioSession): void {
       session.nextBarTime = context.currentTime + 0.08
     }
 
+    const barSeconds = barDuration(track)
     while (
       session.nextBarTime <
       context.currentTime + SCHEDULE_AHEAD_SECONDS
     ) {
-      const bar = BARS[session.nextBarIndex]
+      const bar = track.bars[session.nextBarIndex]
       scheduleBar(session, bar, session.nextBarTime)
-      session.nextBarIndex = (session.nextBarIndex + 1) % BARS.length
-      session.nextBarTime += BAR_SECONDS
+      session.nextBarIndex = (session.nextBarIndex + 1) % track.bars.length
+      session.nextBarTime += barSeconds
     }
   }
 
@@ -330,20 +598,24 @@ function startScheduler(session: AudioSession): void {
   session.scheduler = window.setInterval(schedule, SCHEDULER_INTERVAL_MS)
 }
 
-function createLifecycle(): (fadeSeconds?: number) => void {
+function createLifecycle(): {
+  stop: (fadeSeconds?: number) => void
+  nextTrack: () => void
+} {
   let disposed = false
   let session: AudioSession | null = null
   let waitingForGesture = false
+  let switchTimer: number | null = null
 
-  const closeSession = (fadeSeconds: number) => {
-    const current = session
-    if (!current) return
-    session = null
+  const closeSession = (
+    current: AudioSession,
+    fadeSeconds: number,
+    onComplete?: () => void,
+  ) => {
     stopScheduler(current)
 
     if (current.closeTimer !== null) window.clearTimeout(current.closeTimer)
     const now = current.context.currentTime
-    waitingForGesture = false
     current.master.gain.cancelScheduledValues(now)
     current.master.gain.setValueAtTime(
       Math.max(0.0001, current.master.gain.value),
@@ -355,10 +627,14 @@ function createLifecycle(): (fadeSeconds?: number) => void {
     )
     current.closeTimer = window.setTimeout(() => {
       if (current.context.state !== 'closed') void current.context.close()
+      onComplete?.()
     }, Math.ceil(fadeSeconds * 1000) + 80)
   }
 
-  const openSession = () => {
+  const openSession = (
+    index = chooseRandomTrack(),
+    options: SessionOptions = {},
+  ) => {
     if (disposed || !isSoundEnabled()) return
     const Ctor = audioContextConstructor()
     if (!Ctor) return
@@ -366,20 +642,14 @@ function createLifecycle(): (fadeSeconds?: number) => void {
     let context: AudioContext | null = null
     try {
       context = new Ctor()
-      session = buildAudioSession(context)
-      const now = context.currentTime
-      session.master.gain.cancelScheduledValues(now)
-      session.master.gain.setValueAtTime(0.0001, now)
-      session.master.gain.exponentialRampToValueAtTime(
-        MASTER_VOLUME,
-        now + FADE_IN_SECONDS,
-      )
-
+      session = buildAudioSession(context, TRACKS[index], options)
+      setCurrentTrack(index)
+      waitingForGesture = context.state !== 'running'
       if (context.state === 'running') startScheduler(session)
-      else waitingForGesture = true
     } catch {
       if (context && context.state !== 'closed') void context.close()
-      closeSession(0.05)
+      if (session) closeSession(session, 0.05)
+      session = null
     }
   }
 
@@ -417,6 +687,34 @@ function createLifecycle(): (fadeSeconds?: number) => void {
       })
   }
 
+  const nextTrack = () => {
+    if (disposed || !isSoundEnabled()) return
+    if (switchTimer !== null) window.clearTimeout(switchTimer)
+    const nextIndex =
+      session === null
+        ? chooseRandomTrack()
+        : (currentTrackIndex + 1) % TRACKS.length
+    const previousSession = session
+    session = null
+    waitingForGesture = false
+
+    const openNext = () =>
+      openSession(nextIndex, {
+        fadeInSeconds: TRACK_SWITCH_FADE_SECONDS,
+      })
+
+    if (!previousSession) {
+      openNext()
+      return
+    }
+
+    closeSession(previousSession, TRACK_SWITCH_FADE_SECONDS)
+    switchTimer = window.setTimeout(() => {
+      switchTimer = null
+      openNext()
+    }, TRACK_SWITCH_OVERLAP_SECONDS * 1000)
+  }
+
   document.addEventListener('visibilitychange', handleVisibilityChange)
   document.addEventListener('pointerdown', handleUserGesture, {
     capture: true,
@@ -425,32 +723,38 @@ function createLifecycle(): (fadeSeconds?: number) => void {
   document.addEventListener('keydown', handleUserGesture, true)
   openSession()
 
-  return (fadeSeconds = FADE_OUT_SECONDS) => {
-    if (disposed) return
-    disposed = true
-    document.removeEventListener('visibilitychange', handleVisibilityChange)
-    document.removeEventListener('pointerdown', handleUserGesture, true)
-    document.removeEventListener('keydown', handleUserGesture, true)
-    closeSession(fadeSeconds)
+  return {
+    stop: (fadeSeconds = FADE_OUT_SECONDS) => {
+      if (disposed) return
+      disposed = true
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      document.removeEventListener('pointerdown', handleUserGesture, true)
+      document.removeEventListener('keydown', handleUserGesture, true)
+      if (switchTimer !== null) window.clearTimeout(switchTimer)
+      switchTimer = null
+      if (session) closeSession(session, fadeSeconds)
+      session = null
+    },
+    nextTrack,
   }
 }
 
 function ensureLifecycle(): void {
-  if (!isSoundEnabled() || stopCurrentLifecycle) {
-    return
-  }
-  stopCurrentLifecycle = createLifecycle()
+  if (!isSoundEnabled() || stopCurrentLifecycle) return
+  const lifecycle = createLifecycle()
+  stopCurrentLifecycle = (fadeSeconds) => lifecycle.stop(fadeSeconds)
+  nextCurrentTrack = lifecycle.nextTrack
 }
 
 function stopLifecycle(fadeSeconds = FADE_OUT_SECONDS): void {
   const stop = stopCurrentLifecycle
   stopCurrentLifecycle = null
+  nextCurrentTrack = null
   stop?.(fadeSeconds)
 }
 
 /**
- * 在主页组件挂载时调用。返回值负责淡出、关闭音频上下文并移除监听器。
- * 多次挂载会合并成一套音乐生命周期，避免开发模式 StrictMode 重复播放。
+ * 进入主页时调用。随机选曲，返回的函数负责淡出并关闭音乐。
  */
 export function startHomeBgm(): () => void {
   activeOwners += 1
@@ -472,4 +776,14 @@ export function startHomeBgm(): () => void {
     detachSoundChange = null
     stopLifecycle()
   }
+}
+
+/**
+ * 从主页唱片按钮切换下一首。用户点击本身也满足浏览器首次起播策略。
+ */
+export function playNextHomeBgm(): void {
+  if (!nextCurrentTrack) {
+    ensureLifecycle()
+  }
+  nextCurrentTrack?.()
 }

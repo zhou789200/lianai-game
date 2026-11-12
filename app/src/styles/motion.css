@@ -158,15 +158,20 @@
   pointer-events: none;
 }
 
-/* 今日安排：右上角悬浮小药丸 */
+/* 主页工具行：位于立绘留白下方，避免与悬浮顶栏争抢点击区域。 */
+.home2__tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+}
+
 .home2__quest {
-  position: absolute;
-  /* .screen--home 从立绘留白区下方开始，把药丸重新提到顶栏正下方 */
-  top: calc(-1 * (var(--figure-top) + var(--figure-h)) + 14px);
-  right: 16px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  flex: 0 0 auto;
   height: 34px;
   padding: 0 13px;
   border-radius: var(--radius-pill);
@@ -180,6 +185,10 @@
   cursor: pointer;
   transition: transform 0.14s ease, box-shadow 0.14s ease;
   -webkit-tap-highlight-color: transparent;
+}
+
+.home2__quest {
+  position: relative;
 }
 
 .home2__quest:active {
@@ -205,6 +214,103 @@
   background: var(--coral-500);
   border: 2px solid #fff8ea;
   animation: dot-pulse 1.6s ease-in-out infinite;
+}
+
+/* 主页音乐：轻量唱片控件，与今日安排并排。 */
+.home2__music {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  height: 34px;
+  padding: 0 10px 0 5px;
+  border-radius: var(--radius-pill);
+  border: var(--stroke-hand);
+  background: linear-gradient(180deg, rgba(255, 252, 244, 0.9), rgba(216, 239, 233, 0.86));
+  box-shadow: var(--shadow-float);
+  backdrop-filter: blur(6px);
+  color: var(--sea-900);
+  cursor: pointer;
+  transition: transform 0.14s ease, background 0.14s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (max-width: 380px) {
+  .home2__music {
+    max-width: 174px;
+  }
+
+  .home2__music-title {
+    max-width: 64px;
+  }
+
+  .home2__quest {
+    gap: 4px;
+    padding: 0 9px;
+  }
+
+  .home2__quest svg {
+    display: none;
+  }
+}
+
+.home2__music:hover {
+  background: linear-gradient(180deg, rgba(255, 252, 244, 0.98), rgba(183, 224, 216, 0.92));
+}
+
+.home2__music:active {
+  transform: scale(0.97);
+}
+
+.home2__music-disc {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, var(--sea-300), var(--sea-600));
+  color: var(--cream-50);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.home2__music:hover .home2__music-disc {
+  animation: music-disc-spin 3.2s linear infinite;
+}
+
+@keyframes music-disc-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.home2__music-copy {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.home2__music-title {
+  overflow: hidden;
+  max-width: 82px;
+  color: var(--ink-800);
+  font-size: 10.5px;
+  font-weight: 800;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.home2__music-meta {
+  flex: 0 0 auto;
+  color: var(--sea-700);
+  font-size: 9.5px;
+  font-weight: 700;
+}
+
+.home2__music-next {
+  flex: 0 0 auto;
+  color: var(--sea-700);
 }
 
 /* 主线剧情：一条精致的窄条 */
