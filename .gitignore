@@ -26,17 +26,21 @@ app/data/*.db-*
 # 体积大、可重新生成，不属于源码或交付资产
 app/work/
 !app/work/*.mjs
+.workbuddy/
 work/shots/
 work/split/
 work/art/
 work/storybook/
 work/window-check/
+work/demo/
+work/submit-docs/
 work/**/*.png
 work/**/*.jpg
 work/**/*.jpeg
 work/**/*.webp
 work/**/*.log
 work/codebuddy-help.*
+.codex-voice-probe-*.mp3
 *.log
 *.log.*
 

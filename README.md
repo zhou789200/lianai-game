@@ -8,6 +8,7 @@
 - 服务端：Vite 中间件承载 `/api/story/*` 与 `/api/auth/*`、`/api/me/save`
 - 数据库：Node.js 内置 `node:sqlite`（需 Node ≥ 22.12），Session 走 `HttpOnly` Cookie
 - 剧情生成：兼容 OpenAI 协议的第三方模型，不可用时自动回退到 `shared/localStoryBank.mjs` 内置剧情
+- 质量保障：ESLint + Node 测试运行器 + TypeScript/Vite 生产构建 + 本机浏览器 E2E
 
 ## 目录结构
 
@@ -31,11 +32,36 @@ lianai-game/
 
 ```powershell
 cd app
-npm install     # 仅首次，需 Node.js >= 22.12
+npm ci          # 仅首次，严格按 package-lock.json 安装
 npm run dev     # http://127.0.0.1:5173/
 ```
 
-其他命令：`npm test`、`npm run build`、`npm run preview`、`npm run e2e`。详见 `10_本地启动与使用说明.md`。
+## 检查与验收
+
+提交前按顺序运行：
+
+```powershell
+cd app
+npm run lint
+npm test
+npm run build
+npm run e2e
+npm run e2e:desktop
+```
+
+- `npm run lint`：ESLint 静态检查，必须零错误。
+- `npm test`：存档、账号、经营、剧情与语音接口单元测试。
+- `npm run build`：TypeScript 类型检查与 Vite 生产构建。
+- `npm run e2e`：390 × 844 移动端浏览器验收。
+- `npm run e2e:desktop`：1440 × 900 桌面端浏览器验收。
+
+两套 E2E 依赖本机 Chrome 或 Edge，请串行运行；其他命令详见 `10_本地启动与使用说明.md`。
+
+## 持续集成
+
+`.github/workflows/ci.yml` 在每次 push 和 pull request 时使用 Node 24 执行
+`npm ci`、`npm run lint`、`npm test` 和 `npm run build`。浏览器 E2E 暂不在 CI
+中运行，仍需在本地验收机上完成。
 
 ## 密钥与配置
 
