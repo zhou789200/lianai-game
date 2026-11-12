@@ -58,6 +58,8 @@ export function SettingsModal({
     soundEnabled: sound,
     voiceEnabled,
     speechSupported,
+    supportText,
+    active: voiceActive,
     toggleSound: toggleSoundPreference,
     toggleVoice,
   } = useStoryVoicePreference()
@@ -364,11 +366,12 @@ export function SettingsModal({
         type="button"
         className="setting-row"
         onClick={toggleStoryVoice}
-        aria-pressed={voiceEnabled}
-        disabled={!speechSupported}
+        aria-pressed={voiceActive}
+        aria-description={supportText}
+        disabled={!speechSupported || !sound}
       >
         <span className="setting-row__icon">
-          {voiceEnabled && speechSupported ? (
+          {voiceActive ? (
             <AudioLines size={16} />
           ) : (
             <VolumeX size={16} />
@@ -377,18 +380,18 @@ export function SettingsModal({
         <span className="setting-row__body">
           <strong>剧情角色朗读</strong>
           <small>
-            {!speechSupported
-              ? '当前浏览器不支持语音合成'
-              : !sound
-                ? '总声音已关闭，开启声音后才会朗读剧情'
+            {!sound
+              ? `总声音已关闭，开启声音后才能朗读。${supportText}`
+              : !speechSupported
+                ? supportText
                 : voiceEnabled
-                  ? '优先使用在线自然语音；网络不可用时改用本机朗读'
+                  ? supportText
                   : '剧情文字会保持安静，不自动发声'}
           </small>
         </span>
         <span
           className={`setting-switch${
-            voiceEnabled && speechSupported ? ' is-on' : ''
+            voiceActive ? ' is-on' : ''
           }`}
           aria-hidden="true"
         >

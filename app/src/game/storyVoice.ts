@@ -14,6 +14,10 @@ import {
   primeGameAudio,
   type GameAudioPlayback,
 } from './sfx'
+import {
+  normalizeOnlineVoiceFailure,
+  shouldUseSystemVoiceFallback,
+} from '../../shared/storyVoiceFailure.mjs'
 
 const STORY_VOICE_KEY = 'seabreeze-pet-cafe.story-voice'
 const STORY_VOICE_EVENT = 'seabreeze:story-voice-change'
@@ -277,14 +281,6 @@ function releaseOnlineAudio(key: string): void {
   pendingOnlineAudio.delete(key)
 }
 
-function isAbortError(error: unknown): boolean {
-  return (
-    error instanceof DOMException && error.name === 'AbortError'
-  ) || (
-    error instanceof Error && error.name === 'AbortError'
-  )
-}
-
 interface OnlineAudioSubscription {
   promise: Promise<AudioBuffer>
   cancel: () => void
@@ -315,8 +311,12 @@ function requestOnlineAudio(
 
   const controller = new AbortController()
   const promise = (async () => {
+    let timedOut = false
     const timeout = window.setTimeout(
-      () => controller.abort(),
+      () => {
+        timedOut = true
+        controller.abort()
+      },
       ONLINE_VOICE_TIMEOUT_MS,
     )
     try {
@@ -334,6 +334,8 @@ function requestOnlineAudio(
       const contentType = response.headers.get('content-type') ?? ''
       if (!contentType.includes('audio/')) throw new Error('自然语音响应格式不正确')
       return await decodeGameAudio(await response.arrayBuffer())
+    } catch (error) {
+      throw normalizeOnlineVoiceFailure(error, timedOut)
     } finally {
       window.clearTimeout(timeout)
     }
@@ -364,6 +366,29 @@ function clearPlayback(): void {
 
 export function isSpeechSupported(): boolean {
   return isGameAudioSupported() || speechSynthesisApi() !== null
+}
+
+export interface StoryVoiceCapabilities {
+  online: boolean
+  system: boolean
+}
+
+export function getStoryVoiceCapabilities(): StoryVoiceCapabilities {
+  return {
+    online: isGameAudioSupported(),
+    system: speechSynthesisApi() !== null,
+  }
+}
+
+export function getStoryVoiceSupportText(
+  capabilities: StoryVoiceCapabilities,
+): string {
+  if (capabilities.online && capabilities.system) {
+    return '在线自然语音优先，网络不可用时使用本机语音'
+  }
+  if (capabilities.online) return '使用在线自然语音；本机没有可用语音'
+  if (capabilities.system) return '本机没有在线音频播放器，将直接使用系统语音'
+  return '当前浏览器无法播放剧情语音'
 }
 
 export function hasChineseVoice(): boolean {
@@ -554,8 +579,9 @@ export function speakStoryText({
       if (id !== playbackId || currentOwner !== owner) return
       cancelCurrentRequest = null
       // 翻页主动取消请求时不应突然朗读已经离开的旧台词。
-      if (isAbortError(error)) return
-      speakWithSystemVoice(content, speaker, owner, id)
+      if (shouldUseSystemVoiceFallback(error)) {
+        speakWithSystemVoice(content, speaker, owner, id)
+      }
     })
 
   return true

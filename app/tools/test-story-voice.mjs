@@ -6,6 +6,10 @@ import {
   resolveStoryVoiceProfile,
   sanitizeStoryVoiceRequest,
 } from '../server/story-voice-api.mjs'
+import {
+  normalizeOnlineVoiceFailure,
+  shouldUseSystemVoiceFallback,
+} from '../shared/storyVoiceFailure.mjs'
 
 const AUDIO = Buffer.concat([Buffer.from([0xff, 0xf3, 0xa4, 0xc4]), Buffer.alloc(256)])
 
@@ -38,6 +42,17 @@ test('story voice maps narration and Lin Che to distinct natural voices', () => 
   assert.equal(alternateSpelling.voice, linChe.voice)
   assert.equal(narration.rate, 0.94)
   assert.equal(linChe.rate, 0.88)
+})
+
+test('online voice timeout falls back to system speech while cancellation stays silent', () => {
+  const cancellation = new DOMException('Cancelled', 'AbortError')
+  const timeoutFailure = normalizeOnlineVoiceFailure(cancellation, true)
+  const networkFailure = new Error('network unavailable')
+
+  assert.equal(timeoutFailure.name, 'OnlineVoiceTimeoutError')
+  assert.equal(shouldUseSystemVoiceFallback(timeoutFailure), true)
+  assert.equal(shouldUseSystemVoiceFallback(networkFailure), true)
+  assert.equal(shouldUseSystemVoiceFallback(cancellation), false)
 })
 
 test('story voice request trims and validates text', () => {

@@ -13,11 +13,12 @@ export function StoryVoiceButton({
     soundEnabled,
     speechSupported,
     active,
+    supportText,
     toggleVoice,
   } = useStoryVoicePreference()
   const available = soundEnabled && speechSupported
   const label = !speechSupported
-    ? '当前浏览器不支持剧情朗读'
+    ? supportText
     : !soundEnabled
       ? '总声音已关闭，请先在设置中开启声音'
       : active
@@ -35,6 +36,7 @@ export function StoryVoiceButton({
       disabled={!available}
       aria-label={label}
       aria-pressed={active}
+      aria-description={supportText}
       title={label}
     >
       {!available ? (

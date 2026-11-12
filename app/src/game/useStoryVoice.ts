@@ -1,18 +1,22 @@
 import { useEffect, useId, useState } from 'react'
 import { isSoundEnabled, onSoundChange, setSoundEnabled } from './sound'
 import {
-  isSpeechSupported,
+  getStoryVoiceCapabilities,
+  getStoryVoiceSupportText,
   isStoryVoiceEnabled,
   onStoryVoiceChange,
   setStoryVoiceEnabled,
   speakStoryText,
   stopStoryVoice,
+  type StoryVoiceCapabilities,
 } from './storyVoice'
 
 export function useStoryVoicePreference() {
   const [soundEnabled, setSoundState] = useState(() => isSoundEnabled())
   const [voiceEnabled, setVoiceState] = useState(() => isStoryVoiceEnabled())
-  const supported = isSpeechSupported()
+  const [capabilities] = useState<StoryVoiceCapabilities>(getStoryVoiceCapabilities)
+  const supported = capabilities.online || capabilities.system
+  const voiceActive = soundEnabled && voiceEnabled && supported
 
   useEffect(
     () =>
@@ -41,8 +45,10 @@ export function useStoryVoicePreference() {
   return {
     soundEnabled,
     voiceEnabled,
+    capabilities,
     speechSupported: supported,
-    active: soundEnabled && voiceEnabled && supported,
+    supportText: getStoryVoiceSupportText(capabilities),
+    active: voiceActive,
     toggleSound,
     toggleVoice,
   }
