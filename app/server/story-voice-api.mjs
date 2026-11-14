@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto'
 import { MsEdgeTTS, OUTPUT_FORMAT } from 'msedge-tts'
+import { clientIp, pruneRateBuckets } from './client-ip.mjs'
 
 const MAX_BODY_BYTES = 8 * 1024
 const MAX_TEXT_LENGTH = 320
@@ -269,8 +270,9 @@ export function createStoryVoiceMiddleware(options = {}) {
       return
     }
 
-    const key = req.socket?.remoteAddress || 'local'
+    const key = clientIp(req)
     const now = Date.now()
+    pruneRateBuckets(buckets, RATE_WINDOW_MS, now)
     const bucket = (buckets.get(key) || []).filter((at) => now - at < RATE_WINDOW_MS)
     if (bucket.length >= RATE_LIMIT) {
       sendJson(res, 429, { error: '语音请求过于频繁，请稍后再试' })

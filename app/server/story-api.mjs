@@ -1,4 +1,5 @@
 import { buildLocalStory } from '../shared/localStoryBank.mjs'
+import { clientIp, pruneRateBuckets } from './client-ip.mjs'
 
 const MAX_BODY_BYTES = 64 * 1024
 const MODEL_TIMEOUT_MS = 30_000
@@ -483,8 +484,9 @@ export function createStoryMiddleware() {
       return
     }
 
-    const key = req.socket?.remoteAddress || 'local'
+    const key = clientIp(req)
     const now = Date.now()
+    pruneRateBuckets(buckets, RATE_WINDOW_MS, now)
     const bucket = (buckets.get(key) || []).filter((at) => now - at < RATE_WINDOW_MS)
     if (bucket.length >= RATE_LIMIT) {
       sendJson(res, 429, { error: '海风也需要停一会儿，请稍后再试' })
