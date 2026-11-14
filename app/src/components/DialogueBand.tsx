@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { playSfx } from '../game/sfx'
 
 /**
@@ -41,6 +41,8 @@ export function DialogueBand({ lines, speaker, tone = 'narration', action }: Dia
   const shown = reduced ? text.length : typing.key === lineKey ? typing.count : 0
   const done = shown >= text.length
 
+  const typingTimerRef = useRef<number | null>(null)
+
   useEffect(() => {
     if (!text || reduced) return
     let i = 0
@@ -49,11 +51,21 @@ export function DialogueBand({ lines, speaker, tone = 'narration', action }: Dia
       setTyping({ key: lineKey, count: i })
       if (i >= text.length) window.clearInterval(id)
     }, 46)
-    return () => window.clearInterval(id)
+    typingTimerRef.current = id
+    return () => {
+      window.clearInterval(id)
+      if (typingTimerRef.current === id) typingTimerRef.current = null
+    }
   }, [lineKey, reduced, text])
 
   const advance = useCallback(() => {
     if (!done) {
+      // 点一下直接显示全句：必须先停掉打字定时器，
+      // 否则下一次 tick 会用旧的计数器把整句缩回去重新逐字打。
+      if (typingTimerRef.current !== null) {
+        window.clearInterval(typingTimerRef.current)
+        typingTimerRef.current = null
+      }
       setTyping({ key: lineKey, count: text.length })
       return
     }
