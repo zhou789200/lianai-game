@@ -9,6 +9,7 @@
 import http from 'node:http'
 import fs from 'node:fs'
 import net from 'node:net'
+import os from 'node:os'
 import path from 'node:path'
 import { spawn, spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
@@ -25,6 +26,12 @@ const OUT = path.join(ROOT, 'work', 'screenshots')
 const WIDTH = Number(process.argv[2] ?? 430)
 const HEIGHT = Number(process.argv[3] ?? 932)
 const SUFFIX = process.argv[4] ?? `${WIDTH}x${HEIGHT}`
+/**
+ * 截图采样率。移动端 2x 便于查文字细节；桌面视口再乘 2 会得到 2880×1800
+ * 的截画面，本机无头 Chrome 在这种尺寸下 captureScreenshot 会一直不返回，
+ * 因此超过 400 万像素的输出统一降到 1x。
+ */
+const DEVICE_SCALE = WIDTH * HEIGHT * 4 > 4_000_000 ? 1 : 2
 const STORY_SKIP_AUDIT =
   process.env.STORY_SKIP_AUDIT === '1' ||
   process.argv.includes('--story-skip-audit')
@@ -176,8 +183,9 @@ function cdp(ws) {
   ws.addEventListener('message', (ev) => {
     const msg = JSON.parse(ev.data)
     if (msg.id && pending.has(msg.id)) {
-      const { resolve, reject } = pending.get(msg.id)
+      const { resolve, reject, timer } = pending.get(msg.id)
       pending.delete(msg.id)
+      clearTimeout(timer)
       msg.error ? reject(new Error(JSON.stringify(msg.error))) : resolve(msg.result)
     } else if (msg.method) {
       events.push(msg)
@@ -185,11 +193,18 @@ function cdp(ws) {
   })
   return {
     events,
-    send(method, params = {}) {
+    send(method, params = {}, { timeoutMs = 45_000 } = {}) {
       id += 1
       const myId = id
       return new Promise((resolve, reject) => {
-        pending.set(myId, { resolve, reject })
+        // 单条 CDP 命令必须有超时：截图 / 求值任何一步卡住，
+        // 否则只能等 10 分钟硬超时，看不出卡在哪一步。
+        const timer = setTimeout(() => {
+          if (!pending.has(myId)) return
+          pending.delete(myId)
+          reject(new Error(`${method} 超时（${timeoutMs}ms 未返回）`))
+        }, timeoutMs)
+        pending.set(myId, { resolve, reject, timer })
         ws.send(JSON.stringify({ id: myId, method, params }))
       })
     },
@@ -205,8 +220,9 @@ async function main() {
   const port = server.address().port
   const url = `http://127.0.0.1:${port}/`
 
-  const profile = path.join(ROOT, 'work', `.chrome-${SUFFIX}`)
-  fs.rmSync(profile, { recursive: true, force: true })
+  // 浏览器配置目录放在系统临时目录：每次运行独立一份，既不污染仓库，
+  // 也不会因为后缀不同而在 work/ 下越积越多（历史上堆积过 60+ 个、1.3GB）。
+  const profile = fs.mkdtempSync(path.join(os.tmpdir(), `seabreeze-e2e-${SUFFIX}-`))
   const debugPort = await findFreePort()
 
   const child = spawn(
@@ -240,6 +256,16 @@ async function main() {
       /* ignore */
     }
     await Promise.allSettled([stopBrowser(child), closeHttpServer(server)])
+    // 本次运行的浏览器配置目录用完即删，避免每次验收都在 work/ 下留下 20MB 残留。
+    // Windows 上浏览器退出后句柄释放有延迟，需要重试几次。
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        fs.rmSync(profile, { recursive: true, force: true })
+        break
+      } catch {
+        await new Promise((resolve) => setTimeout(resolve, 300))
+      }
+    }
   }
   let rejectGlobalTimeout
   const globalTimeout = new Promise((_, reject) => {
@@ -271,7 +297,7 @@ async function main() {
     await client.send('Emulation.setDeviceMetricsOverride', {
       width: WIDTH,
       height: HEIGHT,
-      deviceScaleFactor: 2,
+      deviceScaleFactor: DEVICE_SCALE,
       mobile: WIDTH < 600,
     })
 
