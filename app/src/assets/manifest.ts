@@ -46,18 +46,18 @@ export const CHARACTERS: Record<string, SceneAsset> = {
   'guhuai-calm': asset('guhuai-calm', 'character', 'char-guhuai-calm.webp', '顾淮 · 平静'),
 }
 
-/* ---------------- 宠物立绘（透明底 PNG，与咖啡店场景里的布丁同一套拆件） ---------------- */
+/* ---------------- 宠物立绘（透明底 WebP，与咖啡店场景里的布丁同一套拆件） ---------------- */
 export const PETS: Record<string, SceneAsset> = {
-  'pudding-front': asset('pudding-front', 'pet', 'cafe-cat-front.png', '布丁 · 端坐着看你'),
-  'pudding-side': asset('pudding-side', 'pet', 'cafe-cat-side.png', '布丁 · 侧身张望'),
-  'pudding-back': asset('pudding-back', 'pet', 'cafe-cat-back.png', '布丁 · 背对着你'),
+  'pudding-front': asset('pudding-front', 'pet', 'cafe-cat-front.webp', '布丁 · 端坐着看你'),
+  'pudding-side': asset('pudding-side', 'pet', 'cafe-cat-side.webp', '布丁 · 侧身张望'),
+  'pudding-back': asset('pudding-back', 'pet', 'cafe-cat-back.webp', '布丁 · 背对着你'),
 }
 
 /** 喂食演出专用的女主人双手端碗素材 */
 export const PET_FEED_HANDS = asset(
   'pet-feed-hands',
   'character',
-  'pet-owner-hands-feed-v2.png',
+  'pet-owner-hands-feed-v2.webp',
   '女主人双手端着猫碗喂布丁',
 )
 
@@ -65,7 +65,7 @@ export const PET_FEED_HANDS = asset(
 export const PET_PLAY_HANDS = asset(
   'pet-play-hands',
   'character',
-  'pet-owner-hands-play-v1.png',
+  'pet-owner-hands-play-v1.webp',
   '女主人握着逗猫棒陪布丁玩',
 )
 
@@ -73,7 +73,7 @@ export const PET_PLAY_HANDS = asset(
 export const PET_GROOM_HANDS = asset(
   'pet-groom-hands',
   'character',
-  'pet-owner-hands-groom-v1.png',
+  'pet-owner-hands-groom-v1.webp',
   '女主人握着软毛刷给布丁梳毛',
 )
 
@@ -81,7 +81,7 @@ export const PET_GROOM_HANDS = asset(
 export const PET_PHOTO_HANDS = asset(
   'pet-photo-hands',
   'character',
-  'pet-owner-hands-photo-v1.png',
+  'pet-owner-hands-photo-v1.webp',
   '女主人双手举着相机给布丁拍照',
 )
 

@@ -18,18 +18,43 @@ import {
  * 逐张串行、只在浏览器空闲时加载，不抢首屏带宽；
  * 加载完成后浏览器会保留解码缓存，之后任何页面插入 <img>
  * 都能立刻出图，不会先闪一下空白。
+ *
+ * 弱网保护：预热是「锦上添花」，首屏才是命脉。用户开了省流量、
+ * 或当前网络是 2G/3G 时直接放弃预热——否则这批图会把本就可怜的
+ * 带宽全占满，首屏反而迟迟出不来（弱网实测踩过这个坑）。
  */
 
 /** 咖啡店玩法里直接写死路径的图（未登记在 manifest） */
 const CAFE_SHOP_ART = [
   'art/scene-cafe-shop-clean.webp',
-  'art/cafe-barista-front.png',
-  'art/cafe-barista-side.png',
-  'art/cafe-barista-back.png',
-  'art/cafe-cat-front.png',
-  'art/cafe-cat-side.png',
-  'art/cafe-cat-back.png',
+  'art/cafe-barista-front.webp',
+  'art/cafe-barista-side.webp',
+  'art/cafe-barista-back.webp',
+  'art/cafe-cat-front.webp',
+  'art/cafe-cat-side.webp',
+  'art/cafe-cat-back.webp',
 ]
+
+/** Network Information API 在部分内核里没有，按可选处理 */
+interface NetworkInformationLike {
+  saveData?: boolean
+  effectiveType?: string
+}
+
+/**
+ * 是否应当跳过预热。
+ * 判据取「用户意图」（saveData）优先于「网络类型」，
+ * 省流量模式是用户明确的表态，无条件尊重。
+ */
+function shouldSkipPreload(): boolean {
+  const conn = (
+    navigator as Navigator & { connection?: NetworkInformationLike }
+  ).connection
+  if (!conn) return false
+  if (conn.saveData) return true
+  const type = conn.effectiveType
+  return type === 'slow-2g' || type === '2g' || type === '3g'
+}
 
 let started = false
 
@@ -52,6 +77,8 @@ function idle(fn: () => void) {
 export function preloadArt() {
   if (started || typeof window === 'undefined') return
   started = true
+
+  if (shouldSkipPreload()) return
 
   const seen = new Set<string>()
   const queue: string[] = []

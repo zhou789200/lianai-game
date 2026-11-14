@@ -201,7 +201,7 @@ export function CafeActors({ cue, onDrop }: CafeActorsProps) {
         <span className="cafe-actor__shadow" aria-hidden="true" />
         <img
           className="cafe-actor__sprite"
-          src={`art/cafe-${actor}-${poses[actor]}.png`}
+          src={`art/cafe-${actor}-${poses[actor]}.webp`}
           alt=""
           draggable={false}
           style={{ '--actor-facing': facing[actor] } as CSSProperties}
