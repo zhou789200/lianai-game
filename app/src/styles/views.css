@@ -804,14 +804,17 @@
   box-shadow: var(--shadow-float);
 }
 
+/* 图标只和标题行对齐：两行网格，图标/标题占第一行，描述占第二行 */
 .pet-action__head {
-  display: flex;
-  gap: 8px;
-  align-items: flex-start;
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  column-gap: 8px;
+  row-gap: 2px;
+  align-items: center;
 }
 
 .pet-action__icon {
-  flex: 0 0 auto;
+  grid-area: 1 / 1;
   width: 30px;
   height: 30px;
   border-radius: 50%;
@@ -822,23 +825,33 @@
 }
 
 .pet-action__name {
+  grid-area: 1 / 2;
+  align-self: center;
   font-size: var(--fs-md);
   font-weight: 800;
+  line-height: 1.2;
   color: var(--ink-900);
 }
 
 .pet-action__desc {
-  margin-top: 2px;
+  grid-area: 2 / 2;
   font-size: 10.5px;
   line-height: 1.45;
   color: var(--ink-600);
   word-break: keep-all;
+  /* 固定占两行：描述只有一行的卡片不会把下面的标签和按钮顶上去 */
+  min-height: calc(10.5px * 1.45 * 2);
 }
 
 .pet-action__costs {
   display: flex;
   gap: 5px;
   flex-wrap: wrap;
+}
+
+/* 同一行的卡片被网格拉成等高时，按钮统一贴底，不会因为少一行文字而悬在中间 */
+.pet-action > .btn {
+  margin-top: auto;
 }
 
 .pet-feedback {

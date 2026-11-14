@@ -253,14 +253,14 @@ export function PetView() {
           const isLoading = pending === def.id
           return (
             <article key={def.id} className="pet-action">
+              {/* head 用两行网格：图标只跟标题那一行居中，描述单独占第二行，
+                  这样图标圆心与标题中线严格对齐，不会随描述行数上下漂 */}
               <div className="pet-action__head">
-                <span className="pet-action__icon">
+                <span className="pet-action__icon" aria-hidden="true">
                   <GameIcon name={def.icon} size={19} />
                 </span>
-                <div>
-                  <h3 className="pet-action__name">{def.name}</h3>
-                  <p className="pet-action__desc">{def.desc}</p>
-                </div>
+                <h3 className="pet-action__name">{def.name}</h3>
+                <p className="pet-action__desc">{def.desc}</p>
               </div>
 
               <div className="pet-action__costs">
