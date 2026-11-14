@@ -49,12 +49,17 @@ function readJsonBody(req) {
     })
     req.on('end', () => {
       if (settled) return
+      // 先解析成功再置 settled：否则解析失败时 fail() 会因 settled 已为 true
+      // 直接返回，Promise 既不 resolve 也不 reject，请求永久挂起。
+      let parsed
       try {
-        settled = true
-        resolve(JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}'))
+        parsed = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}')
       } catch {
         fail(new UserDataError('请求 JSON 无法解析'))
+        return
       }
+      settled = true
+      resolve(parsed)
     })
     req.on('error', fail)
   })
