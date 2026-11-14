@@ -9,7 +9,7 @@ import {
   PET_PLAY_HANDS,
   petAsset,
 } from '../assets/manifest'
-import { CARE_MEOWS, playMeow } from '../game/petVoice'
+import { playMeow } from '../game/petVoice'
 import { GameIcon } from '../components/GameIcon'
 import { Panel, SectionLabel } from '../components/Panel'
 import { StatBar } from '../components/StatBar'
@@ -151,8 +151,8 @@ export function PetView() {
         actionTimer.current = null
         return
       }
-      // 每种照料用自己的叫声：喂食 / 玩耍 / 梳毛 / 拍照各不相同
-      playMeow(CARE_MEOWS[def.id])
+      // 四种照料都从 8 种叫声里随机轮转取一声，点哪个按钮都不会重复上一声
+      playMeow()
       setFeedback({ icon: def.icon, text: r.message, at: Date.now() })
       actionTimer.current = null
     }, 620)

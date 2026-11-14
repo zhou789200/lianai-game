@@ -28,12 +28,11 @@ await esbuild.build({
   logLevel: 'silent',
 })
 
-const { nextMeowKind, CARE_MEOWS } = await import(pathToFileURL(OUT_FILE).href)
+const { nextMeowKind } = await import(pathToFileURL(OUT_FILE).href)
 
 process.on('exit', () => rmSync(OUT_DIR, { recursive: true, force: true }))
 
-/** 参与随机轮转的 8 种「喵」 */
-const ROTATION_KINDS = [
+const ALL_KINDS = [
   'bright',
   'chirp',
   'double',
@@ -44,16 +43,13 @@ const ROTATION_KINDS = [
   'grumpy',
 ]
 
-/** 加上不参与轮转的呼噜，构成全部可用音色 */
-const ALL_KINDS = [...ROTATION_KINDS, 'purr']
-
 // 注意顺序：第一条依赖「洗牌袋初始为空」，后一条只做不变量校验。
 test('every kind shows up once per round of eight draws', () => {
-  const firstRound = Array.from({ length: ROTATION_KINDS.length }, () => nextMeowKind())
-  assert.deepEqual([...firstRound].sort(), [...ROTATION_KINDS].sort(), '第一轮应覆盖全部语气')
+  const firstRound = Array.from({ length: ALL_KINDS.length }, () => nextMeowKind())
+  assert.deepEqual([...firstRound].sort(), [...ALL_KINDS].sort(), '第一轮应覆盖全部语气')
 
-  const secondRound = Array.from({ length: ROTATION_KINDS.length }, () => nextMeowKind())
-  assert.deepEqual([...secondRound].sort(), [...ROTATION_KINDS].sort(), '第二轮同样应覆盖全部语气')
+  const secondRound = Array.from({ length: ALL_KINDS.length }, () => nextMeowKind())
+  assert.deepEqual([...secondRound].sort(), [...ALL_KINDS].sort(), '第二轮同样应覆盖全部语气')
 })
 
 test('consecutive meows never repeat the same kind', () => {
@@ -63,21 +59,4 @@ test('consecutive meows never repeat the same kind', () => {
     assert.notEqual(next, previous, `第 ${i} 次取到连续重复的 ${next}`)
     previous = next
   }
-})
-
-test('the random rotation never picks the purr', () => {
-  for (let i = 0; i < 50; i += 1) {
-    assert.notEqual(nextMeowKind(), 'purr', '呼噜只该由梳毛这类动作触发')
-  }
-})
-
-test('the four care actions each use a different meow', () => {
-  assert.deepEqual(Object.keys(CARE_MEOWS).sort(), ['feed', 'groom', 'photo', 'play'])
-
-  const kinds = Object.values(CARE_MEOWS)
-  assert.equal(new Set(kinds).size, kinds.length, '喂食/玩耍/梳毛/拍照 不能共用同一种叫声')
-  for (const kind of kinds) {
-    assert.ok(ALL_KINDS.includes(kind), `${kind} 不是已定义的语气`)
-  }
-  assert.equal(CARE_MEOWS.groom, 'purr', '梳毛应该是打呼噜，不是喵')
 })
