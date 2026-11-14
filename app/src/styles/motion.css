@@ -149,7 +149,7 @@
   overflow: hidden;
   justify-content: flex-end;
   gap: 10px;
-  padding: 10px 16px calc(96px + env(safe-area-inset-bottom));
+  padding: 10px 16px calc(96px + var(--safe-bottom));
 }
 
 .home2__grow {
@@ -583,7 +583,7 @@
   overflow: hidden;
   justify-content: flex-end;
   gap: 8px;
-  padding: 8px 16px calc(96px + env(safe-area-inset-bottom));
+  padding: 8px 16px calc(96px + var(--safe-bottom));
 }
 
 .storybook__topbar {
@@ -774,7 +774,7 @@
   z-index: 2;
   flex: 0 0 auto;
   width: 100%;
-  height: min(500px, 58dvh);
+  height: 500px;
   min-height: 390px;
   display: flex;
   flex-direction: column;
@@ -967,7 +967,7 @@
 .storybook__reply p {
   color: var(--ink-800);
   font-family: var(--font-display);
-  font-size: clamp(15px, 4.1vw, 17px);
+  font-size: 17px;
   line-height: 1.78;
   letter-spacing: 0.01em;
 }
@@ -1264,7 +1264,7 @@
   z-index: calc(var(--z-nav) + 5);
   display: flex;
   align-items: flex-end;
-  padding: 10px 12px calc(98px + env(safe-area-inset-bottom));
+  padding: 10px 12px calc(98px + var(--safe-bottom));
   background: rgba(72, 48, 27, 0.32);
   backdrop-filter: blur(4px);
   animation: storybook-fade-in 0.2s ease;
@@ -1534,7 +1534,7 @@
   z-index: 25;
   display: flex;
   align-items: flex-end;
-  padding: 8px 12px calc(96px + env(safe-area-inset-bottom));
+  padding: 8px 12px calc(96px + var(--safe-bottom));
   background: rgba(52, 45, 34, 0.42);
   backdrop-filter: blur(5px);
   animation: storybook-fade-in 0.2s ease;
@@ -1677,7 +1677,7 @@
 .storybook__draft-outcome h2 {
   color: var(--ink-900);
   font-family: var(--font-display);
-  font-size: clamp(22px, 6.2vw, 28px);
+  font-size: 26.5px;
   line-height: 1.25;
 }
 
@@ -2050,7 +2050,7 @@
 
 .storybook__draft--reader {
   position: relative;
-  height: min(500px, 58dvh);
+  height: 500px;
   min-height: 390px;
   max-height: none;
   border-radius: 25px 25px 20px 20px;
@@ -2297,7 +2297,7 @@
 
 @media (max-height: 760px) {
   .storybook__page {
-    height: min(440px, 57dvh);
+    height: 440px;
     min-height: 350px;
   }
 
@@ -2314,7 +2314,7 @@
 
   .storybook__draft-layer {
     padding-top: 6px;
-    padding-bottom: calc(90px + env(safe-area-inset-bottom));
+    padding-bottom: calc(90px + var(--safe-bottom));
   }
 
   .storybook__draft-body {
@@ -2329,7 +2329,7 @@
   }
 
   .storybook__draft--reader {
-    height: min(440px, 57dvh);
+    height: 440px;
     min-height: 350px;
   }
 

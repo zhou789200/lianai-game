@@ -55,29 +55,40 @@ ul {
   outline-offset: 2px;
 }
 
-/* ---------- 舞台：桌面端居中显示手机画布 ---------- */
+/* ---------- 舞台：整屏居中放置手机画布 ----------
+   尺寸全部由 JS 算好的 --app-w / --app-h 决定（逻辑画布 430×932 × 缩放比），
+   不依赖 dvh / vw 等各浏览器支持度不一的视口单位。 */
 .stage {
-  height: 100%;
+  position: fixed;
+  inset: 0;
   display: grid;
   place-items: center;
-  padding: 16px;
+  overflow: hidden;
 }
 
-/* 手机画布：375x812 (0.4618) ~ 430x932 (0.4614)，按 430x932 保持比例 */
+/* 手机壳：只负责外框尺寸、圆角与投影，内部内容由 .phone__canvas 缩放 */
 .phone {
   position: relative;
-  width: min(430px, 100vw, calc((100dvh - 32px) * 0.4614));
-  min-width: 0;
-  aspect-ratio: 430 / 932;
-  max-height: calc(100dvh - 32px);
-  border-radius: 34px;
+  width: var(--app-w, 430px);
+  height: var(--app-h, 932px);
+  border-radius: calc(34px * var(--app-scale, 1));
   overflow: hidden;
   isolation: isolate;
-  background: #1f4642;
+  background: #f0dcbb;
   box-shadow:
-    0 0 0 9px #f6ead4,
-    0 0 0 11px rgba(150, 112, 42, 0.5),
+    0 0 0 calc(9px * var(--app-scale, 1)) #f6ead4,
+    0 0 0 calc(11px * var(--app-scale, 1)) rgba(150, 112, 42, 0.5),
     0 26px 60px rgba(88, 58, 30, 0.42);
+}
+
+/* 逻辑画布：固定 430×932，等比缩放铺满手机壳，内部一律使用逻辑像素 */
+.phone__canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 430px;
+  height: 932px;
+  transform-origin: 0 0;
 }
 
 .phone[data-tone='cafe'] {
@@ -86,16 +97,9 @@ ul {
     #efcf9f;
 }
 
-/* 小屏手机：铺满并可滚动兜底 */
+/* 小屏手机：铺满整屏，去掉手机壳装饰 */
 @media (max-width: 480px) {
-  .stage {
-    padding: 0;
-  }
   .phone {
-    width: 100vw;
-    height: 100dvh;
-    max-height: none;
-    aspect-ratio: auto;
     border-radius: 0;
     box-shadow: none;
   }

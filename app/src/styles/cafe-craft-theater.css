@@ -2,7 +2,7 @@
 .cafe-craft-theater {
   position: relative;
   width: 100%;
-  height: clamp(74px, 23vw, 92px);
+  height: 92px;
   min-width: 0;
   overflow: hidden;
   border-radius: 16px;
@@ -33,7 +33,7 @@
   inset: 0;
   z-index: 2;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) clamp(58px, 19vw, 78px) minmax(0, 0.95fr);
+  grid-template-columns: minmax(0, 1fr) 78px minmax(0, 0.95fr);
   align-items: center;
   gap: 0;
   min-width: 0;
@@ -101,8 +101,8 @@
   z-index: 3;
   display: grid;
   place-items: center;
-  width: clamp(30px, 9vw, 38px);
-  height: clamp(30px, 9vw, 38px);
+  width: 38px;
+  height: 38px;
   margin: -17px 0 0 -17px;
   border-radius: 11px;
   color: var(--tone-ink, var(--ink-800));
@@ -569,7 +569,7 @@
   position: absolute;
   right: 7%;
   bottom: 21%;
-  width: clamp(45px, 14vw, 58px);
+  width: 58px;
   height: 15px;
   border-radius: 50%;
   background: linear-gradient(180deg, #fff4d6, #cbb889);
@@ -585,7 +585,7 @@
 }
 .cafe-craft-theater__finished {
   position: absolute;
-  right: calc(7% + clamp(12px, 4vw, 17px));
+  right: calc(7% + 17px);
   bottom: calc(21% + 8px);
   z-index: 4;
   display: grid;

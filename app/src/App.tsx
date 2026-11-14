@@ -1,4 +1,4 @@
-import { useLayoutEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useState } from 'react'
 import { GameProvider, useGame } from './game/GameContext'
 import { PhoneShell } from './components/PhoneShell'
 import { SceneRenderer } from './components/SceneRenderer'
@@ -10,6 +10,7 @@ import { IntroModal } from './components/IntroModal'
 import { AccountModal } from './components/AccountModal'
 import { playSfx } from './game/sfx'
 import { stopStoryVoice } from './game/storyVoice'
+import { preloadArt } from './assets/preload'
 import { HomeView } from './views/HomeView'
 import { BusinessView } from './views/BusinessView'
 import { CafeView } from './views/CafeView'
@@ -81,11 +82,21 @@ function Game() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view])
 
+  // 首屏渲染完成后在空闲时段预热其余美术资源，
+  // 之后任何页面的图片都是「插入即出图」，不会先闪一帧空白。
+  useEffect(() => {
+    preloadArt()
+  }, [])
+
   return (
     <PhoneShell figure={zone} tone={useImmersiveCafe ? 'cafe' : 'default'}>
-      {view === 'cafe' ? null : (
-        <SceneRenderer view={view === 'romance' ? 'story' : view} decor={state.decor} />
-      )}
+      {/* 场景层始终挂载：底图常驻，切页只是切 opacity，
+          从咖啡店玩法返回时也不会重新加载图片。 */}
+      <SceneRenderer
+        view={view === 'romance' ? 'story' : view}
+        decor={state.decor}
+        hidden={useImmersiveCafe}
+      />
 
       <div className="app">
         {inRun || useImmersiveCafe || !authReady ? null : (

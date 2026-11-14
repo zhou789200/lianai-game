@@ -1,7 +1,7 @@
-import { useState, type CSSProperties } from 'react'
+import { memo, useState, type CSSProperties } from 'react'
 import { DECOR } from '../data/content'
 import { PROPS, SCENES } from '../assets/manifest'
-import type { SceneAsset } from '../assets/manifest'
+import type { SceneAsset, SceneKey } from '../assets/manifest'
 import { GameIcon } from './GameIcon'
 
 export type SceneVariant = 'home' | 'business' | 'cafe' | 'pet' | 'story'
@@ -48,27 +48,38 @@ function useArt(asset?: SceneAsset) {
 
 /* ============================================================
    BackgroundLayer —— 场景底图
-   始终先铺 CSS 场景作为底与兜底，位图就绪后再叠上去，
-   因此图片缺失 / 加载失败时不会破图或空白。
+   五张场景图**常驻**叠在同一个层里，切页只切换 opacity。
+   这样底图不会被卸载重建、也不会重新走一遍加载状态，
+   从根上消除「切页 → 底色一闪 → 再淡入」的屏闪。
+   每张图解码完成前不参与绘制，所以首屏仍然有完整的 CSS 场景兜底。
    ============================================================ */
-function BackgroundLayer({ view }: { view: SceneVariant }) {
-  const asset = SCENES[view]
-  const { status, onLoad, onError } = useArt(asset)
+const SCENE_ORDER: SceneKey[] = ['home', 'business', 'cafe', 'pet', 'story']
 
+function SceneArt({ asset, active }: { asset: SceneAsset; active: boolean }) {
+  const [ready, setReady] = useState(false)
+
+  return (
+    <img
+      className={`scene__bg${ready ? ' is-ready' : ''}${active ? ' is-active' : ''}`}
+      src={asset.src}
+      alt=""
+      aria-hidden="true"
+      draggable={false}
+      decoding="async"
+      onLoad={() => setReady(true)}
+    />
+  )
+}
+
+function BackgroundLayer({ view }: { view: SceneVariant }) {
   return (
     <div className="scene__bg-layer">
       <CssScene />
-      {status !== 'missing' ? (
-        <img
-          className={`scene__bg${status === 'ready' ? ' is-ready' : ''}`}
-          src={asset.src}
-          alt=""
-          aria-hidden="true"
-          draggable={false}
-          onLoad={onLoad}
-          onError={onError}
-        />
-      ) : null}
+      <div className="scene__bg-stack">
+        {SCENE_ORDER.map((key) => (
+          <SceneArt key={key} asset={SCENES[key]} active={key === view} />
+        ))}
+      </div>
     </div>
   )
 }
@@ -226,11 +237,16 @@ function CssScene() {
 export interface SceneRendererProps {
   view: SceneVariant
   decor?: string[]
+  /** 沉浸式玩法（咖啡店）自己铺满画面时传 true：只隐藏、不卸载，返回时不再重新解码 */
+  hidden?: boolean
 }
 
-export function SceneRenderer({ view, decor = [] }: SceneRendererProps) {
+export function SceneRendererBase({ view, decor = [], hidden = false }: SceneRendererProps) {
   return (
-    <div className={`scene scene--${view}`} aria-hidden="true">
+    <div
+      className={`scene scene--${view}${hidden ? ' is-hidden' : ''}`}
+      aria-hidden="true"
+    >
       <BackgroundLayer view={view} />
       <PropLayer decor={decor} />
       <SceneFx />
@@ -238,3 +254,10 @@ export function SceneRenderer({ view, decor = [] }: SceneRendererProps) {
     </div>
   )
 }
+
+/**
+ * 场景层有 5 张底图 + 二十多个常驻动画节点，重渲染成本不低。
+ * view / decor / hidden 不变时直接跳过：领取奖励、加金币这类
+ * 与场景无关的状态更新就不必让整层重新 diff 一遍。
+ */
+export const SceneRenderer = memo(SceneRendererBase)

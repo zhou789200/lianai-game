@@ -5,6 +5,13 @@
    ============================================================ */
 
 :root {
+  /* ---- 画布缩放 ----
+     运行时由 src/game/viewport.ts 写入真实值（430×932 逻辑画布的整体缩放比），
+     这里给 1 作为未初始化时的兜底。 */
+  --app-scale: 1;
+  --app-w: 430px;
+  --app-h: 932px;
+
   /* ---- 语义基础令牌（架构文档 §6 规定值）---- */
   --paper-0: #fffbf3; /* 卡片羊皮纸底 */
   --ink-900: #4a3b2e; /* 主文字（暖褐） */
@@ -90,24 +97,33 @@
   --edge-paper: 1px solid rgba(150, 112, 42, 0.22);
   --edge-strong: 1px solid rgba(150, 112, 42, 0.42);
 
-  /* ---- 排版 ---- */
+  /* ---- 排版 ----
+     字号一律使用逻辑像素：画布固定 430×932 后由 --app-scale 整体缩放，
+     所以不需要（也不能）再用 vw 让字号跟着视口宽度变，
+     否则同一台设备换个浏览器就会得到不同的排版。 */
   --font-display: 'Palatino Linotype', 'Songti SC', 'Noto Serif SC', 'STSong', Georgia, serif;
   --font-body: 'Avenir Next', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', system-ui,
     -apple-system, 'Segoe UI', sans-serif;
 
-  --fs-xs: clamp(10.5px, 2.8vw, 12px);
-  --fs-sm: clamp(12px, 3.2vw, 13.5px);
-  --fs-md: clamp(13.5px, 3.6vw, 15px);
-  --fs-lg: clamp(15px, 4vw, 17px);
-  --fs-xl: clamp(18px, 4.8vw, 21px);
-  --fs-2xl: clamp(22px, 6vw, 27px);
+  --fs-xs: 12px;
+  --fs-sm: 13.5px;
+  --fs-md: 15px;
+  --fs-lg: 17px;
+  --fs-xl: 21px;
+  --fs-2xl: 26px;
 
   /* ---- 触控 ---- */
   --tap: 44px;
 
+  /* ---- 安全区 ----
+     env() 上报的是物理像素，画布又被整体缩放，
+     这里除以 --app-scale 换算回逻辑坐标，缩放后正好等于物理安全区。 */
+  --safe-top: calc(env(safe-area-inset-top, 0px) / var(--app-scale, 1));
+  --safe-bottom: calc(env(safe-area-inset-bottom, 0px) / var(--app-scale, 1));
+
   /* ---- 布局骨架：悬浮顶栏高度 & 立绘展示区 ---- */
   --header-h: 96px; /* 顶部资源栏内容高度（不含刘海安全区） */
-  --figure-top: calc(var(--header-h) + env(safe-area-inset-top)); /* 立绘展示区上沿 */
+  --figure-top: calc(var(--header-h) + var(--safe-top)); /* 立绘展示区上沿 */
   --figure-h: 25%; /* 立绘展示区高度（相对手机画布高度） */
 
   /* ---- 层级 ---- */

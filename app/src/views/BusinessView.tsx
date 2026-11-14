@@ -10,6 +10,7 @@ import {
 } from 'react'
 import { Clock, Pause, Play, Sparkles, Star, X } from 'lucide-react'
 import { useGame } from '../game/GameContext'
+import { toCanvasPoint } from '../game/viewport'
 import { cafeReducer, computeSettlement, createCafeSession, getStep } from '../game/cafeSession'
 import type {
   CafeOrder,
@@ -75,7 +76,8 @@ interface BusinessViewProps {
 function elementCenter(element: Element | null): { x: number; y: number } | null {
   if (!element) return null
   const rect = element.getBoundingClientRect()
-  return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
+  // 画布整体缩放过，屏幕坐标要换算回画布逻辑坐标再交给定位层
+  return toCanvasPoint(rect.left + rect.width / 2, rect.top + rect.height / 2)
 }
 
 function shortPreference(label: string | undefined): string {
@@ -324,7 +326,8 @@ export function BusinessView({ runId, onExit }: BusinessViewProps) {
       e.preventDefault()
       const origin = elementCenter(e.currentTarget) ?? undefined
       dragRef.current = { ...payload, origin }
-      setDragView({ kind: payload.kind, x: e.clientX, y: e.clientY, label, icon })
+      const point = toCanvasPoint(e.clientX, e.clientY)
+      setDragView({ kind: payload.kind, x: point.x, y: point.y, label, icon })
     },
     [],
   )
@@ -412,7 +415,11 @@ export function BusinessView({ runId, onExit }: BusinessViewProps) {
 
   useEffect(() => {
     const onMove = (e: PointerEvent) =>
-      setDragView((d) => (d ? { ...d, x: e.clientX, y: e.clientY } : d))
+      setDragView((d) => {
+        if (!d) return d
+        const point = toCanvasPoint(e.clientX, e.clientY)
+        return { ...d, x: point.x, y: point.y }
+      })
     const onUp = (e: PointerEvent) => {
       const payload = dragRef.current
       dragRef.current = null

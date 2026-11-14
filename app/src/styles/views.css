@@ -28,7 +28,11 @@
   pointer-events: none;
 }
 
-/* 卡片统一做轻微磨砂，让暖色场景透过来，避免变成普通后台界面 */
+/* 卡片不再使用 backdrop-filter。
+   这些卡片的底色本身就是 0.9 不透明的纸色，4px 磨砂几乎看不出差别，
+   却会让每张卡片各自创建合成层：列表里一叠卡片时既费性能，
+   又在透明度/颜色变化（比如领取奖励）时整块重新采样背景，
+   在移动端内核上就是那一下「闪」。 */
 .quick__card,
 .task-card,
 .shop-card,
@@ -38,7 +42,7 @@
 .story-narration,
 .story-choice,
 .story-end {
-  backdrop-filter: blur(4px);
+  isolation: isolate;
 }
 
 .hero__row {
@@ -1024,10 +1028,18 @@
   background: linear-gradient(170deg, var(--paper), var(--paper-deep));
   border: var(--stroke-hand);
   box-shadow: var(--shadow-float);
+  /* 领取后卡片会退成"已完成"的淡色。
+     这个变化必须有过渡：直接跳变会让整张卡片在点击瞬间突然变淡，
+     看起来就是闪了一下。 */
+  transition:
+    opacity 0.3s ease,
+    box-shadow 0.3s ease,
+    background 0.3s ease;
 }
 
 .task-card.is-claimed {
-  opacity: 0.62;
+  opacity: 0.72;
+  box-shadow: none;
 }
 
 .task-card__icon {

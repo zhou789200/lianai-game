@@ -13,7 +13,7 @@
 /* 经营页直接使用场景底图铺满手机画布，不再套内层卡片边框。 */
 .screen--cafe {
   gap: 0;
-  padding: 0 0 calc(86px + env(safe-area-inset-bottom));
+  padding: 0 0 calc(86px + var(--safe-bottom));
   overflow: hidden;
 }
 
