@@ -983,6 +983,83 @@ async function main() {
     const shots = []
     await shoot('01-home')
     shots.push('01-home')
+
+    const openedQuestSheet = await evaluate(`(() => {
+      const button = document.querySelector('.home2__quest');
+      if (button) button.click();
+      return !!button;
+    })()`)
+    const questSheetReady = await waitForSelector('.modal__title', 1800)
+    const questCardAudit = await evaluate(`(() => {
+      const modal = document.querySelector('.modal');
+      const cards = [...document.querySelectorAll('.task-card')];
+      return {
+        title: modal?.querySelector('.modal__title')?.textContent?.trim() ?? '',
+        viewportWidth: innerWidth,
+        modalWidth: modal?.getBoundingClientRect().width ?? 0,
+        count: cards.length,
+        horizontalOverflow: modal
+          ? modal.scrollWidth > modal.clientWidth + 1
+          : null,
+        cards: cards.map((card) => {
+          const title = card.querySelector('.task-card__title');
+          const rect = title?.getBoundingClientRect();
+          let lines = 0;
+          if (title) {
+            const range = document.createRange();
+            range.selectNodeContents(title);
+            lines = new Set(
+              [...range.getClientRects()].map((item) => Math.round(item.top)),
+            ).size;
+          }
+          return {
+            text: title?.textContent?.trim() ?? '',
+            width: rect?.width ?? 0,
+            height: rect?.height ?? 0,
+            lines,
+            cardOverflow: card.scrollWidth > card.clientWidth + 1,
+          };
+        }),
+      };
+    })()`)
+    await shoot('01a-quest-sheet')
+    shots.push('01a-quest-sheet')
+
+    const questContentClose = await evaluate(`(() => {
+      const modal = document.querySelector('.modal');
+      if (!modal) return { found: false };
+      const rect = modal.getBoundingClientRect();
+      return {
+        found: true,
+        x: rect.left + rect.width / 2,
+        y: rect.top + 46,
+      };
+    })()`)
+    if (questContentClose?.found) {
+      await client.send('Input.dispatchMouseEvent', {
+        type: 'mousePressed',
+        x: questContentClose.x,
+        y: questContentClose.y,
+        button: 'left',
+        buttons: 1,
+        clickCount: 1,
+      })
+      await client.send('Input.dispatchMouseEvent', {
+        type: 'mouseReleased',
+        x: questContentClose.x,
+        y: questContentClose.y,
+        button: 'left',
+        buttons: 0,
+        clickCount: 1,
+      })
+    }
+    await sleep(300)
+    const questContentCloseResult = await evaluate(`(() => ({
+      modalOpen: !!document.querySelector('.modal[role="dialog"]'),
+      homeVisible: !!document.querySelector('.screen--home'),
+    }))()`)
+    await sleep(250)
+
     const homeStorybookEntry = await evaluate(`(() => {
       const entry = document.querySelector('.home2__chapter-book');
       const card = entry?.closest('.home2__chapter');
@@ -1013,6 +1090,86 @@ async function main() {
     const homePetScreenReady = await waitForSelector('.screen--pet', 1800)
     await clickNav('主页')
     const homeRestoredAfterPetJump = await waitForSelector('.screen--home', 1800)
+
+    await clickNav('剧情')
+    const storyTypingReady = await waitForSelector('.storybook__speech p', 1800)
+    const storyTypingSample = await evaluate(`(async () => {
+      const element = document.querySelector('.storybook__speech p');
+      if (!element) return null;
+      const samples = [];
+      const startedAt = performance.now();
+      let previous = -1;
+      while (performance.now() - startedAt < 1200) {
+        const length = (element.textContent ?? '').replace(/\u200b/g, '').length;
+        if (length !== previous) {
+          samples.push({ at: performance.now() - startedAt, length });
+          previous = length;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      }
+      const elapsed = samples.at(-1)?.at - samples[0]?.at;
+      const typedCharacters = samples.at(-1)?.length - samples[0]?.length;
+      return {
+        samples,
+        first: samples.find((sample) => sample.length > 0)?.at ?? null,
+        last: samples.at(-1)?.length ?? 0,
+        estimatedMsPerCharacter:
+          elapsed > 0 && typedCharacters > 0 ? elapsed / typedCharacters : null,
+      };
+    })()`)
+    await shoot('01b-story-typing')
+    shots.push('01b-story-typing')
+    await clickNav('主页')
+
+    if (questCardAudit?.title !== '今日安排') {
+      throw new Error(
+        `今日安排未打开: ${JSON.stringify({
+          openedQuestSheet,
+          questSheetReady,
+          questCardAudit,
+        })}`,
+      )
+    }
+    if (
+      !questSheetReady ||
+      questCardAudit.count < 1 ||
+      questCardAudit.horizontalOverflow ||
+      questCardAudit.cards.some(
+        (card) =>
+          card.lines !== 1 ||
+          card.cardOverflow,
+      )
+    ) {
+      throw new Error(`今日安排任务卡排版异常: ${JSON.stringify(questCardAudit)}`)
+    }
+    if (
+      !questContentClose?.found ||
+      questContentCloseResult.modalOpen ||
+      !questContentCloseResult.homeVisible
+    ) {
+      throw new Error(
+        `今日安排内容区点击未能返回主页: ${JSON.stringify({
+          questContentClose,
+          questContentCloseResult,
+        })}`,
+      )
+    }
+    if (!storyTypingReady || !storyTypingSample?.estimatedMsPerCharacter) {
+      throw new Error(`剧情打字采样失败: ${JSON.stringify(storyTypingSample)}`)
+    }
+    if (
+      storyTypingSample.estimatedMsPerCharacter < 60 ||
+      storyTypingSample.estimatedMsPerCharacter > 85
+    ) {
+      throw new Error(
+        `剧情打字速度异常: ${JSON.stringify(storyTypingSample)}`,
+      )
+    }
+    console.log(`[${SUFFIX}] 任务卡审计: ${JSON.stringify(questCardAudit)}`)
+    console.log(
+      `[${SUFFIX}] 今日安排空白区关闭: ${JSON.stringify(questContentCloseResult)}`,
+    )
+    console.log(`[${SUFFIX}] 剧情打字审计: ${JSON.stringify(storyTypingSample)}`)
 
     /* ---------- 营业关卡（咖啡店） ---------- */
     await clickNav('咖啡店')

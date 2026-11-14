@@ -1,10 +1,14 @@
 import { useEffect, useId, useRef, type ReactNode } from 'react'
 import { X } from 'lucide-react'
 
+const INTERACTIVE_SELECTOR =
+  'button, a, input, select, textarea, summary, [role="button"], [contenteditable="true"]'
+
 export interface ModalProps {
   title: string
   subtitle?: string
   onClose?: () => void
+  closeOnContentClick?: boolean
   children?: ReactNode
   actions?: ReactNode
   initialFocusRef?: React.RefObject<HTMLElement | null>
@@ -14,6 +18,7 @@ export function Modal({
   title,
   subtitle,
   onClose,
+  closeOnContentClick = false,
   children,
   actions,
   initialFocusRef,
@@ -96,6 +101,13 @@ export function Modal({
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
+        onClick={(event) => {
+          if (!closeOnContentClick || !onClose) return
+          if (event.target instanceof Element && event.target.closest(INTERACTIVE_SELECTOR)) {
+            return
+          }
+          onClose()
+        }}
       >
         {onClose ? (
           <button

@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
+// 中文剧情以 72ms/字 展开，给语音朗读留出自然起播和跟读时间。
+const TYPE_INTERVAL_MS = 72
+
 function usePrefersReducedMotion(): boolean {
   const [reduced, setReduced] = useState(() => {
     if (typeof window === 'undefined' || !window.matchMedia) return false
@@ -48,7 +51,7 @@ export function useTypewriter(text: string | null, pageKey: string) {
       current += 1
       setTyping({ pageKey, text, count: current })
       if (current >= length) stop()
-    }, 42)
+    }, TYPE_INTERVAL_MS)
     return stop
   }, [pageKey, reduced, stop, text])
 

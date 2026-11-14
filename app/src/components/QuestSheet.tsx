@@ -54,7 +54,12 @@ export function QuestSheet({
   }
 
   return (
-    <Modal title="今日安排" subtitle="节奏、布丁、任务与成长都在这里" onClose={onClose}>
+    <Modal
+      title="今日安排"
+      subtitle="节奏、布丁、任务与成长都在这里"
+      closeOnContentClick
+      onClose={onClose}
+    >
       {/* ---------- 今日节奏 ---------- */}
       <Panel title="今日节奏" icon="Clock" hint={RHYTHM[slotIndex].label}>
         <div className="rhythm">
