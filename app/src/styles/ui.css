@@ -625,6 +625,58 @@
   }
 }
 
+/* 红点含义说明：小红点自己在手机上没有 hover，看不懂，用一条气泡讲清楚 */
+.nav__tip {
+  position: absolute;
+  bottom: calc(100% + 9px);
+  left: -6px;
+  z-index: 1;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #fffaf0, #f6e3c4);
+  border: var(--stroke-hand);
+  box-shadow: var(--shadow-float);
+  color: var(--ink-800);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: nav-tip-in 0.24s ease-out both;
+}
+
+/* 气泡下沿的小尖角，指向红点（红点圆心在气泡左侧约 49px 处） */
+.nav__tip::after {
+  content: '';
+  position: absolute;
+  left: 45px;
+  bottom: -5px;
+  width: 8px;
+  height: 8px;
+  background: #f6e3c4;
+  border-right: var(--stroke-hand);
+  border-bottom: var(--stroke-hand);
+  border-bottom-right-radius: 2px;
+  transform: rotate(45deg);
+}
+
+@keyframes nav-tip-in {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav__tip {
+    animation: none;
+  }
+}
+
 /* ---------- Toast ---------- */
 /* 放在顶栏下方，避免与头像 / 名牌 / 资源小条发生控件重叠 */
 .toasts {
