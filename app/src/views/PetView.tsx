@@ -9,7 +9,7 @@ import {
   PET_PLAY_HANDS,
   petAsset,
 } from '../assets/manifest'
-import { playMeow, type MeowKind } from '../game/petVoice'
+import { CARE_MEOWS, playMeow } from '../game/petVoice'
 import { GameIcon } from '../components/GameIcon'
 import { Panel, SectionLabel } from '../components/Panel'
 import { StatBar } from '../components/StatBar'
@@ -70,16 +70,6 @@ export function PetView() {
   } | null>(null)
 
   const { pet } = state
-
-  // 叫声跟着状态走：饿的时候连叫两声，没精神时轻喵，心情好时亮亮地长喵
-  const meowKind: MeowKind =
-    pet.hunger < 35
-      ? 'double'
-      : pet.mood < 35
-        ? 'soft'
-        : pet.mood >= 70
-          ? 'bright'
-          : 'chirp'
 
   const [reaction, setReaction] = useState<{ id: number; cry: string; icon: string; line: string } | null>(
     null,
@@ -161,8 +151,8 @@ export function PetView() {
         actionTimer.current = null
         return
       }
-      // 照料完成用跟状态对应的语气：饿了是连叫两声，没精神是轻喵
-      playMeow(meowKind)
+      // 每种照料用自己的叫声：喂食 / 玩耍 / 梳毛 / 拍照各不相同
+      playMeow(CARE_MEOWS[def.id])
       setFeedback({ icon: def.icon, text: r.message, at: Date.now() })
       actionTimer.current = null
     }, 620)
