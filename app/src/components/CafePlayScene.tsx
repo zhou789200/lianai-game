@@ -231,7 +231,7 @@ export function CafePlayScene({ canStart, onStart }: CafePlaySceneProps) {
   const triggerFx = (spot: SpotId, text: string, duration = 2100) => {
     const kind = SPOT_BY_ID[spot].fx
     playSfx(FX_SOUND[kind])
-    if (kind === 'paw') playMeow('chirp')
+    if (kind === 'paw') playMeow()
     fxSeed.current += 1
     setFx({ id: fxSeed.current, spot, kind, text })
     if (fxTimer.current !== null) window.clearTimeout(fxTimer.current)

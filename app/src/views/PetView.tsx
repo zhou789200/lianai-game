@@ -104,7 +104,8 @@ export function PetView() {
   /** 撸猫：叫一声 + 歪头，不消耗体力也不改数值，纯互动 */
   const petTheCat = () => {
     if (careMoment) return
-    playMeow(meowKind)
+    // 不指定语气：每点一下都换一种叫声，比反复播同一段更像真猫
+    playMeow()
     // 不连续抽到同一句，手感更像真猫
     let index = Math.floor(Math.random() * PET_REACTIONS.length)
     if (index === lastReaction.current) index = (index + 1) % PET_REACTIONS.length
@@ -160,7 +161,8 @@ export function PetView() {
         actionTimer.current = null
         return
       }
-      playMeow('chirp')
+      // 照料完成用跟状态对应的语气：饿了是连叫两声，没精神是轻喵
+      playMeow(meowKind)
       setFeedback({ icon: def.icon, text: r.message, at: Date.now() })
       actionTimer.current = null
     }, 620)

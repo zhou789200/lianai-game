@@ -7,12 +7,23 @@
    - 低通从 900Hz 开到 5kHz，做出张嘴的「m→ow」
    - 两个带通共鸣腔撑起元音，三角波补一层胸腔低频
    - 颤音深度逐渐加大，尾音才有猫叫那种拐弯
-   四种语气：bright（开心长喵）、chirp（短促咪）、double（连叫两声）、soft（低落轻喵）。
+   四种基础语气：bright（开心长喵）、chirp（短促咪）、double（连叫两声）、soft（低落轻喵）。
+   另外四种做变化用：trill（咕噜式招呼）、question（上扬疑问）、
+   longcall（撒娇拖长）、grumpy（不耐烦的低哼）。
+   点击猫时按「洗牌轮转」取一种，保证连着点也不会重复上一声。
    ============================================================ */
 
 import { getEffectiveSoundVolume, isSoundEnabled } from './sound'
 
-export type MeowKind = 'bright' | 'chirp' | 'double' | 'soft'
+export type MeowKind =
+  | 'bright'
+  | 'chirp'
+  | 'double'
+  | 'soft'
+  | 'trill'
+  | 'question'
+  | 'longcall'
+  | 'grumpy'
 
 type AudioContextCtor = typeof AudioContext
 
@@ -96,6 +107,84 @@ const SYLLABLES: Record<MeowKind, Syllable[]> = {
       brightness: 0.55,
       vibratoHz: 11,
       vibratoDepth: 0.03,
+    },
+  ],
+  // 打招呼的「咕噜」：嘴几乎没张开，靠快速颤动做出连续的短音
+  trill: [
+    {
+      f0Start: 430,
+      f0Peak: 520,
+      f0End: 470,
+      dur: 0.11,
+      peakAt: 0.35,
+      gain: 0.11,
+      brightness: 0.45,
+      vibratoHz: 26,
+      vibratoDepth: 0.07,
+    },
+    {
+      f0Start: 460,
+      f0Peak: 560,
+      f0End: 500,
+      dur: 0.1,
+      peakAt: 0.35,
+      gain: 0.12,
+      brightness: 0.5,
+      vibratoHz: 28,
+      vibratoDepth: 0.07,
+    },
+    {
+      f0Start: 440,
+      f0Peak: 540,
+      f0End: 460,
+      dur: 0.09,
+      peakAt: 0.3,
+      gain: 0.1,
+      brightness: 0.42,
+      vibratoHz: 24,
+      vibratoDepth: 0.06,
+    },
+  ],
+  // 疑问：音高一路往上抬，尾巴不收
+  question: [
+    {
+      f0Start: 470,
+      f0Peak: 880,
+      f0End: 860,
+      dur: 0.3,
+      peakAt: 0.86,
+      gain: 0.15,
+      brightness: 0.85,
+      vibratoHz: 15,
+      vibratoDepth: 0.03,
+    },
+  ],
+  // 撒娇：拖得很长，中途拐一下再落回平音
+  longcall: [
+    {
+      f0Start: 470,
+      f0Peak: 760,
+      f0End: 520,
+      dur: 0.78,
+      peakAt: 0.34,
+      gain: 0.15,
+      brightness: 0.72,
+      vibratoHz: 13,
+      vibratoDepth: 0.065,
+    },
+  ],
+  // 不耐烦的低哼：又低又暗，颤得慢
+  grumpy: [
+    {
+      f0Start: 300,
+      f0Peak: 370,
+      f0End: 250,
+      dur: 0.4,
+      peakAt: 0.28,
+      gain: 0.16,
+      brightness: 0.32,
+      vibratoHz: 9,
+      vibratoDepth: 0.05,
     },
   ],
 }
@@ -244,24 +333,47 @@ export function scheduleMeow(
   })
 }
 
-const KIND_WEIGHTS: Array<[MeowKind, number]> = [
-  ['bright', 0.34],
-  ['chirp', 0.3],
-  ['double', 0.22],
-  ['soft', 0.14],
+const ALL_KINDS: MeowKind[] = [
+  'bright',
+  'chirp',
+  'double',
+  'soft',
+  'trill',
+  'question',
+  'longcall',
+  'grumpy',
 ]
 
-function pickKind(): MeowKind {
-  let roll = Math.random()
-  for (const [kind, weight] of KIND_WEIGHTS) {
-    if (roll < weight) return kind
-    roll -= weight
+let bag: MeowKind[] = []
+let lastKind: MeowKind | null = null
+
+/**
+ * 取下一声猫叫的语气：把全部语气洗牌后依次用掉再重新洗。
+ * 相邻两次一定不同，且每种语气在一轮里都会出现一次。
+ */
+export function nextMeowKind(): MeowKind {
+  if (bag.length === 0) {
+    bag = [...ALL_KINDS]
+    for (let i = bag.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1))
+      const swap = bag[i]
+      bag[i] = bag[j]
+      bag[j] = swap
+    }
+    // 新一轮的第一声不能和上一轮的最后一声撞车
+    if (bag.length > 1 && bag[0] === lastKind) {
+      const head = bag[0]
+      bag[0] = bag[1]
+      bag[1] = head
+    }
   }
-  return 'bright'
+  const kind = bag.shift() ?? 'bright'
+  lastKind = kind
+  return kind
 }
 
 /**
- * 叫一声。kind 不传就按权重随机挑一种语气。
+ * 叫一声。kind 不传就按洗牌轮转挑一种语气（保证和上一声不同）。
  * 返回是否真的发声（总开关关闭 / 不支持 Web Audio / 0.32s 内连点时为 false）。
  */
 export function playMeow(kind?: MeowKind): boolean {
@@ -274,12 +386,9 @@ export function playMeow(kind?: MeowKind): boolean {
   if (wallClock - lastPlayedAt < MEOW_COOLDOWN_MS) return false
   lastPlayedAt = wallClock
 
-  scheduleMeow(
-    ac,
-    ac.currentTime,
-    kind ?? pickKind(),
-    0.95 + Math.random() * 0.1,
-    getEffectiveSoundVolume(),
-  )
+  // 被限流拦下的点击不消耗语气，保证真正发声的每一下都换一种
+  const chosen = kind ?? nextMeowKind()
+
+  scheduleMeow(ac, ac.currentTime, chosen, 0.95 + Math.random() * 0.1, getEffectiveSoundVolume())
   return true
 }

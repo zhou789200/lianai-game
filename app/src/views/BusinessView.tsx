@@ -173,7 +173,7 @@ export function BusinessView({ runId, onExit }: BusinessViewProps) {
       if (kind === 'cleaning') playSfx('clean')
       if (kind === 'pet') {
         playSfx('cafe-pet')
-        playMeow('chirp')
+        playMeow()
       }
       if (kind === 'romance') playSfx('cafe-romance')
       sceneTimerRef.current = window.setTimeout(() => {
