@@ -152,6 +152,19 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }
 
+/** 把来源不可信的数值收敛成有限整数；NaN / Infinity / undefined 一律回退默认值。 */
+function finiteInt(value: unknown, fallback: number, min: number, max = Number.MAX_SAFE_INTEGER): number {
+  const num = typeof value === 'number' ? value : Number.NaN
+  if (!Number.isFinite(num)) return fallback
+  return Math.max(min, Math.min(max, Math.trunc(num)))
+}
+
+function finiteNumber(value: unknown, fallback: number, min: number, max = Number.MAX_SAFE_INTEGER): number {
+  const num = typeof value === 'number' ? value : Number.NaN
+  if (!Number.isFinite(num)) return fallback
+  return Math.max(min, Math.min(max, num))
+}
+
 function isGameState(value: unknown): value is GameState {
   if (
     !isRecord(value) ||
@@ -160,14 +173,15 @@ function isGameState(value: unknown): value is GameState {
   ) {
     return false
   }
+  // chapterBeat 允许缺失：由 normalizeState 按章节长度补齐并收敛，
+  // 避免一个缺字段的旧档被整份判废。
   if (
     typeof value.coins !== 'number' ||
     typeof value.stamina !== 'number' ||
     typeof value.staminaMax !== 'number' ||
     typeof value.level !== 'number' ||
     typeof value.exp !== 'number' ||
-    typeof value.chapterId !== 'string' ||
-    typeof value.chapterBeat !== 'number'
+    typeof value.chapterId !== 'string'
   ) {
     return false
   }
@@ -254,9 +268,43 @@ function normalizeState(state: GameState): GameState {
   const storySeed = storedStorySeed || stableStorySeed(migrationSeedSource)
   const storyCache = normalizeStoryCache(state.storyCache)
 
+  /* ---------- 数值边界：NaN / Infinity / 越界值一律收敛 ---------- */
+  const now = Date.now()
+  const staminaMax = finiteInt(state.staminaMax, 12, 1, 999)
+  const stamina = finiteInt(state.stamina, staminaMax, 0, staminaMax)
+  // 回复起点若落在未来（改过系统时间或时钟漂移），回复会永久停摆，收敛到当前时间。
+  const staminaRegenAt = finiteNumber(state.staminaRegenAt, now, 0, now)
+  const romanceChapter = CHAPTERS.find((item) => item.id === state.chapterId) ?? CHAPTERS[0]
+  const chapterBeat = finiteInt(state.chapterBeat, 0, 0, romanceChapter.beats.length)
+  const pet = state.pet
+  const stats = state.stats
+
   return {
     ...state,
     version: SAVE_VERSION,
+    coins: finiteInt(state.coins, 0, 0),
+    stamina,
+    staminaMax,
+    staminaRegenAt,
+    level: finiteInt(state.level, 1, 1, 99),
+    exp: finiteInt(state.exp, 0, 0),
+    chapterId: romanceChapter.id,
+    chapterBeat,
+    pet: {
+      ...pet,
+      hunger: finiteInt(pet.hunger, 0, 0, 100),
+      cleanliness: finiteInt(pet.cleanliness, 0, 0, 100),
+      mood: finiteInt(pet.mood, 0, 0, 100),
+      intimacy: finiteInt(pet.intimacy, 0, 0, 100),
+    },
+    stats: {
+      businessRuns: finiteInt(stats.businessRuns, 0, 0),
+      ordersServed: finiteInt(stats.ordersServed, 0, 0),
+      perfectRuns: finiteInt(stats.perfectRuns, 0, 0),
+      petInteractions: finiteInt(stats.petInteractions, 0, 0),
+      choicesMade: finiteInt(stats.choicesMade, 0, 0),
+      coinsEarned: finiteInt(stats.coinsEarned, 0, 0),
+    },
     storyChapterId: hasKnownStoryChapter ? state.storyChapterId : STORYBOOK_CHAPTERS[0].id,
     storyChapterBeat:
       typeof state.storyChapterBeat === 'number' && state.storyChapterBeat >= 0
@@ -294,18 +342,19 @@ function normalizeState(state: GameState): GameState {
 
 /**
  * 刷新 / 崩溃后归还未结算营业占用的体力，避免“体力被扣但没结算”。
- * 营业中的临时状态不入档，因此这里只做归还，不发放任何收益。
+ * 营业中的临时状态不入档，因此这里只做归还，不发放任何收益：
+ * 中途刷新的自营业绩一律作废（否则可以靠刷新跳过结算、重复领币）。
  */
 export function reconcileAbandonedRun(state: GameState): GameState {
   if (!state.activeRunId) return normalizeState(state)
-  const pending = state.pendingRunRewards ?? { coins: 0, exp: 0 }
-  const recovered: GameState = {
+  return normalizeState({
     ...state,
     activeRunId: null,
     stamina: Math.min(state.staminaMax, state.stamina + BUSINESS_STAMINA_COST),
+    pendingRunRewards: null,
+    recoveredRunRewards: null,
     updatedAt: Date.now(),
-  }
-  return { ...recovered, pendingRunRewards: null, recoveredRunRewards: pending }
+  })
 }
 
 export function saveState(state: GameState): boolean {

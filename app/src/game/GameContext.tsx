@@ -12,7 +12,6 @@ import {
 import {
   BUSINESS_STAMINA_COST,
   SAVE_VERSION,
-  STAMINA_REGEN_MS,
   clearAccountState,
   clearSave,
   createInitialState,
@@ -26,6 +25,7 @@ import {
   saveState,
   todayKey,
 } from './storage'
+import { regenerateStamina, spendStamina } from './stamina'
 import {
   CHAPTERS,
   DECOR,
@@ -239,16 +239,11 @@ function reducer(runtime: Runtime, action: Action): Runtime {
       let changed = false
 
       // 体力自然回复
-      if (next.stamina < next.staminaMax) {
-        const elapsed = now - next.staminaRegenAt
-        const gained = Math.floor(elapsed / STAMINA_REGEN_MS)
-        if (gained > 0) {
-          next.stamina = clamp(next.stamina + gained, 0, next.staminaMax)
-          next.staminaRegenAt = next.staminaRegenAt + gained * STAMINA_REGEN_MS
-          changed = true
-        }
-      } else {
-        next.staminaRegenAt = now
+      const regen = regenerateStamina(next, now)
+      if (regen) {
+        next.stamina = regen.stamina
+        next.staminaRegenAt = regen.staminaRegenAt
+        changed = true
       }
 
       // 每日任务刷新
@@ -280,12 +275,7 @@ function reducer(runtime: Runtime, action: Action): Runtime {
     }
 
     case 'spendStamina': {
-      const nextState = {
-        ...s,
-        stamina: clamp(s.stamina - action.amount, 0, s.staminaMax),
-        updatedAt: Date.now(),
-      }
-      return { state: nextState, notices: runtime.notices }
+      return { state: spendStamina(s, action.amount), notices: runtime.notices }
     }
 
     case 'serveOrder': {
@@ -374,9 +364,8 @@ function reducer(runtime: Runtime, action: Action): Runtime {
     case 'petAction': {
       const p = s.pet
       const nextState: GameState = {
-        ...s,
+        ...spendStamina(s, action.staminaCost),
         coins: Math.max(0, s.coins - action.cost),
-        stamina: clamp(s.stamina - action.staminaCost, 0, s.staminaMax),
         pet: {
           ...p,
           hunger: clamp(p.hunger + (action.effects.hunger ?? 0)),
@@ -669,11 +658,9 @@ function reducer(runtime: Runtime, action: Action): Runtime {
     case 'beginCafeRun': {
       if (s.activeRunId) return runtime
       const nextState: GameState = {
-        ...s,
+        ...spendStamina(s, BUSINESS_STAMINA_COST),
         activeRunId: action.runId,
-        stamina: clamp(s.stamina - BUSINESS_STAMINA_COST, 0, s.staminaMax),
         pendingRunRewards: null,
-        updatedAt: Date.now(),
       }
       return { state: nextState, notices: runtime.notices }
     }

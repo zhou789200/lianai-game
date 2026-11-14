@@ -182,12 +182,12 @@ export interface GameState {
     rating: number
     coins: number
   } | null
-  /** 营业中已上菜收益快照；刷新后一次性入账，结算时清空 */
+  /** 营业中已上菜收益快照；结算时入账并清空，中断时作废 */
   pendingRunRewards?: {
     coins: number
     exp: number
   } | null
-  /** reconcileAbandonedRun 恢复的收益；由 Provider 入账后清空 */
+  /** 旧版中断恢复遗留的收益字段；现在统一置空，保留仅为兼容旧存档 */
   recoveredRunRewards?: {
     coins: number
     exp: number
