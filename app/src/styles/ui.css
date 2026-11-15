@@ -20,7 +20,7 @@
 .appbar {
   flex: 0 0 var(--figure-top);
   height: var(--figure-top);
-  padding: calc(8px + var(--safe-top)) 14px 0;
+  padding: calc(8px + var(--safe-top) + var(--hud-guard)) 14px 0;
   display: flex;
   flex-direction: column;
   gap: 6px;

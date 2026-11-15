@@ -13,6 +13,10 @@ body {
   margin: 0;
   padding: 0;
   height: 100%;
+  /* 手机上如果 body 可滚，浏览器会顺手把地址栏滑走/复位，
+     画布跟着上下错位，这里彻底关掉页面级滚动与橡皮筋。 */
+  overflow: hidden;
+  overscroll-behavior: none;
 }
 
 body {
@@ -57,10 +61,17 @@ ul {
 
 /* ---------- 舞台：整屏居中放置手机画布 ----------
    尺寸全部由 JS 算好的 --app-w / --app-h 决定（逻辑画布 430×932 × 缩放比），
-   不依赖 dvh / vw 等各浏览器支持度不一的视口单位。 */
+   不依赖 dvh / vw 等各浏览器支持度不一的视口单位。
+
+   注意 top/height 用的是 --vv-top / --vv-h（visualViewport 的值），
+   而不是 inset: 0：地址栏、工具栏浮在页面上时，布局视口和可视视口并不相等，
+   只有贴着可视视口摆，画布才不会有一截藏在浏览器 UI 底下。 */
 .stage {
   position: fixed;
-  inset: 0;
+  top: var(--vv-top, 0px);
+  left: 0;
+  right: 0;
+  height: var(--vv-h, 100%);
   display: grid;
   place-items: center;
   overflow: hidden;
@@ -99,6 +110,15 @@ ul {
 
 /* 小屏手机：铺满整屏，去掉手机壳装饰 */
 @media (max-width: 480px) {
+  /* 画布比例固定 430:932，屏幕更「矮胖」时左右必然留两条空档。
+     底色跟画布暖调统一后，它读起来像屏幕边框，而不是「没铺满」。
+     （图1 那种两条浅色竖带，就是这里的底色和插画反差太大造成的。） */
+  body {
+    background:
+      radial-gradient(120% 46% at 50% 0%, #fff4dd 0%, rgba(255, 244, 221, 0) 72%),
+      linear-gradient(180deg, #f0dcbb 0%, #e6caa0 100%);
+  }
+
   .phone {
     border-radius: 0;
     box-shadow: none;
