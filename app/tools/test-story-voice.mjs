@@ -7,6 +7,8 @@ import {
   sanitizeStoryVoiceRequest,
 } from '../server/story-voice-api.mjs'
 import {
+  getStoryAutoAdvanceDelay,
+  isStoryAutoAdvanceReady,
   normalizeOnlineVoiceFailure,
   shouldUseSystemVoiceFallback,
 } from '../shared/storyVoiceFailure.mjs'
@@ -32,16 +34,24 @@ async function startServer(options = {}) {
   }
 }
 
-test('story voice maps narration and Lin Che to distinct natural voices', () => {
+test('story voice keeps narration, heroine, and Lin Che clearly distinct', () => {
   const narration = resolveStoryVoiceProfile('旁白')
+  const heroine = resolveStoryVoiceProfile('你')
   const linChe = resolveStoryVoiceProfile('林澈')
   const alternateSpelling = resolveStoryVoiceProfile('林撤')
 
   assert.equal(narration.voice, 'zh-CN-XiaoxiaoNeural')
-  assert.equal(linChe.voice, 'zh-CN-YunjianNeural')
+  assert.equal(heroine.voice, 'zh-CN-XiaomoNeural')
+  assert.equal(linChe.voice, 'zh-CN-YunxiNeural')
   assert.equal(alternateSpelling.voice, linChe.voice)
   assert.equal(narration.rate, 0.94)
-  assert.equal(linChe.rate, 0.88)
+  assert.equal(heroine.rate, 0.92)
+  assert.equal(heroine.pitch, '-6Hz')
+  assert.equal(linChe.rate, 1.1)
+  assert.equal(linChe.pitch, '+5Hz')
+  assert.notEqual(heroine.voice, narration.voice)
+  assert.notEqual(linChe.voice, narration.voice)
+  assert.notEqual(linChe.voice, heroine.voice)
 })
 
 test('online voice timeout falls back to system speech while cancellation stays silent', () => {
@@ -53,6 +63,47 @@ test('online voice timeout falls back to system speech while cancellation stays 
   assert.equal(shouldUseSystemVoiceFallback(timeoutFailure), true)
   assert.equal(shouldUseSystemVoiceFallback(networkFailure), true)
   assert.equal(shouldUseSystemVoiceFallback(cancellation), false)
+})
+
+test('story auto advance starts after five seconds and only when waiting is allowed', () => {
+  assert.equal(getStoryAutoAdvanceDelay(true), 5_000)
+  assert.equal(getStoryAutoAdvanceDelay(false), null)
+  assert.equal(
+    isStoryAutoAdvanceReady({
+      allowed: true,
+      textComplete: true,
+      voiceFinished: false,
+      pageVisible: true,
+    }),
+    false,
+  )
+  assert.equal(
+    isStoryAutoAdvanceReady({
+      allowed: true,
+      textComplete: false,
+      voiceFinished: true,
+      pageVisible: true,
+    }),
+    false,
+  )
+  assert.equal(
+    isStoryAutoAdvanceReady({
+      allowed: true,
+      textComplete: true,
+      voiceFinished: true,
+      pageVisible: false,
+    }),
+    false,
+  )
+  assert.equal(
+    isStoryAutoAdvanceReady({
+      allowed: true,
+      textComplete: true,
+      voiceFinished: true,
+      pageVisible: true,
+    }),
+    true,
+  )
 })
 
 test('story voice request trims and validates text', () => {

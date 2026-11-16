@@ -11,6 +11,7 @@
   --app-scale: 1;
   --app-w: 430px;
   --app-h: 932px;
+  --app-canvas-h: 932px;
   /* 可视视口（浏览器工具栏之外的真正可见区），同样由 viewport.ts 写入 */
   --vv-h: 932px;
   --vv-top: 0px;

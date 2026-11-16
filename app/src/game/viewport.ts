@@ -3,15 +3,19 @@ import { useEffect, useState } from 'react'
 /**
  * 画布适配（唯一入口）
  * ============================================================
- * 所有页面都排在一块 430×932 的逻辑画布上，再由 `--app-scale`
- * 整体等比缩放到当前屏幕。这样：
+ * 所有页面都排在一块 430 宽的逻辑画布上，再由 `--app-scale`
+ * 整体等比缩放到当前屏幕。桌面端保持 430×932 手机壳比例；手机端
+ * 按宽度铺满，并把逻辑高度扩展/收缩到可视视口，避免长屏左右留边。
+ * 这样：
  *   · 不再依赖 dvh / vw / svh 等各浏览器支持度不一的视口单位；
- *   · 手机、平板、桌面窗口看到的版式、字号、留白完全一致；
- *   · 画布比例固定，不会被视口比例拉扁或拉长。
+ *   · 手机端没有横向空带；
+ *   · 字号、间距和触控尺寸保持统一，不会被屏幕比例拉扁；
+ *   · 桌面端仍以完整手机画布居中展示。
  *
  * JS 只负责算出缩放比，并把结果写成 CSS 变量：
  *   --app-scale  缩放比（1 = 430×932 原始尺寸）
  *   --app-w/h    画布在屏幕上的像素尺寸
+ *   --app-canvas-h 画布内部的逻辑高度（手机端随视口变化）
  *   --vv-h/top   浏览器「可视视口」的高度与偏移，给 .stage 定位用
  *
  * 为什么要visualViewport：
@@ -40,6 +44,8 @@ export interface CanvasMetrics {
   scale: number
   width: number
   height: number
+  /** 画布内部的逻辑高度；手机端由可视视口除以缩放比得到 */
+  canvasHeight: number
   /** 可视视口高度（浏览器工具栏之外真正能画的高度） */
   viewportH: number
   /** 可视视口在布局视口中的纵向偏移（iOS 键盘/滚动时非 0） */
@@ -56,12 +62,17 @@ function readViewport() {
 
 export function computeMetrics(w: number, h: number, top = 0): CanvasMetrics {
   const pad = w <= 480 ? 0 : DESKTOP_PAD
-  const raw = Math.min((w - pad * 2) / DESIGN_W, (h - pad * 2) / DESIGN_H)
+  const mobile = w <= 480
+  const raw = mobile
+    ? (w - pad * 2) / DESIGN_W
+    : Math.min((w - pad * 2) / DESIGN_W, (h - pad * 2) / DESIGN_H)
   const scale = Number.isFinite(raw) && raw > 0 ? raw : 1
+  const canvasHeight = mobile ? Math.max(1, (h - pad * 2) / scale) : DESIGN_H
   return {
     scale: Math.round(scale * 1e4) / 1e4,
-    width: Math.round(DESIGN_W * scale),
-    height: Math.round(DESIGN_H * scale),
+    width: mobile ? w - pad * 2 : Math.round(DESIGN_W * scale),
+    height: mobile ? h - pad * 2 : Math.round(DESIGN_H * scale),
+    canvasHeight: Math.round(canvasHeight * 1e2) / 1e2,
     viewportH: h,
     viewportTop: top,
   }
@@ -72,6 +83,7 @@ export function applyCanvasVars(metrics: CanvasMetrics) {
   root.style.setProperty('--app-scale', String(metrics.scale))
   root.style.setProperty('--app-w', `${metrics.width}px`)
   root.style.setProperty('--app-h', `${metrics.height}px`)
+  root.style.setProperty('--app-canvas-h', `${metrics.canvasHeight}px`)
   root.style.setProperty('--vv-h', `${metrics.viewportH}px`)
   root.style.setProperty('--vv-top', `${metrics.viewportTop}px`)
 }
@@ -101,7 +113,14 @@ export function toCanvasPoint(x: number, y: number): { x: number; y: number } {
 export function useCanvasMetrics(): CanvasMetrics {
   const [metrics, setMetrics] = useState<CanvasMetrics>(() => {
     if (typeof window === 'undefined') {
-      return { scale: 1, width: DESIGN_W, height: DESIGN_H, viewportH: DESIGN_H, viewportTop: 0 }
+      return {
+        scale: 1,
+        width: DESIGN_W,
+        height: DESIGN_H,
+        canvasHeight: DESIGN_H,
+        viewportH: DESIGN_H,
+        viewportTop: 0,
+      }
     }
     const { w, h, top } = readViewport()
     return computeMetrics(w, h, top)

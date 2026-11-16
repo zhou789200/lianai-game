@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
+import { useMemo, useState, useSyncExternalStore } from 'react'
 import {
   BookOpen,
   ChevronRight,
@@ -17,7 +17,6 @@ import {
   getHomeBgmTrackIndex,
   onHomeBgmChange,
   playNextHomeBgm,
-  startHomeBgm,
 } from '../game/homeBgm'
 import { getCurrentStorybookChapter, storybookProgress } from '../game/storybook'
 import type { ViewKey } from '../game/types'
@@ -40,18 +39,6 @@ export function HomeView({ onNavigate }: { onNavigate: (v: ViewKey) => void }) {
   const [sheet, setSheet] = useState(false)
   const bgmTrackIndex = useSyncExternalStore(onHomeBgmChange, getHomeBgmTrackIndex)
   const bgm = getHomeBgmTrack(bgmTrackIndex)
-
-  useEffect(() => {
-    let release: (() => void) | null = null
-    const timer = window.setTimeout(() => {
-      release = startHomeBgm()
-    }, 0)
-    return () => {
-      window.clearTimeout(timer)
-      release?.()
-      release = null
-    }
-  }, [])
 
   const storyChapter = getCurrentStorybookChapter(state)
   const slotIndex = currentSlotIndex()

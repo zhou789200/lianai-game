@@ -761,10 +761,10 @@
 }
 
 /* ---------- 弹窗 ---------- */
-/* 遮罩不用 backdrop-filter：
-   它是整块画布大小的全屏滤镜，弹窗内部任何内容变化（比如领取奖励时
-   卡片的淡出动画）都会让它重新采样一次背景，移动端内核上会闪一帧白。
-   加深一层纯色遮罩，观感几乎一致，但不会再有整屏重绘。 */
+/* 遮罩和弹窗都不做整层 opacity / transform 入场。
+   微信 Android WebView 在高刷新率屏幕上会为这层同时建立透明和缩放合成，
+   下拉、滚动或内容变化时容易整层重新采样，表现为屏幕闪一下。
+   这里保留静态遮罩，入场反馈交给下方的小面积内容。 */
 .modal-layer {
   position: absolute;
   inset: 0;
@@ -773,16 +773,10 @@
   place-items: center;
   padding: 20px;
   background: rgba(38, 26, 14, 0.62);
-  animation: fade-in 0.18s ease;
 }
 
-@keyframes fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+.modal-layer--none {
+  background: transparent;
 }
 
 .modal {
@@ -798,7 +792,6 @@
     linear-gradient(170deg, #fffaf0 0%, #f5e6ca 100%);
   border: 1.5px solid rgba(150, 112, 42, 0.4);
   box-shadow: 0 26px 54px rgba(70, 44, 18, 0.42), var(--shadow-inset);
-  animation: modal-in 0.24s cubic-bezier(0.2, 0.9, 0.3, 1);
 }
 
 .modal:focus {
@@ -831,17 +824,6 @@
 .modal__close:focus-visible {
   outline: 2px solid var(--coral-400);
   outline-offset: 2px;
-}
-
-@keyframes modal-in {
-  from {
-    opacity: 0;
-    transform: translateY(14px) scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
 }
 
 .modal__title {

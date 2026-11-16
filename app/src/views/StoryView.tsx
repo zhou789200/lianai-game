@@ -18,7 +18,7 @@ import { StoryArchiveSheet } from '../components/StoryArchiveSheet'
 import { StoryDraftSheet } from '../components/StoryDraftSheet'
 import { StoryVoiceButton } from '../components/StoryVoiceButton'
 import { UiButton } from '../components/UiButton'
-import { useStoryVoice } from '../game/useStoryVoice'
+import { useStoryAutoAdvance, useStoryVoice } from '../game/useStoryVoice'
 import type { StoryChoice } from '../game/types'
 
 interface ReplyState {
@@ -86,36 +86,34 @@ export function StoryView() {
         : null
 
   const typed = useTypewriter(storyText, pageKey)
-  useStoryVoice(
+  const waitingForChoice = beat?.type === 'choice' && !activeReply
+  const voiceEnabled =
+    available &&
+    !activeDynamicChapter &&
+    !catalogOpen &&
+    !confirmSkip &&
+    !continuationOpen
+  const voice = useStoryVoice(
     storyText,
     activeReply || beat?.type !== 'dialogue' ? '旁白' : beat.speaker,
     pageKey,
-    available &&
-      !activeDynamicChapter &&
-      !catalogOpen &&
-      !confirmSkip &&
-      !continuationOpen,
+    voiceEnabled,
   )
+  const autoAdvanceEnabled =
+    voiceEnabled &&
+    !finished &&
+    !waitingForChoice
 
-  if (!chapter) {
-    return (
-      <div className="screen screen--storybook">
-        <div className="storybook__missing">
-          <BookOpen size={24} />
-          <strong>剧情本缺失</strong>
-        </div>
-      </div>
-    )
-  }
-
-  const onContinue = () => {
+  function advanceStory(automatic = false) {
     if (!available) return
+    if (automatic && (!typed.done || waitingForChoice || !voice.finished)) return
     if (activeReply) {
       playSfx('page')
       setReply(null)
       return
     }
     if (finished) {
+      if (automatic) return
       actions.completeStorybookChapter(false)
       setContinuationOpen(true)
       return
@@ -131,6 +129,31 @@ export function StoryView() {
     }
     const result = actions.advanceStorybook()
     if (!result.ok) pushNotice('error', '无法继续', result.message)
+  }
+
+  const { cancel: cancelAutoAdvance } = useStoryAutoAdvance({
+    onAdvance: () => advanceStory(true),
+    pageKey,
+    allowed: autoAdvanceEnabled,
+    textComplete: typed.done,
+    voiceFinished: voice.finished,
+    pageVisible: voiceEnabled,
+  })
+
+  if (!chapter) {
+    return (
+      <div className="screen screen--storybook">
+        <div className="storybook__missing">
+          <BookOpen size={24} />
+          <strong>剧情本缺失</strong>
+        </div>
+      </div>
+    )
+  }
+
+  function onContinue(automatic = false) {
+    cancelAutoAdvance()
+    advanceStory(automatic)
   }
 
   const onChoose = (choice: StoryChoice, optionId: string) => {

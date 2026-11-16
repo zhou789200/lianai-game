@@ -57,6 +57,7 @@ export function QuestSheet({
     <Modal
       title="今日安排"
       subtitle="节奏、布丁、任务与成长都在这里"
+      backdrop="none"
       closeOnContentClick
       onClose={onClose}
     >

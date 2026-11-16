@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   AlertCircle,
   AudioLines,
@@ -8,6 +8,8 @@ import {
   HardDrive,
   LogIn,
   LogOut,
+  Maximize2,
+  Minimize2,
   RotateCcw,
   Save,
   ShieldAlert,
@@ -46,6 +48,20 @@ function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : '操作失败，请稍后重试'
 }
 
+type FullscreenDocument = Document & {
+  webkitFullscreenElement?: Element | null
+  webkitExitFullscreen?: () => Promise<void> | void
+}
+
+type FullscreenElement = HTMLElement & {
+  webkitRequestFullscreen?: () => Promise<void> | void
+}
+
+function currentFullscreenElement(): Element | null {
+  const doc = document as FullscreenDocument
+  return doc.fullscreenElement ?? doc.webkitFullscreenElement ?? null
+}
+
 export function SettingsModal({
   onClose,
   onOpenAccount,
@@ -54,6 +70,14 @@ export function SettingsModal({
   const [confirmReset, setConfirmReset] = useState(false)
   const [pendingAction, setPendingAction] = useState<PendingAction>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [isFullscreen, setIsFullscreen] = useState(
+    () => currentFullscreenElement() !== null,
+  )
+  const [fullscreenError, setFullscreenError] = useState<string | null>(null)
+  const canRequestFullscreen =
+    typeof document !== 'undefined' &&
+    (document.fullscreenEnabled ||
+      'webkitFullscreenEnabled' in document)
   const {
     soundEnabled: sound,
     soundVolume,
@@ -79,6 +103,34 @@ export function SettingsModal({
         : volumePercent < 80
           ? '舒适'
           : '响亮'
+
+  useEffect(() => {
+    const onChange = () => setIsFullscreen(currentFullscreenElement() !== null)
+    document.addEventListener('fullscreenchange', onChange)
+    document.addEventListener('webkitfullscreenchange', onChange)
+    return () => {
+      document.removeEventListener('fullscreenchange', onChange)
+      document.removeEventListener('webkitfullscreenchange', onChange)
+    }
+  }, [])
+
+  const toggleFullscreen = async () => {
+    setFullscreenError(null)
+    try {
+      if (currentFullscreenElement()) {
+        const doc = document as FullscreenDocument
+        if (doc.exitFullscreen) await doc.exitFullscreen()
+        else await doc.webkitExitFullscreen?.()
+      } else {
+        const target = document.documentElement as FullscreenElement
+        if (target.requestFullscreen) await target.requestFullscreen()
+        else await target.webkitRequestFullscreen?.()
+      }
+      setIsFullscreen(currentFullscreenElement() !== null)
+    } catch {
+      setFullscreenError('当前浏览器未允许全屏，可从浏览器菜单选择“添加到主屏幕”后使用。')
+    }
+  }
 
   const toggleSound = () => {
     const next = !sound
@@ -446,6 +498,45 @@ export function SettingsModal({
           <i />
         </span>
       </button>
+
+      <button
+        type="button"
+        className="setting-row"
+        onClick={toggleFullscreen}
+        disabled={!canRequestFullscreen}
+        aria-pressed={isFullscreen}
+        aria-description={
+          canRequestFullscreen
+            ? '切换系统全屏显示'
+            : '当前浏览器不支持网页全屏'
+        }
+      >
+        <span className="setting-row__icon">
+          {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+        </span>
+        <span className="setting-row__body">
+          <strong>全屏显示</strong>
+          <small>
+            {!canRequestFullscreen
+              ? '当前浏览器不支持网页全屏，可添加到主屏幕后启动'
+              : isFullscreen
+                ? '已进入全屏；点击退出并显示浏览器工具栏'
+                : '隐藏浏览器工具栏，铺满可用屏幕'}
+          </small>
+        </span>
+        <span
+          className={`setting-switch${isFullscreen ? ' is-on' : ''}`}
+          aria-hidden="true"
+        >
+          <i />
+        </span>
+      </button>
+      {fullscreenError ? (
+        <p className="account-error" role="alert">
+          <AlertCircle size={14} />
+          <span>{fullscreenError}</span>
+        </p>
+      ) : null}
 
       <div className="account-operations">
         <UiButton

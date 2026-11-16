@@ -7,7 +7,7 @@ import { useTypewriter } from '../game/useTypewriter'
 import { Modal } from '../components/Modal'
 import { StoryVoiceButton } from '../components/StoryVoiceButton'
 import { UiButton } from '../components/UiButton'
-import { useStoryVoice } from '../game/useStoryVoice'
+import { useStoryAutoAdvance, useStoryVoice } from '../game/useStoryVoice'
 import type { StoryChoice } from '../game/types'
 
 interface ReplyState {
@@ -59,12 +59,25 @@ export function RomanceView() {
         : null
 
   const typed = useTypewriter(storyText, pageKey)
-  useStoryVoice(
+  const voiceEnabled = available && !catalogOpen && !confirmSkip
+  const voice = useStoryVoice(
     storyText,
     activeReply || beat?.type !== 'dialogue' ? '旁白' : beat.speaker,
     pageKey,
-    available && !catalogOpen && !confirmSkip,
+    voiceEnabled,
   )
+  const waitingForChoice = beat?.type === 'choice' && !activeReply
+  const { cancel: cancelAutoAdvance } = useStoryAutoAdvance({
+    onAdvance: () => onContinue(true),
+    pageKey,
+    allowed:
+      voiceEnabled &&
+      !finished &&
+      !waitingForChoice,
+    textComplete: typed.done,
+    voiceFinished: voice.finished,
+    pageVisible: voiceEnabled,
+  })
 
   if (!chapter) {
     return (
@@ -80,8 +93,10 @@ export function RomanceView() {
     )
   }
 
-  const onContinue = () => {
+  function onContinue(automatic = false) {
     if (!available) return
+    cancelAutoAdvance()
+    if (automatic && (!typed.done || waitingForChoice || !voice.finished)) return
     if (activeReply) {
       playSfx('page')
       setReply(null)
@@ -267,7 +282,12 @@ export function RomanceView() {
       {/* ---------- 操作 ---------- */}
       <div className="story-controls">
         {available && beat?.type !== 'choice' ? (
-          <UiButton variant="primary" block icon={<ChevronRight size={16} />} onClick={onContinue}>
+          <UiButton
+            variant="primary"
+            block
+            icon={<ChevronRight size={16} />}
+            onClick={() => onContinue()}
+          >
             {nextLabel}
           </UiButton>
         ) : null}

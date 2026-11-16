@@ -10,6 +10,10 @@ import { IntroModal } from './components/IntroModal'
 import { AccountModal } from './components/AccountModal'
 import { playSfx } from './game/sfx'
 import { stopStoryVoice } from './game/storyVoice'
+import {
+  setBackgroundMusicContext,
+  startHomeBgm,
+} from './game/homeBgm'
 import { preloadArt } from './assets/preload'
 import { HomeView } from './views/HomeView'
 import { BusinessView } from './views/BusinessView'
@@ -87,6 +91,15 @@ function Game() {
   useEffect(() => {
     preloadArt()
   }, [])
+
+  useEffect(() => {
+    const release = startHomeBgm()
+    return release
+  }, [])
+
+  useEffect(() => {
+    setBackgroundMusicContext(inRun ? 'cafe' : 'home')
+  }, [inRun])
 
   return (
     <PhoneShell figure={zone} tone={useImmersiveCafe ? 'cafe' : 'default'}>

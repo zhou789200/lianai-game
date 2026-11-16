@@ -60,7 +60,7 @@ ul {
 }
 
 /* ---------- 舞台：整屏居中放置手机画布 ----------
-   尺寸全部由 JS 算好的 --app-w / --app-h 决定（逻辑画布 430×932 × 缩放比），
+   尺寸全部由 JS 算好的 --app-w / --app-h 决定（手机端直接铺满可视视口），
    不依赖 dvh / vw 等各浏览器支持度不一的视口单位。
 
    注意 top/height 用的是 --vv-top / --vv-h（visualViewport 的值），
@@ -92,13 +92,13 @@ ul {
     0 26px 60px rgba(88, 58, 30, 0.42);
 }
 
-/* 逻辑画布：固定 430×932，等比缩放铺满手机壳，内部一律使用逻辑像素 */
+/* 逻辑画布：固定 430 宽，高度随手机可视视口变化；内部一律使用逻辑像素 */
 .phone__canvas {
   position: absolute;
   top: 0;
   left: 0;
   width: 430px;
-  height: 932px;
+  height: var(--app-canvas-h, 932px);
   transform-origin: 0 0;
 }
 
@@ -110,9 +110,6 @@ ul {
 
 /* 小屏手机：铺满整屏，去掉手机壳装饰 */
 @media (max-width: 480px) {
-  /* 画布比例固定 430:932，屏幕更「矮胖」时左右必然留两条空档。
-     底色跟画布暖调统一后，它读起来像屏幕边框，而不是「没铺满」。
-     （图1 那种两条浅色竖带，就是这里的底色和插画反差太大造成的。） */
   body {
     background:
       radial-gradient(120% 46% at 50% 0%, #fff4dd 0%, rgba(255, 244, 221, 0) 72%),
@@ -120,6 +117,8 @@ ul {
   }
 
   .phone {
+    width: 100%;
+    height: 100%;
     border-radius: 0;
     box-shadow: none;
   }

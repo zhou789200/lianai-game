@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useGame } from '../game/GameContext'
 import { todayKey } from '../game/storage'
 import type { ViewKey } from '../game/types'
+import { TASKS } from '../data/content'
 
 /** 红点说明气泡：每天最多提示一次，避免反复打扰 */
 const TIP_SEEN_KEY = 'seabreeze-pet-cafe.nav-badge-tip'
@@ -47,7 +48,10 @@ export function BottomNav({ active, onChange }: BottomNavProps) {
   const { state } = useGame()
 
   // 红点：有进度但还没领取的每日任务（奖励需要回主页的「今日安排」里领）
-  const hasClaimable = state.tasks.some((t) => !t.claimed && t.progress > 0)
+  const hasClaimable = state.tasks.some((task) => {
+    const definition = TASKS.find((item) => item.id === task.id)
+    return definition && !task.claimed && task.progress >= definition.target
+  })
 
   // 红点第一次亮起时，用一条气泡把含义说明白：手机上既没有 hover，
   // title 也看不到，只留一个圆点玩家猜不出是什么。

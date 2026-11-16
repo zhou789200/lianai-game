@@ -2,8 +2,9 @@
    主页背景音乐
    ------------------------------------------------------------
    四首原创轻音乐，使用 Web Audio 实时合成。
-   进入主页随机选曲，用户也可以从主页唱片按钮切歌。
-   只在主页挂载期间播放，并遵循现有全局声音开关。
+   游戏挂载期间持续播放，用户也可以从主页唱片按钮切歌。
+   营业时切换到更轻快的咖啡馆曲目，离开营业后恢复主页曲库。
+   全程遵循现有全局声音开关与音量。
    ============================================================ */
 
 import {
@@ -36,6 +37,10 @@ interface Track {
   masterVolume: number
   seaVolume: number
   bars: readonly ChordBar[]
+}
+
+interface TrackDefinition extends Track {
+  context: 'home' | 'cafe'
 }
 
 interface AudioSession {
@@ -73,14 +78,15 @@ const TRACK_SWITCH_OVERLAP_SECONDS = 0.3
 const STORAGE_KEY = 'seabreeze-pet-cafe.last-home-track'
 
 // 四首曲子都使用原创和声进行与五声音阶旋律，但速度、调式和配器气质不同。
-const TRACKS: readonly Track[] = [
+const TRACKS: readonly TrackDefinition[] = [
   {
     id: 'sea-breeze',
     title: '海风来信',
     mood: 'D 大调 · 温柔钟琴',
     bpm: 74,
-    masterVolume: 0.5,
+    masterVolume: 0.7,
     seaVolume: 0.008,
+    context: 'home',
     bars: [
       {
         bass: 38,
@@ -129,8 +135,9 @@ const TRACKS: readonly Track[] = [
     title: '落日与白瓷杯',
     mood: 'G 大调 · 暖木琴',
     bpm: 82,
-    masterVolume: 0.46,
+    masterVolume: 0.68,
     seaVolume: 0.005,
+    context: 'home',
     bars: [
       {
         bass: 43,
@@ -179,8 +186,9 @@ const TRACKS: readonly Track[] = [
     title: '雨落在玻璃窗',
     mood: 'A 小调 · 雾感音粒',
     bpm: 68,
-    masterVolume: 0.5,
+    masterVolume: 0.7,
     seaVolume: 0.014,
+    context: 'home',
     bars: [
       {
         bass: 33,
@@ -229,8 +237,9 @@ const TRACKS: readonly Track[] = [
     title: '星夜慢板',
     mood: 'C 大调 · 清亮夜铃',
     bpm: 62,
-    masterVolume: 0.45,
+    masterVolume: 0.66,
     seaVolume: 0.003,
+    context: 'home',
     bars: [
       {
         bass: 36,
@@ -274,6 +283,61 @@ const TRACKS: readonly Track[] = [
       },
     ],
   },
+  {
+    id: 'afternoon-cafe',
+    title: '午后咖啡馆',
+    mood: 'F 大调 · 木质爵士',
+    bpm: 96,
+    masterVolume: 0.72,
+    seaVolume: 0.002,
+    context: 'cafe',
+    bars: [
+      {
+        bass: 41,
+        pad: [53, 57, 60, 64],
+        melody: [
+          { midi: 72, beat: 0, duration: 0.65, gain: 0.018 },
+          { midi: 76, beat: 0.7, duration: 0.55, gain: 0.014 },
+          { midi: 79, beat: 1.35, duration: 0.9, gain: 0.017 },
+          { midi: 77, beat: 2.3, duration: 0.55, gain: 0.012 },
+          { midi: 72, beat: 2.9, duration: 0.85, gain: 0.015 },
+        ],
+      },
+      {
+        bass: 38,
+        pad: [50, 53, 57, 62],
+        melody: [
+          { midi: 69, beat: 0, duration: 0.7, gain: 0.016 },
+          { midi: 74, beat: 0.75, duration: 0.55, gain: 0.014 },
+          { midi: 77, beat: 1.4, duration: 0.95, gain: 0.018 },
+          { midi: 76, beat: 2.4, duration: 0.5, gain: 0.012 },
+          { midi: 74, beat: 2.95, duration: 0.8, gain: 0.015 },
+        ],
+      },
+      {
+        bass: 36,
+        pad: [48, 52, 55, 60],
+        melody: [
+          { midi: 67, beat: 0, duration: 0.65, gain: 0.015 },
+          { midi: 72, beat: 0.7, duration: 0.55, gain: 0.015 },
+          { midi: 76, beat: 1.35, duration: 0.85, gain: 0.018 },
+          { midi: 74, beat: 2.25, duration: 0.5, gain: 0.012 },
+          { midi: 71, beat: 2.85, duration: 0.85, gain: 0.014 },
+        ],
+      },
+      {
+        bass: 43,
+        pad: [55, 59, 62, 65],
+        melody: [
+          { midi: 74, beat: 0, duration: 0.65, gain: 0.017 },
+          { midi: 77, beat: 0.75, duration: 0.55, gain: 0.014 },
+          { midi: 81, beat: 1.4, duration: 0.9, gain: 0.018 },
+          { midi: 79, beat: 2.35, duration: 0.55, gain: 0.012 },
+          { midi: 77, beat: 2.9, duration: 0.8, gain: 0.015 },
+        ],
+      },
+    ],
+  },
 ]
 
 let activeOwners = 0
@@ -281,8 +345,10 @@ let detachSoundChange: (() => void) | null = null
 let detachVolumeChange: (() => void) | null = null
 let stopCurrentLifecycle: ((fadeSeconds?: number) => void) | null = null
 let nextCurrentTrack: (() => void) | null = null
+let switchMusicContext: ((context: TrackDefinition['context']) => void) | null = null
 let currentTrackIndex = -1
 let snapshotTrackIndex = -1
+let currentContext: TrackDefinition['context'] = 'home'
 const bgmStateListeners = new Set<() => void>()
 
 function audioContextConstructor(): AudioContextCtor | null {
@@ -315,13 +381,6 @@ function rememberTrack(index: number): void {
   }
 }
 
-function chooseRandomTrack(): number {
-  const previous = lastPlayedTrackIndex()
-  const candidates = TRACKS.map((_, index) => index).filter((index) => index !== previous)
-  const pool = candidates.length > 0 ? candidates : TRACKS.map((_, index) => index)
-  return pool[Math.floor(Math.random() * pool.length)]
-}
-
 function setCurrentTrack(index: number): void {
   snapshotTrackIndex = index
   if (currentTrackIndex === index) return
@@ -333,7 +392,9 @@ function setCurrentTrack(index: number): void {
 export function getHomeBgmTrackIndex(): number {
   if (snapshotTrackIndex < 0) {
     const storedIndex = lastPlayedTrackIndex()
-    snapshotTrackIndex = storedIndex >= 0 ? storedIndex : 0
+    const candidate = TRACKS[storedIndex]
+    snapshotTrackIndex =
+      storedIndex >= 0 && candidate?.context === 'home' ? storedIndex : 0
   }
   return snapshotTrackIndex
 }
@@ -417,7 +478,7 @@ function buildAudioSession(
   reverb.connect(wet).connect(master)
 
   const musicBus = context.createGain()
-  musicBus.gain.value = 0.72
+  musicBus.gain.value = 0.85
   musicBus.connect(dry)
   musicBus.connect(reverb)
 
@@ -610,11 +671,26 @@ function startScheduler(session: AudioSession): void {
 function createLifecycle(): {
   stop: (fadeSeconds?: number) => void
   nextTrack: () => void
+  setContext: (context: TrackDefinition['context']) => void
 } {
   let disposed = false
   let session: AudioSession | null = null
   let waitingForGesture = false
   let switchTimer: number | null = null
+  let sessionContext: TrackDefinition['context'] = currentContext
+
+  const trackIndexes = (context: TrackDefinition['context']) =>
+    TRACKS.map((track, index) => ({ track, index }))
+      .filter(({ track }) => track.context === context)
+      .map(({ index }) => index)
+
+  const chooseTrack = (context: TrackDefinition['context']) => {
+    const candidates = trackIndexes(context)
+    const previous = currentTrackIndex
+    const fresh = candidates.filter((index) => index !== previous)
+    const pool = fresh.length > 0 ? fresh : candidates
+    return pool[Math.floor(Math.random() * pool.length)] ?? 0
+  }
 
   const updateVolume = () => {
     const current = session
@@ -656,7 +732,7 @@ function createLifecycle(): {
   }
 
   const openSession = (
-    index = chooseRandomTrack(),
+    index = chooseTrack(sessionContext),
     options: SessionOptions = {},
   ) => {
     if (disposed || !isSoundEnabled()) return
@@ -716,8 +792,12 @@ function createLifecycle(): {
     if (switchTimer !== null) window.clearTimeout(switchTimer)
     const nextIndex =
       session === null
-        ? chooseRandomTrack()
-        : (currentTrackIndex + 1) % TRACKS.length
+        ? chooseTrack(sessionContext)
+        : (() => {
+            const candidates = trackIndexes(sessionContext)
+            const position = candidates.indexOf(currentTrackIndex)
+            return candidates[(position + 1) % candidates.length] ?? candidates[0] ?? 0
+          })()
     const previousSession = session
     session = null
     waitingForGesture = false
@@ -762,6 +842,25 @@ function createLifecycle(): {
       session = null
     },
     nextTrack,
+    setContext: (context) => {
+      if (disposed || sessionContext === context) return
+      sessionContext = context
+      currentContext = context
+      if (!isSoundEnabled()) return
+      if (switchTimer !== null) window.clearTimeout(switchTimer)
+      const previousSession = session
+      session = null
+      waitingForGesture = false
+      if (!previousSession) {
+        openSession(chooseTrack(context), { fadeInSeconds: TRACK_SWITCH_FADE_SECONDS })
+        return
+      }
+      closeSession(previousSession, TRACK_SWITCH_FADE_SECONDS)
+      switchTimer = window.setTimeout(() => {
+        switchTimer = null
+        openSession(chooseTrack(context), { fadeInSeconds: TRACK_SWITCH_FADE_SECONDS })
+      }, TRACK_SWITCH_OVERLAP_SECONDS * 1000)
+    },
   }
 }
 
@@ -770,17 +869,19 @@ function ensureLifecycle(): void {
   const lifecycle = createLifecycle()
   stopCurrentLifecycle = (fadeSeconds) => lifecycle.stop(fadeSeconds)
   nextCurrentTrack = lifecycle.nextTrack
+  switchMusicContext = lifecycle.setContext
 }
 
 function stopLifecycle(fadeSeconds = FADE_OUT_SECONDS): void {
   const stop = stopCurrentLifecycle
   stopCurrentLifecycle = null
   nextCurrentTrack = null
+  switchMusicContext = null
   stop?.(fadeSeconds)
 }
 
 /**
- * 进入主页时调用。随机选曲，返回的函数负责淡出并关闭音乐。
+ * 游戏根层挂载时调用。返回的函数负责在游戏卸载时淡出并关闭音乐。
  */
 export function startHomeBgm(): () => void {
   activeOwners += 1
@@ -819,4 +920,13 @@ export function playNextHomeBgm(): void {
     ensureLifecycle()
   }
   nextCurrentTrack?.()
+}
+
+/** 切换场景音乐类型；营业使用咖啡馆曲库，其余页面沿用主页曲库。 */
+export function setBackgroundMusicContext(
+  context: TrackDefinition['context'],
+): void {
+  currentContext = context
+  ensureLifecycle()
+  switchMusicContext?.(context)
 }

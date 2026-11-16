@@ -50,6 +50,8 @@ interface SpeakStoryTextOptions {
   text: string
   speaker?: string
   owner: string
+  /** 自然结束或确定的失败终态会调用；主动翻页导致的停止不会触发。 */
+  onFinished?: () => void
 }
 
 const CHARACTER_PROFILES: Record<string, VoiceProfile> = {
@@ -60,22 +62,22 @@ const CHARACTER_PROFILES: Record<string, VoiceProfile> = {
     voiceHints: ['xiaoxiao', 'xiaoyi', 'xiaomo', 'huihui', 'yaoyao', 'tingting', 'meijia'],
   },
   你: {
-    pitch: 1.02,
-    rate: 1,
-    gender: 'neutral',
-    voiceHints: [],
+    pitch: 0.86,
+    rate: 0.9,
+    gender: 'female',
+    voiceHints: ['xiaomo', 'xiaoyi', 'xiaoxiao', 'huihui', 'yaoyao'],
   },
   林澈: {
-    pitch: 0.84,
-    rate: 0.92,
+    pitch: 1.1,
+    rate: 1.1,
     gender: 'male',
-    voiceHints: ['yunyang', 'yunjian', 'yunxi', 'yunfeng', 'kangkang', 'zhiwei'],
+    voiceHints: ['yunxi', 'yunyang', 'yunjian', 'yunfeng', 'kangkang', 'zhiwei'],
   },
   顾淮: {
-    pitch: 0.9,
-    rate: 0.94,
+    pitch: 0.88,
+    rate: 0.92,
     gender: 'male',
-    voiceHints: ['yunyang', 'yunjian', 'yunxi', 'yunfeng', 'kangkang', 'zhiwei'],
+    voiceHints: ['yunjian', 'yunyang', 'yunxi', 'yunfeng', 'kangkang', 'zhiwei'],
   },
   阿岚: {
     pitch: 1.08,
@@ -439,6 +441,7 @@ function speakWithSystemVoice(
   speaker: string,
   owner: string,
   id: number,
+  onFinished?: () => void,
 ): boolean {
   const api = speechSynthesisApi()
   if (!api) return false
@@ -458,11 +461,13 @@ function speakWithSystemVoice(
     if (id !== playbackId || currentUtterance !== utterance) return
     currentOwner = null
     currentUtterance = null
+    onFinished?.()
   }
   utterance.onerror = () => {
     if (id !== playbackId || currentUtterance !== utterance) return
     currentOwner = null
     currentUtterance = null
+    onFinished?.()
   }
 
   let startTimer = 0
@@ -491,6 +496,7 @@ function speakWithSystemVoice(
       if (id === playbackId) {
         currentOwner = null
         currentUtterance = null
+        onFinished?.()
       }
     }
   }
@@ -512,6 +518,7 @@ export function speakStoryText({
   text,
   speaker = '旁白',
   owner,
+  onFinished,
 }: SpeakStoryTextOptions): boolean {
   const content = cleanStoryText(text)
   if (
@@ -528,7 +535,7 @@ export function speakStoryText({
   if (!isGameAudioSupported()) {
     const id = playbackId
     currentOwner = owner
-    return speakWithSystemVoice(content, speaker, owner, id)
+    return speakWithSystemVoice(content, speaker, owner, id, onFinished)
   }
   primeGameAudio()
 
@@ -545,12 +552,14 @@ export function speakStoryText({
         if (id !== playbackId) return
         currentOwner = null
         currentPlayback = null
+        onFinished?.()
       },
     })
     if (playback) {
       currentPlayback = playback
       return true
     }
+    onFinished?.()
   }
 
   const subscription = requestOnlineAudio(content, speaker, voiceKey)
@@ -571,11 +580,14 @@ export function speakStoryText({
           if (id !== playbackId) return
           currentOwner = null
           currentPlayback = null
+          onFinished?.()
         },
       })
       if (playback) {
         currentPlayback = playback
         cancelCurrentRequest = null
+      } else {
+        onFinished?.()
       }
     })
     .catch((error: unknown) => {
@@ -583,7 +595,9 @@ export function speakStoryText({
       cancelCurrentRequest = null
       // 翻页主动取消请求时不应突然朗读已经离开的旧台词。
       if (shouldUseSystemVoiceFallback(error)) {
-        speakWithSystemVoice(content, speaker, owner, id)
+        if (!speakWithSystemVoice(content, speaker, owner, id, onFinished)) {
+          onFinished?.()
+        }
       }
     })
 

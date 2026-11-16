@@ -65,7 +65,9 @@ async function connect(port) {
       const list = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json()
       const page = list.find((t) => t.type === 'page')
       if (page?.webSocketDebuggerUrl) return page.webSocketDebuggerUrl
-    } catch {}
+    } catch {
+      // DevTools may still be starting; keep polling until the timeout.
+    }
     await delay(250)
   }
   throw new Error('连不上调试端口')

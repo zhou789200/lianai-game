@@ -8,6 +8,7 @@ export interface ModalProps {
   title: string
   subtitle?: string
   onClose?: () => void
+  backdrop?: 'dim' | 'none'
   closeOnContentClick?: boolean
   children?: ReactNode
   actions?: ReactNode
@@ -18,6 +19,7 @@ export function Modal({
   title,
   subtitle,
   onClose,
+  backdrop = 'dim',
   closeOnContentClick = false,
   children,
   actions,
@@ -89,7 +91,7 @@ export function Modal({
 
   return (
     <div
-      className="modal-layer"
+      className={`modal-layer${backdrop === 'none' ? ' modal-layer--none' : ''}`}
       onClick={(event) => {
         if (event.target === event.currentTarget && onClose) onClose()
       }}

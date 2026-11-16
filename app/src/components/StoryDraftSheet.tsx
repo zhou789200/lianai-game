@@ -18,7 +18,7 @@ import {
 } from '../game/dynamicStory'
 import { useGame } from '../game/GameContext'
 import { useTypewriter } from '../game/useTypewriter'
-import { useStoryVoice } from '../game/useStoryVoice'
+import { useStoryAutoAdvance, useStoryVoice } from '../game/useStoryVoice'
 import type {
   GameState,
   GeneratedStory,
@@ -167,22 +167,20 @@ export function StoryDraftSheet({ onClose }: { onClose: () => void }) {
     ? `outcome-${story?.id ?? 'story'}`
     : `beat-${story?.id ?? 'story'}-${pageIndex}`
   const typed = useTypewriter(pageText, pageKey)
-  useStoryVoice(
+  const autoAdvanceEnabled =
+    draftState === 'ready' &&
+    !isChoicePage &&
+    Boolean(story)
+  const voice = useStoryVoice(
     pageText,
-    selected ? '旁白' : currentBeat?.speaker,
+    selected ? '选择之后' : currentBeat?.speaker,
     pageKey,
     draftState === 'ready' && !isChoicePage,
   )
-  const tone = selected
-    ? 'narration'
-    : currentBeat?.type === 'dialogue'
-      ? currentBeat.speaker === '你'
-        ? 'me'
-        : 'character'
-      : 'narration'
 
-  const advance = () => {
+  function advanceDraft(automatic = false) {
     if (draftState !== 'ready' || !story || isChoicePage) return
+    if (automatic && (!typed.done || !voice.finished)) return
     if (!typed.done) {
       typed.complete()
       return
@@ -194,6 +192,27 @@ export function StoryDraftSheet({ onClose }: { onClose: () => void }) {
     if (pageIndex < story.beats.length) {
       setPageIndex((current) => current + 1)
     }
+  }
+
+  const { cancel: cancelAutoAdvance } = useStoryAutoAdvance({
+    onAdvance: () => advanceDraft(true),
+    pageKey,
+    allowed: autoAdvanceEnabled,
+    textComplete: typed.done,
+    voiceFinished: voice.finished,
+    pageVisible: draftState === 'ready' && !isChoicePage,
+  })
+  const tone = selected
+    ? 'narration'
+    : currentBeat?.type === 'dialogue'
+      ? currentBeat.speaker === '你'
+        ? 'me'
+        : 'character'
+      : 'narration'
+
+  function advance(automatic = false) {
+    cancelAutoAdvance()
+    advanceDraft(automatic)
   }
 
   return (
@@ -254,7 +273,7 @@ export function StoryDraftSheet({ onClose }: { onClose: () => void }) {
           aria-live="polite"
           role={!isChoicePage && draftState === 'ready' ? 'button' : undefined}
           tabIndex={!isChoicePage && draftState === 'ready' ? 0 : undefined}
-          onClick={advance}
+          onClick={() => advance()}
           onKeyDown={(event) => {
             if (isChoicePage) return
             if (event.key === 'Enter' || event.key === ' ') {

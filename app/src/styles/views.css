@@ -1028,18 +1028,34 @@
   background: linear-gradient(170deg, var(--paper), var(--paper-deep));
   border: var(--stroke-hand);
   box-shadow: var(--shadow-float);
-  /* 领取后卡片会退成"已完成"的淡色。
-     这个变化必须有过渡：直接跳变会让整张卡片在点击瞬间突然变淡，
-     看起来就是闪了一下。 */
-  transition:
-    opacity 0.3s ease,
-    box-shadow 0.3s ease,
-    background 0.3s ease;
 }
 
 .task-card.is-claimed {
-  opacity: 0.72;
-  box-shadow: none;
+  background: linear-gradient(170deg, #f8eedb, #f1e4cc);
+  border-color: rgba(150, 112, 42, 0.3);
+}
+
+/* 只让内部小元素响应完成状态，避免整张渐变卡同时过渡透明度和阴影。 */
+.task-card__icon,
+.task-card__body,
+.task-card > .ui-btn {
+  transition:
+    color 0.16s ease,
+    border-color 0.16s ease,
+    background-color 0.16s ease;
+}
+
+.task-card.is-claimed .task-card__icon {
+  background: rgba(78, 157, 144, 0.16);
+  color: var(--sea-600);
+}
+
+.task-card.is-claimed .task-card__title {
+  color: var(--ink-700);
+}
+
+.task-card.is-claimed .task-card__count {
+  color: var(--sea-600);
 }
 
 .task-card__icon {

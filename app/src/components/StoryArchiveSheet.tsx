@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { BookOpen, ChevronRight, X } from 'lucide-react'
 import { useTypewriter } from '../game/useTypewriter'
-import { useStoryVoice } from '../game/useStoryVoice'
+import { useStoryAutoAdvance, useStoryVoice } from '../game/useStoryVoice'
 import type { GeneratedStoryBeat, StoryTrace } from '../game/types'
 import { StoryVoiceButton } from './StoryVoiceButton'
 
@@ -55,31 +55,47 @@ export function StoryArchiveSheet({
   const page = pages[Math.min(pageIndex, pages.length - 1)]
   const pageKey = `${trace.id}-${page.key}`
   const typed = useTypewriter(page.beat.text, pageKey)
-  useStoryVoice(
+  const isLastPage = pageIndex >= pages.length - 1
+  const voice = useStoryVoice(
     page.beat.text,
     page.speaker ?? (page.beat.type === 'dialogue' ? page.beat.speaker : '旁白'),
     pageKey,
     voiceEnabled,
   )
+  const autoAdvanceEnabled = voiceEnabled && !isLastPage
+
+  function advancePage(automatic = false) {
+    if (automatic && (!typed.done || !voice.finished || isLastPage)) return
+    if (!typed.done) {
+      typed.complete()
+      return
+    }
+    if (!isLastPage) setPageIndex((current) => current + 1)
+  }
+
+  const { cancel: cancelAutoAdvance } = useStoryAutoAdvance({
+    onAdvance: () => advancePage(true),
+    pageKey,
+    allowed: autoAdvanceEnabled,
+    textComplete: typed.done,
+    voiceFinished: voice.finished,
+    pageVisible: voiceEnabled,
+  })
   const tone =
     page.beat.type === 'dialogue'
       ? page.beat.speaker === '你'
         ? 'me'
         : 'character'
       : 'narration'
-  const isLastPage = pageIndex >= pages.length - 1
   const primaryAction = onOpenNext
     ? { label: '查看下一章', run: onOpenNext }
     : onContinueLatest
       ? { label: '继续下一情节', run: onContinueLatest }
       : null
 
-  const advance = () => {
-    if (!typed.done) {
-      typed.complete()
-      return
-    }
-    if (!isLastPage) setPageIndex((current) => current + 1)
+  function advance(automatic = false) {
+    cancelAutoAdvance()
+    advancePage(automatic)
   }
 
   return (
@@ -120,7 +136,7 @@ export function StoryArchiveSheet({
           role="button"
           tabIndex={0}
           aria-live="polite"
-          onClick={advance}
+          onClick={() => advance()}
           onKeyDown={(event) => {
             if (event.key === 'Enter' || event.key === ' ') {
               event.preventDefault()
