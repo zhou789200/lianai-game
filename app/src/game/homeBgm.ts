@@ -1,7 +1,7 @@
 /* ============================================================
    主页背景音乐
    ------------------------------------------------------------
-   四首原创轻音乐，使用 Web Audio 实时合成。
+   四首主页曲目与一首营业曲目，使用 Web Audio 实时合成。
    游戏挂载期间持续播放，用户也可以从主页唱片按钮切歌。
    营业时切换到更轻快的咖啡馆曲目，离开营业后恢复主页曲库。
    全程遵循现有全局声音开关与音量。
@@ -676,6 +676,7 @@ function createLifecycle(): {
   let disposed = false
   let session: AudioSession | null = null
   let waitingForGesture = false
+  let audioUnlocked = false
   let switchTimer: number | null = null
   let sessionContext: TrackDefinition['context'] = currentContext
 
@@ -745,7 +746,10 @@ function createLifecycle(): {
       session = buildAudioSession(context, TRACKS[index], options)
       setCurrentTrack(index)
       waitingForGesture = context.state !== 'running'
-      if (context.state === 'running') startScheduler(session)
+      if (context.state === 'running') {
+        audioUnlocked = true
+        startScheduler(session)
+      }
     } catch {
       if (context && context.state !== 'closed') void context.close()
       if (session) closeSession(session, 0.05)
@@ -761,6 +765,9 @@ function createLifecycle(): {
     }
     if (session.context.state !== 'running' && isSoundEnabled()) {
       waitingForGesture = true
+    } else if (session.context.state === 'running') {
+      audioUnlocked = true
+      startScheduler(session)
     }
     session.nextBarTime = session.context.currentTime + 0.08
   }
@@ -775,6 +782,7 @@ function createLifecycle(): {
     if (current.context.state === 'running' || !waitingForGesture) return
 
     waitingForGesture = false
+    audioUnlocked = true
     void current.context
       .resume()
       .then(() => {
@@ -783,13 +791,33 @@ function createLifecycle(): {
         else waitingForGesture = true
       })
       .catch(() => {
+        audioUnlocked = false
         if (!disposed && session === current) waitingForGesture = true
       })
   }
 
+  const replaceSession = (index: number) => {
+    if (switchTimer !== null) window.clearTimeout(switchTimer)
+    switchTimer = null
+    const previousSession = session
+    session = null
+    const canResume = audioUnlocked
+    waitingForGesture = false
+
+    const openNext = () => {
+      openSession(index, { fadeInSeconds: TRACK_SWITCH_FADE_SECONDS })
+      if (canResume && session) handleUserGesture()
+    }
+    if (!previousSession) {
+      openNext()
+      return
+    }
+    closeSession(previousSession, TRACK_SWITCH_FADE_SECONDS)
+    switchTimer = window.setTimeout(openNext, TRACK_SWITCH_OVERLAP_SECONDS * 1000)
+  }
+
   const nextTrack = () => {
     if (disposed || !isSoundEnabled()) return
-    if (switchTimer !== null) window.clearTimeout(switchTimer)
     const nextIndex =
       session === null
         ? chooseTrack(sessionContext)
@@ -798,25 +826,7 @@ function createLifecycle(): {
             const position = candidates.indexOf(currentTrackIndex)
             return candidates[(position + 1) % candidates.length] ?? candidates[0] ?? 0
           })()
-    const previousSession = session
-    session = null
-    waitingForGesture = false
-
-    const openNext = () =>
-      openSession(nextIndex, {
-        fadeInSeconds: TRACK_SWITCH_FADE_SECONDS,
-      })
-
-    if (!previousSession) {
-      openNext()
-      return
-    }
-
-    closeSession(previousSession, TRACK_SWITCH_FADE_SECONDS)
-    switchTimer = window.setTimeout(() => {
-      switchTimer = null
-      openNext()
-    }, TRACK_SWITCH_OVERLAP_SECONDS * 1000)
+    replaceSession(nextIndex)
   }
 
   document.addEventListener('visibilitychange', handleVisibilityChange)
@@ -847,19 +857,7 @@ function createLifecycle(): {
       sessionContext = context
       currentContext = context
       if (!isSoundEnabled()) return
-      if (switchTimer !== null) window.clearTimeout(switchTimer)
-      const previousSession = session
-      session = null
-      waitingForGesture = false
-      if (!previousSession) {
-        openSession(chooseTrack(context), { fadeInSeconds: TRACK_SWITCH_FADE_SECONDS })
-        return
-      }
-      closeSession(previousSession, TRACK_SWITCH_FADE_SECONDS)
-      switchTimer = window.setTimeout(() => {
-        switchTimer = null
-        openSession(chooseTrack(context), { fadeInSeconds: TRACK_SWITCH_FADE_SECONDS })
-      }, TRACK_SWITCH_OVERLAP_SECONDS * 1000)
+      replaceSession(chooseTrack(context))
     },
   }
 }

@@ -961,9 +961,974 @@ const LOCAL_STORY_BANK = [
   },
 ]
 
+const ROMANCE_STORY_BANK = [
+  {
+    title: '留下的一盏灯',
+    subtitle: '打烊后还没关的那盏',
+    scene: '打烊后 · 吧台',
+    beats: [
+      {
+        type: 'narration',
+        text: '你已经擦完最后一只杯子，{character}还在吧台边把椅子一张张摆正。',
+      },
+      {
+        type: 'dialogue',
+        speaker: '{character}',
+        text: '灯先别关吧。我想把今天新学的拉花再试一次。',
+      },
+      {
+        type: 'narration',
+        text: '{pet}趴在窗台上，尾巴轻轻垂下来。{character}把第一杯推到你面前，杯沿的热气很慢。',
+      },
+      {
+        type: 'narration',
+        text: '他没有催你评价，只把手收进围裙口袋，等你先开口。',
+      },
+    ],
+    choices: [
+      {
+        id: 'choice-a',
+        text: '认真尝一口，再告诉他哪里不同',
+        reply: '你说完后，{character}低头笑了一下，像是终于把绷着的那口气松开。',
+        consequence: '{character}知道，你会认真接住他用心做的小事。',
+      },
+      {
+        id: 'choice-b',
+        text: '先递给他一杯温水，让他也坐下',
+        reply: '{character}接过杯子，在离你最近的位置坐下。今晚第一次，他没有忙着收拾。',
+        consequence: '打烊后的吧台，多了一段只留给你们的安静。',
+      },
+    ],
+    memoryAnchors: ['打烊后留下的一盏灯', '{character}试做的拉花'],
+    clue: '{character}把第二只杯子悄悄留在了你手边。',
+  },
+  {
+    title: '雨声借伞',
+    subtitle: '伞沿偏向谁的一边',
+    scene: '傍晚骤雨 · 门廊',
+    beats: [
+      {
+        type: 'narration',
+        text: '雨突然落下时，{character}正站在门廊收招牌，半边肩膀很快被淋湿。',
+      },
+      {
+        type: 'dialogue',
+        speaker: '{character}',
+        text: '我回去拿伞就行。你先别出来，台阶滑。',
+      },
+      {
+        type: 'narration',
+        text: '《{previous}》里的那点安静还没散。{pet}从门边探出头，{character}下意识往后退了半步。',
+      },
+      {
+        type: 'narration',
+        text: '店里只剩一把够大的伞。雨点敲在伞面上，谁都没有先动。',
+      },
+    ],
+    choices: [
+      {
+        id: 'choice-a',
+        text: '把伞往他那边递，说一起走',
+        reply: '{character}接过伞柄时，手指碰到你的手背。他一路都把伞偏向你。',
+        consequence: '雨停以后，{character}还记得你肩上几乎没有淋到雨。',
+      },
+      {
+        id: 'choice-b',
+        text: '让他带走伞，自己在店里等雨停',
+        reply: '{character}走到巷口又回头，隔着雨朝你抬了抬伞，像在说很快回来。',
+        consequence: '你们第一次开始认真计算，对方什么时候会回到店里。',
+      },
+    ],
+    memoryAnchors: ['门廊里的一把大伞', '{character}被雨打湿的肩'],
+    clue: '{character}回头时，似乎有话被雨声压住了。',
+  },
+  {
+    title: '窗边的早餐',
+    subtitle: '多出来的一份煎蛋',
+    scene: '清晨 · 靠窗座位',
+    beats: [
+      {
+        type: 'narration',
+        text: '开门时，窗边已经摆好两份早餐。{character}坐在外侧，替你把椅子拉开了一点。',
+      },
+      {
+        type: 'dialogue',
+        speaker: '{character}',
+        text: '我猜你还没吃。煎蛋是安静煎的，没有吵到{pet}。',
+      },
+      {
+        type: 'narration',
+        text: '你坐下才发现，他那份面包边已经切掉了，恰好是你昨天随口提过的习惯。',
+      },
+      {
+        type: 'narration',
+        text: '{pet}在桌脚边绕了一圈。{character}低头看它，又很轻地看了你一眼。',
+      },
+    ],
+    choices: [
+      {
+        id: 'choice-a',
+        text: '把自己那份煎蛋分一半给他',
+        reply: '{character}愣了一下，还是把盘子往前推了推。你们谁都没说够了没有。',
+        consequence: '一顿普通的早餐，被你们吃成了彼此照顾的习惯。',
+      },
+      {
+        id: 'choice-b',
+        text: '问他怎么记得这些小事',
+        reply: '他捏着叉子想了很久，只说：你说的时候，我在听。',
+        consequence: '你第一次清楚地听见了，{character}认真在意你的方式。',
+      },
+    ],
+    memoryAnchors: ['窗边的两份早餐', '切掉面包边的习惯'],
+    clue: '{character}把自己的盘子推近时，耳尖有一点红。',
+  },
+  {
+    title: '擦肩的咖啡香',
+    subtitle: '围裙带子没有系好',
+    scene: '午后 · 吧台内侧',
+    beats: [
+      {
+        type: 'narration',
+        text: '午后的店里挤满熟客，你转身取杯子时，和{character}在吧台后几乎擦肩。',
+      },
+      {
+        type: 'dialogue',
+        speaker: '{character}',
+        text: '别动，我身后围裙带子好像散了。',
+      },
+      {
+        type: 'narration',
+        text: '他背过身去，把带子递到你手里。外头有人催单，谁都没有催你们。',
+      },
+      {
+        type: 'narration',
+        text: '《{previous}》之后，你第一次离{character}这么近，连他围裙上淡淡的咖啡香都很清楚。',
+      },
+    ],
+    choices: [
+      {
+        id: 'choice-a',
+        text: '低头把带子仔细系好',
+        reply: '你系完最后一个结，{character}轻声说了谢谢，转身时还特意把那杯咖啡放稳。',
+        consequence: '{character}开始习惯在忙碌里先找到你的位置。',
+      },
+      {
+        id: 'choice-b',
+        text: '故意系松一点，让他再提醒一次',
+        reply: '{character}回头看你，像是明白了什么，最后还是笑着把带子重新递给你。',
+        consequence: '忙碌的吧台后，多了一个只有你们知道的玩笑。',
+      },
+    ],
+    memoryAnchors: ['吧台后散开的围裙带', '淡淡的咖啡香'],
+    clue: '{character}转身以后，没有马上走回外场。',
+  },
+  {
+    title: '一起洗杯子',
+    subtitle: '泡沫落在同一只手上',
+    scene: '晚饭后 · 水池边',
+    beats: [
+      {
+        type: 'narration',
+        text: '晚饭后的杯子比平时多。{character}卷起袖子站到水池另一边，和你分了一摞。',
+      },
+      {
+        type: 'dialogue',
+        speaker: '{character}',
+        text: '你洗，我冲。这样比我一个人快。',
+      },
+      {
+        type: 'narration',
+        text: '你们的手偶尔在泡沫里碰到。{pet}蹲在脚边，盯着水面来回晃的灯影。',
+      },
+      {
+        type: 'narration',
+        text: '{character}接过最后一只盘子时，没有立刻松手，像是在等你把水关小。',
+      },
+    ],
+    choices: [
+      {
+        id: 'choice-a',
+        text: '让水池安静下来，先听他说完',
+        reply: '{character}说今天其实不累，只是很喜欢关店前这一段。他的声音比水流还轻。',
+        consequence: '你们有了一个不需要安排就会自然发生的并肩时刻。',
+      },
+      {
+        id: 'choice-b',
+        text: '把最后一只杯子留给他擦干',
+        reply: '他把杯子擦得很亮，放回你每天最先拿到的那一层。',
+        consequence: '{character}开始把自己的习惯放进店里的日常。',
+      },
+    ],
+    memoryAnchors: ['水池边并排的两摞杯子', '落在手背上的泡沫'],
+    clue: '{character}说喜欢关店前这一段时，没有把“们”字说出口。',
+  },
+  {
+    title: '他的旧围裙',
+    subtitle: '口袋里有张折好的纸',
+    scene: '午后 · 储物间',
+    beats: [
+      {
+        type: 'narration',
+        text: '{character}换下旧围裙时，口袋里掉出一张折了很多次的纸。',
+      },
+      {
+        type: 'dialogue',
+        speaker: '{character}',
+        text: '不是店里的单子。我本来想等做好了再给你看。',
+      },
+      {
+        type: 'narration',
+        text: '纸上画着店里的窗边，桌椅比例有些歪，旁边认真写着“想让店长休息的位置”。',
+      },
+      {
+        type: 'narration',
+        text: '{pet}跳上纸角，{character}赶紧把它抱开，耳朵却先红了。',
+      },
+    ],
+    choices: [
+      {
+        id: 'choice-a',
+        text: '把纸铺平，和他一起改设计',
+        reply: '你们肩挨着肩在纸上画线，{character}第一次没有反驳你靠得太近。',
+        consequence: '一张没做完的草图，变成了你们共同期待的小角落。',
+      },
+      {
+        id: 'choice-b',
+        text: '把纸还给他，说等你做好再看',
+        reply: '{character}小心地把纸折回原位，收进围裙最里面。',
+        consequence: '你给了他准备的时间，也接住了这份还没说出口的心意。',
+      },
+    ],
+    memoryAnchors: ['旧围裙里的折纸', '为店长留的休息位置'],
+    clue: '纸背还写着一行被折痕挡住的小字。',
+  },
+  {
+    title: '你喜欢的口味',
+    subtitle: '新菜单只写了一半',
+    scene: '午后 · 小黑板前',
+    beats: [
+      {
+        type: 'narration',
+        text: '小黑板上多了一款还没定价的饮品，名字是{character}的字迹。',
+      },
+      {
+        type: 'dialogue',
+        speaker: '{character}',
+        text: '我按你上次说喜欢的味道试了试。还没定名字。',
+      },
+      {
+        type: 'narration',
+        text: '《{previous}》里那张草图的事还没淡，{pet}已经先蹲到杯边闻了起来。',
+      },
+      {
+        type: 'narration',
+        text: '{character}把粉笔递给你，黑板空着一小行，像特意留下的。',
+      },
+    ],
+    choices: [
+      {
+        id: 'choice-a',
+        text: '写下你们刚才一起想到的名字',
+        reply: '你落笔时，{character}站在身后没有退开。写完才发现，他笑得比平时明显。',
+        consequence: '新菜单上有了第一个同时属于你们两个人的名字。',
+      },
+      {
+        id: 'choice-b',
+        text: '先尝味道，让他自己决定名字',
+        reply: '{character}认真看你喝完后，才重新拿起粉笔。他写下的名字恰好也让你想起今天。',
+        consequence: '你让他保留了表达自己的空间，他也把心意放进了店里。',
+      },
+    ],
+    memoryAnchors: ['没有定价的新饮品', '{character}递来的粉笔'],
+    clue: '{character}说名字时，先看了你一眼才落笔。',
+  },
+  {
+    title: '檐下的沉默',
+    subtitle: '两个人听同一阵雨',
+    scene: '黄昏 · 后门屋檐',
+    beats: [
+      {
+        type: 'narration',
+        text: '后门屋檐很窄，你和{character}并排站着，肩膀之间只隔着一小段风。',
+      },
+      {
+        type: 'dialogue',
+        speaker: '{character}',
+        text: '以前下雨，我总想着快点走。今天倒没那么急。',
+      },
+      {
+        type: 'narration',
+        text: '他说完便不再开口。{pet}在门内坐下，安安静静地看着你们两个。',
+      },
+      {
+        type: 'narration',
+        text: '雨没有马上停，{character}也没有挪开那半步。',
+      },
+    ],
+    choices: [
+      {
+        id: 'choice-a',
+        text: '告诉他，你也不急着回去',
+        reply: '{character}侧过脸，眼里有一点很轻的笑。雨声把后面的话盖得很温柔。',
+        consequence: '你们第一次把沉默当成可以一起停留的地方。',
+      },
+      {
+        id: 'choice-b',
+        text: '安静地把伞往他那边挪一点',
+        reply: '他没有说谢谢，只在伞沿下又靠近了一点。',
+        consequence: '{character}记住了你不说出口的照顾。',
+      },
+    ],
+    memoryAnchors: ['后门屋檐下的窄伞', '没有被雨声打断的沉默'],
+    clue: '{character}说到“今天”时，声音停顿得很短。',
+  },
+  {
+    title: '半块可颂',
+    subtitle: '最后一口留给谁',
+    scene: '下午茶 · 吧台',
+    beats: [
+      {
+        type: 'narration',
+        text: '最后一块可颂只剩半块。你还没开口，{character}已经把它推到了盘子中间。',
+      },
+      {
+        type: 'dialogue',
+        speaker: '{character}',
+        text: '一人一半。今天你比我先忙完早班。',
+      },
+      {
+        type: 'narration',
+        text: '你掰开可颂时，酥皮落了一桌。{character}伸手替你挡开，指尖停在你袖口旁。',
+      },
+      {
+        type: 'narration',
+        text: '{pet}凑过来闻了闻，发现没有自己的份，又慢吞吞地趴回窗台。',
+      },
+    ],
+    choices: [
+      {
+        id: 'choice-a',
+        text: '把自己那一半分一点给猫',
+        reply: '{character}看着你认真分小块的侧脸，忽然说，你总是先想到别人。',
+        consequence: '{character}开始直接说出他注意到的你。',
+      },
+      {
+        id: 'choice-b',
+        text: '把最后一口留给他',
+        reply: '{character}没有推辞，吃完后轻轻说了一句，下次换我留给你。',
+        consequence: '“下次”成了你们之间自然说出口的约定。',
+      },
+    ],
+    memoryAnchors: ['盘子中间的半块可颂', '落在袖口旁的指尖'],
+    clue: '{character}说下次的时候，语气像已经想好了。',
+  },
+  {
+    title: '门外的脚步声',
+    subtitle: '他比平时早到了十分钟',
+    scene: '清晨 · 门边',
+    beats: [
+      {
+        type: 'narration',
+        text: '离开门还有十分钟，门外已经响起{character}的脚步声。他走到门边又停下。',
+      },
+      {
+        type: 'dialogue',
+        speaker: '{character}',
+        text: '来早了。你不用为了我提前开门。',
+      },
+      {
+        type: 'narration',
+        text: '你隔着玻璃看他，他把手从门上收回，低头整理已经很整齐的围巾。',
+      },
+      {
+        type: 'narration',
+        text: '{pet}在门内挠了一下门板。{character}听见声音，抬头时没有来得及收起笑意。',
+      },
+    ],
+    choices: [
+      {
+        id: 'choice-a',
+        text: '提前开门，让他进来等',
+        reply: '{character}进门时带进一点晨风。他把手里多买的一份早餐放到吧台上。',
+        consequence: '开门前那十分钟，从此有了一个可以等的人。',
+      },
+      {
+        id: 'choice-b',
+        text: '隔着门陪他站一会儿',
+        reply: '你们隔着一层玻璃说话。{character}抬手碰了碰门，像在接住你还不能打开的那扇门。',
+        consequence: '{character}知道，你也想早点见到他。',
+      },
+    ],
+    memoryAnchors: ['开门前十分钟的脚步声', '隔着玻璃的短暂笑意'],
+    clue: '{character}手里那份早餐，恰好是两人份。',
+  },
+  {
+    title: '洗干净的外套',
+    subtitle: '衣领上多了一点阳光',
+    scene: '上午 · 衣架旁',
+    beats: [
+      {
+        type: 'narration',
+        text: '{character}把外套落在这里。你洗完晾干后，衣领上留着一股很淡的阳光味。',
+      },
+      {
+        type: 'dialogue',
+        speaker: '{character}',
+        text: '其实不用特意洗。不过……谢谢你。',
+      },
+      {
+        type: 'narration',
+        text: '他接过外套没有立刻穿上，先低头闻了闻，又像觉得这样做太明显，轻咳了一声。',
+      },
+      {
+        type: 'narration',
+        text: '《{previous}》里留下的那点近意还在，{pet}蹭过衣角，把几根白毛留在上面。',
+      },
+    ],
+    choices: [
+      {
+        id: 'choice-a',
+        text: '帮他把猫毛拍干净',
+        reply: '你抬手拍衣角，{character}站得很近，最后只说了一句，下次我也可以帮你。',
+        consequence: '互相照顾从一件外套开始变得顺理成章。',
+      },
+      {
+        id: 'choice-b',
+        text: '说留着猫毛也很好',
+        reply: '{character}低头看了看衣角，笑着说，那就留着吧。',
+        consequence: '他开始把店里的痕迹当成自己生活的一部分。',
+      },
+    ],
+    memoryAnchors: ['洗干净的外套', '落在衣角的猫毛'],
+    clue: '{character}说“下次我也可以”时，没有把视线移开。',
+  },
+  {
+    title: '同一首歌',
+    subtitle: '谁都没有先去换',
+    scene: '关店前 · 唱机旁',
+    beats: [
+      {
+        type: 'narration',
+        text: '店里的唱机跳到同一首歌。{character}停下擦桌子的手，没有去换。',
+      },
+      {
+        type: 'dialogue',
+        speaker: '{character}',
+        text: '这首很适合现在。慢一点，关店也不会太晚。',
+      },
+      {
+        type: 'narration',
+        text: '{pet}伏在音箱边，尾巴跟着节拍轻轻动。{character}把最后一张桌子留给了明天。',
+      },
+      {
+        type: 'narration',
+        text: '歌快结束时，他看了你一眼，像在等你要不要再说点什么。',
+      },
+    ],
+    choices: [
+      {
+        id: 'choice-a',
+        text: '跟着音乐轻轻哼给他听',
+        reply: '你哼得很轻，{character}却听见了。他把擦桌布叠好，站在灯下听完整段。',
+        consequence: '从这天起，这首歌有了只属于店里的记忆。',
+      },
+      {
+        id: 'choice-b',
+        text: '问他以前会想起谁',
+        reply: '{character}想了很久，说以前只记得旋律，今天开始会记得店里的人。',
+        consequence: '{character}第一次把“店里的人”说得这么具体。',
+      },
+    ],
+    memoryAnchors: ['关店前循环的唱片', '被留到明天的最后一张桌子'],
+    clue: '{character}说“店里的人”时，目光没有离开你。',
+  },
+  {
+    title: '窗台晒太阳',
+    subtitle: '三个人的午后',
+    scene: '午后 · 窗台',
+    beats: [
+      {
+        type: 'narration',
+        text: '午后的阳光刚好落在窗台。{pet}占了最好的位置，{character}只好坐到它旁边。',
+      },
+      {
+        type: 'dialogue',
+        speaker: '{character}',
+        text: '它今天不让位。我坐这里可以吗？',
+      },
+      {
+        type: 'narration',
+        text: '你点头后，他往旁边挪了挪，恰好给你留出半块靠垫。',
+      },
+      {
+        type: 'narration',
+        text: '三个人都没有说话。阳光慢慢移过桌面，{character}的袖口碰到你的手背。',
+      },
+    ],
+    choices: [
+      {
+        id: 'choice-a',
+        text: '不挪开手，继续晒一会儿太阳',
+        reply: '他也没有挪开。窗外的海风很轻，午后的时间像被谁故意放慢。',
+        consequence: '你们第一次把靠近交给一段不需要解释的时间。',
+      },
+      {
+        id: 'choice-b',
+        text: '起身给大家倒杯冰水',
+        reply: '你回来时，{character}已经替你把靠垫摆回原处，自己却还坐在旁边。',
+        consequence: '{character}开始自然替你留意舒服的位置。',
+      },
+    ],
+    memoryAnchors: ['窗台上晒太阳的猫', '半块靠垫'],
+    clue: '{character}袖口停在那里，没有急着收回。',
+  },
+  {
+    title: '打烊后的甜点',
+    subtitle: '只剩一只叉子',
+    scene: '深夜 · 吧台',
+    beats: [
+      {
+        type: 'narration',
+        text: '冰箱里只剩一小块蛋糕。{character}把它端出来，发现抽屉里也只剩一只叉子。',
+      },
+      {
+        type: 'dialogue',
+        speaker: '{character}',
+        text: '我再去洗一只就好。',
+      },
+      {
+        type: 'narration',
+        text: '他说完却没有走。{pet}在吧台下抬起头，像也在等你的回答。',
+      },
+      {
+        type: 'narration',
+        text: '蛋糕上的奶油慢慢变软，灯下只有一只银叉安静地放着。',
+      },
+    ],
+    choices: [
+      {
+        id: 'choice-a',
+        text: '说一只叉子也够，两个人分',
+        reply: '{character}坐回来，每一口都刻意留得很大。你笑出声时，他也终于不再装镇定。',
+        consequence: '一只叉子成了你们不必躲开的亲密。',
+      },
+      {
+        id: 'choice-b',
+        text: '把叉子推给他，自己用手掰',
+        reply: '{character}把第一块奶油最多的地方递到你嘴边，动作小心得像在问。',
+        consequence: '{character}开始愿意主动，也愿意等你回应。',
+      },
+    ],
+    memoryAnchors: ['深夜的一小块蛋糕', '抽屉里只剩的一只叉子'],
+    clue: '{character}把奶油最多的一块留下了。',
+  },
+  {
+    title: '给你留的座位',
+    subtitle: '靠窗那把椅子',
+    scene: '忙碌午后 · 窗边',
+    beats: [
+      {
+        type: 'narration',
+        text: '店里坐满了人，只有靠窗那把椅子空着。{character}把一只写着“预留”的小牌放上去。',
+      },
+      {
+        type: 'dialogue',
+        speaker: '{character}',
+        text: '你忙完总要坐一会儿。先别让给别人。',
+      },
+      {
+        type: 'narration',
+        text: '熟客笑着看了你们一眼。{character}没有解释，只把牌子摆得更正。',
+      },
+      {
+        type: 'narration',
+        text: '{pet}已经跳上椅子占了一半，像是在替你们守位。',
+      },
+    ],
+    choices: [
+      {
+        id: 'choice-a',
+        text: '忙完后坐过去，让他也一起',
+        reply: '{character}把猫往旁边挪了挪，自己却只坐了一小半。你们挤在同一扇窗下。',
+        consequence: '靠窗那把椅子，从此默认留给你们两个人。',
+      },
+      {
+        id: 'choice-b',
+        text: '把牌子收起来，先照顾等位的客人',
+        reply: '{character}没有拦你，等你忙完才发现那把椅子一直空着。',
+        consequence: '{character}尊重你的忙碌，也把等你变成了自然的事。',
+      },
+    ],
+    memoryAnchors: ['写着预留的椅子', '{character}挪开猫的动作'],
+    clue: '{character}只坐了一小半，却始终没有起身。',
+  },
+  {
+    title: '风衣上的海风',
+    subtitle: '他替你挡了一下',
+    scene: '傍晚 · 店门外',
+    beats: [
+      {
+        type: 'narration',
+        text: '傍晚起风，{character}正好来到门口。他先一步站到迎风那边，替你挡了一下。',
+      },
+      {
+        type: 'dialogue',
+        speaker: '{character}',
+        text: '门我来关。你先进去，外面有点冷。',
+      },
+      {
+        type: 'narration',
+        text: '他的风衣被吹得贴在身侧。{pet}在门内叫了一声，他却仍等你先走。',
+      },
+      {
+        type: 'narration',
+        text: '《{previous}》之后，你已经能看懂他那些不说出口的照顾。',
+      },
+    ],
+    choices: [
+      {
+        id: 'choice-a',
+        text: '拉住他的袖口，让他一起进来',
+        reply: '{character}低头看了看被你拉住的地方，没有挣开，跟着你走进了暖和的灯下。',
+        consequence: '{character}开始接受，你也可以主动照顾他。',
+      },
+      {
+        id: 'choice-b',
+        text: '先进门，再替他留一杯热的',
+        reply: '他进门时，杯子已经放在最顺手的位置。{character}捧起来，肩膀慢慢放松。',
+        consequence: '你们开始用各自熟悉的方式接住对方。',
+      },
+    ],
+    memoryAnchors: ['门外迎风的位置', '被风吹起的风衣'],
+    clue: '{character}低头看你拉住袖口时，没有马上抽回手。',
+  },
+  {
+    title: '忘记的约定',
+    subtitle: '他却一直记得',
+    scene: '傍晚 · 储物间门口',
+    beats: [
+      {
+        type: 'narration',
+        text: '你忙到忘了下午要去买灯罩。{character}回来时，手里已经提着那只看中的纸袋。',
+      },
+      {
+        type: 'dialogue',
+        speaker: '{character}',
+        text: '你昨天提过。我路过就顺便带回来了。',
+      },
+      {
+        type: 'narration',
+        text: '纸袋里还多了一只小小的灯泡。{character}说怕颜色不合适，可以换。',
+      },
+      {
+        type: 'narration',
+        text: '{pet}在纸袋边闻了闻。你忽然想起，自己确实只提过一次。',
+      },
+    ],
+    choices: [
+      {
+        id: 'choice-a',
+        text: '请他一起装上，看看效果',
+        reply: '你们一人扶着灯罩，一人拧灯泡。亮起来时，{character}先看的是你的表情。',
+        consequence: '一盏新灯亮起时，你们也确认了彼此都记得对方的小事。',
+      },
+      {
+        id: 'choice-b',
+        text: '认真告诉他，被记住的感觉很好',
+        reply: '{character}安静了一下，说那以后就多记一点。他说得很轻，却没有回避。',
+        consequence: '{character}知道，他的用心会被你清楚接住。',
+      },
+    ],
+    memoryAnchors: ['被带回来的灯罩', '纸袋里备用的小灯泡'],
+    clue: '{character}说“以后”，像把这件事放进了很长的日子里。',
+  },
+  {
+    title: '名字写在一起',
+    subtitle: '新排班表的第一行',
+    scene: '清晨 · 小黑板',
+    beats: [
+      {
+        type: 'narration',
+        text: '新一周的排班表写好了。{character}把你们的名字放在同一行，中间只隔一个小点。',
+      },
+      {
+        type: 'dialogue',
+        speaker: '{character}',
+        text: '这样一眼就能知道，谁和谁一起开店。',
+      },
+      {
+        type: 'narration',
+        text: '你看了他一会儿，他假装在检查时间，粉笔却拿反了。',
+      },
+      {
+        type: 'narration',
+        text: '{pet}从黑板前经过，尾巴扫掉了一点粉笔灰。',
+      },
+    ],
+    choices: [
+      {
+        id: 'choice-a',
+        text: '把中间的小点改成一枚心形',
+        reply: '你画完抬头，{character}没说幼稚，只把黑板往门口挪了挪，让进门的人都能看见。',
+        consequence: '排班表成了你们第一件公开承认的亲密。',
+      },
+      {
+        id: 'choice-b',
+        text: '笑着把他的名字写得更靠你一点',
+        reply: '{character}看着被挤近的名字，终于忍不住笑了，也没有把它擦回去。',
+        consequence: '你们开始允许别人看见彼此之间那一点不同。',
+      },
+    ],
+    memoryAnchors: ['同一行的排班名字', '被拿反的粉笔'],
+    clue: '{character}把黑板挪向门口时，特意停了一下。',
+  },
+  {
+    title: '迟到的晚安',
+    subtitle: '门口那两秒',
+    scene: '夜里 · 店门口',
+    beats: [
+      {
+        type: 'narration',
+        text: '关灯以后，你和{character}一起走到门口。今天的道别比平时晚了很久。',
+      },
+      {
+        type: 'dialogue',
+        speaker: '{character}',
+        text: '那我走了。明天……还是这个时间见？',
+      },
+      {
+        type: 'narration',
+        text: '他问完没有立刻转身。街灯落在你们脚边，{pet}在门内安静地看着。',
+      },
+      {
+        type: 'narration',
+        text: '你发现，原来一句普通的明天见，也能让人停住两秒。',
+      },
+    ],
+    choices: [
+      {
+        id: 'choice-a',
+        text: '说会等他，明天早点来',
+        reply: '{character}点点头，走出几步又回头挥了挥手，像是确认你真的还在看。',
+        consequence: '“明天见”从此不再只是客气的话。',
+      },
+      {
+        id: 'choice-b',
+        text: '先对他说晚安，再关上门',
+        reply: '门合上后，你听见外面停了片刻才响起脚步声。',
+        consequence: '你们都知道，那两秒的停顿不是偶然。',
+      },
+    ],
+    memoryAnchors: ['夜里晚了两秒的道别', '街灯下的脚步声'],
+    clue: '{character}问明天时，先握了一下自己的袖口。',
+  },
+  {
+    title: '一起关窗',
+    subtitle: '海风从两边吹进来',
+    scene: '起风前 · 窗边',
+    beats: [
+      {
+        type: 'narration',
+        text: '海风变大前，你和{character}同时去关窗。两扇窗从两边合上，在中间碰了一下。',
+      },
+      {
+        type: 'dialogue',
+        speaker: '{character}',
+        text: '左边我来。你别踩到{pet}的尾巴。',
+      },
+      {
+        type: 'narration',
+        text: '猫从你们脚边绕过去。{character}关好窗，却没有立刻把手从窗框上拿开。',
+      },
+      {
+        type: 'narration',
+        text: '玻璃映出你们两个并肩的影子，比平时更近一点。',
+      },
+    ],
+    choices: [
+      {
+        id: 'choice-a',
+        text: '也把手留在窗框上，陪他站一会儿',
+        reply: '窗外风声很响，窗内却安静得能听见彼此的呼吸。{character}先低头笑了。',
+        consequence: '一次普通的关窗，被你们共同留成了慢镜头。',
+      },
+      {
+        id: 'choice-b',
+        text: '转身去给猫铺好毯子',
+        reply: '你铺好毯子回头，{character}已经把两边的窗帘都理整齐了。',
+        consequence: '照顾店和照顾彼此，开始变成同一件自然的事。',
+      },
+    ],
+    memoryAnchors: ['从两边关上的窗', '玻璃里并肩的影子'],
+    clue: '{character}离开窗框前，手指轻轻敲了一下。',
+  },
+  {
+    title: '借你的围巾',
+    subtitle: '还回来时还带着温度',
+    scene: '清晨 · 门口',
+    beats: [
+      {
+        type: 'narration',
+        text: '早风太冷，{character}把围巾解下来，没等你拒绝就绕到你颈边。',
+      },
+      {
+        type: 'dialogue',
+        speaker: '{character}',
+        text: '我走两步就到。你先戴着，晚上再还。',
+      },
+      {
+        type: 'narration',
+        text: '围巾上还留着他的温度。你抬头时，他已经转过身去开门，只露出一点发红的耳尖。',
+      },
+      {
+        type: 'narration',
+        text: '{pet}追着围巾末端扑了一下，又被你轻轻抱开。',
+      },
+    ],
+    choices: [
+      {
+        id: 'choice-a',
+        text: '晚上认真洗干净再还给他',
+        reply: '{character}接过围巾，说其实不必这么客气，但叠好时动作很慢。',
+        consequence: '一条围巾在你们手里来回，像把关心延长了几天。',
+      },
+      {
+        id: 'choice-b',
+        text: '晚上直接围着还给他，说自己不怕冷',
+        reply: '{character}看着你脖子上的围巾，半天才说，那明天也借你。',
+        consequence: '借与还之间，多了一个双方都愿意继续的约定。',
+      },
+    ],
+    memoryAnchors: ['带着温度的围巾', '{character}发红的耳尖'],
+    clue: '{character}说“明天也借你”时，已经想好了下一次。',
+  },
+  {
+    title: '停电的晚餐',
+    subtitle: '蜡烛只找到一支',
+    scene: '停电的夜 · 窗边桌',
+    beats: [
+      {
+        type: 'narration',
+        text: '街区忽然停电。你和{character}摸黑找到一支蜡烛，只够照亮一张小桌。',
+      },
+      {
+        type: 'dialogue',
+        speaker: '{character}',
+        text: '今晚将就一下。我做的晚饭应该还能看清。',
+      },
+      {
+        type: 'narration',
+        text: '你们在烛光里吃简单的热汤。{pet}趴在不远处，眼睛映着一点暖光。',
+      },
+      {
+        type: 'narration',
+        text: '没有音乐，也没有其他客人。{character}把最后一块面包推到你手边。',
+      },
+    ],
+    choices: [
+      {
+        id: 'choice-a',
+        text: '把面包分成两半，和他碰一下',
+        reply: '{character}配合地碰了碰。烛光里，你们都笑得很轻。',
+        consequence: '一次停电，反而让普通的晚餐有了纪念的意义。',
+      },
+      {
+        id: 'choice-b',
+        text: '在烛光里问他今天累不累',
+        reply: '{character}说不累，又说有人一起吃晚饭，关店也没那么像收尾。',
+        consequence: '{character}开始把与你相处说成一天里最期待的部分。',
+      },
+    ],
+    memoryAnchors: ['停电夜里的一支蜡烛', '照着热汤的暖光'],
+    clue: '{character}说完“没那么像收尾”后，把汤碗往你面前推了推。',
+  },
+  {
+    title: '替你尝味道',
+    subtitle: '勺子停在半空',
+    scene: '午后 · 吧台',
+    beats: [
+      {
+        type: 'narration',
+        text: '新配方有点拿不准。{character}舀起一勺，递到你面前又忽然停住。',
+      },
+      {
+        type: 'dialogue',
+        speaker: '{character}',
+        text: '你要不要先尝？我忘了问会不会太甜。',
+      },
+      {
+        type: 'narration',
+        text: '勺子停在半空。{pet}抬头看了看你们，像是嫌你们太慢。',
+      },
+      {
+        type: 'narration',
+        text: '《{previous}》里那只留下的杯子，还放在吧台内侧。',
+      },
+    ],
+    choices: [
+      {
+        id: 'choice-a',
+        text: '就着他的手尝一口',
+        reply: '{character}没有收回手，只在你尝完后问得很轻：会不会太甜？',
+        consequence: '一个试味道的动作，被你们两个人都放慢了。',
+      },
+      {
+        id: 'choice-b',
+        text: '接过勺子，也让他尝一口',
+        reply: '你把勺子递回去。{character}低头时，嘴角已经先弯了起来。',
+        consequence: '互相试味道成了吧台后不必解释的默契。',
+      },
+    ],
+    memoryAnchors: ['停在半空的一勺', '吧台内侧的第二只杯子'],
+    clue: '{character}问“太甜”时，目光落在你嘴边。',
+  },
+  {
+    title: '留到最后的话',
+    subtitle: '关门前才说出口',
+    scene: '打烊后 · 门口',
+    beats: [
+      {
+        type: 'narration',
+        text: '关门前，{character}已经穿好外套，却还站在灯下没有走。',
+      },
+      {
+        type: 'dialogue',
+        speaker: '{character}',
+        text: '今天有句话想了很久，还是想当面说。',
+      },
+      {
+        type: 'narration',
+        text: '他没有催你回应，只把手里那串钥匙握紧了一些。{pet}在门边安静地坐好。',
+      },
+      {
+        type: 'narration',
+        text: '店里只剩最后一盏灯。你忽然发现，自己也在等他把这句话说完。',
+      },
+    ],
+    choices: [
+      {
+        id: 'choice-a',
+        text: '告诉他，你愿意听',
+        reply: '{character}看着你，慢慢说，明天开门的时候，他第一个想见到的人是你。',
+        consequence: '今晚没有说完的话，变成了明天见面时最明确的期待。',
+      },
+      {
+        id: 'choice-b',
+        text: '让他留到明天，再带着早餐来',
+        reply: '{character}怔了一下，随后笑着答应。他没有失望，反而像更确定明天一定会来。',
+        consequence: '你们给这句未完成的话，留了一个温柔的下一章。',
+      },
+    ],
+    memoryAnchors: ['关门前不肯走的人', '被握紧的钥匙串'],
+    clue: '{character}要说的那句话，也许明天会有一个更清楚的答案。',
+  },
+]
+
 function fillPlaceholders(value, context) {
   return value
     .replaceAll('{pet}', context.petName)
+    .replaceAll('{character}', context.characterName)
+    .replaceAll('{role}', context.role)
     .replaceAll('{anchor}', context.anchor)
     .replaceAll('{previous}', context.previousTitle)
 }
@@ -1002,14 +1967,45 @@ export function buildLocalStory(request = {}, degraded = false, at = Date.now())
     previous && typeof previous.title === 'string' && previous.title.trim()
       ? previous.title.trim().slice(0, 36)
       : '上一页'
+  const focusCharacter =
+    request.focusCharacter &&
+    typeof request.focusCharacter === 'object' &&
+    !Array.isArray(request.focusCharacter)
+      ? request.focusCharacter
+      : null
+  const characterName =
+    focusCharacter &&
+    typeof focusCharacter.name === 'string' &&
+    focusCharacter.name.trim()
+      ? focusCharacter.name.trim().slice(0, 24)
+      : '林澈'
+  const characterRole =
+    focusCharacter &&
+    typeof focusCharacter.role === 'string' &&
+    focusCharacter.role.trim()
+      ? focusCharacter.role.trim().slice(0, 32)
+      : '咖啡师'
+  const storyBank =
+    request.mode === 'romance' ? ROMANCE_STORY_BANK : LOCAL_STORY_BANK
   const seedOffset = storySeedOffset(request.storySeed)
-  const start = seedOffset % LOCAL_STORY_BANK.length
-  const cycle = Math.floor(storyTurn / LOCAL_STORY_BANK.length)
+  const start = seedOffset % storyBank.length
+  const cycle = Math.floor(storyTurn / storyBank.length)
   const template =
-    LOCAL_STORY_BANK[(start + storyTurn) % LOCAL_STORY_BANK.length]
-  const context = { petName, anchor: previousAnchor, previousTitle }
+    storyBank[(start + storyTurn) % storyBank.length]
+  const context = {
+    petName,
+    characterName,
+    role: characterRole,
+    anchor: previousAnchor,
+    previousTitle,
+  }
   const fill = (value) => fillPlaceholders(value, context)
-  const title = cycle === 0 ? template.title : `${template.title} · 潮汐${cycle + 1}`
+  const title =
+    cycle === 0
+      ? template.title
+      : request.mode === 'romance'
+        ? `${template.title} · 日常${cycle + 1}`
+        : `${template.title} · 潮汐${cycle + 1}`
 
   return {
     id: `local_${storyTurn}_${at.toString(36)}`,
@@ -1037,4 +2033,4 @@ export function buildLocalStory(request = {}, degraded = false, at = Date.now())
   }
 }
 
-export { LOCAL_STORY_BANK }
+export { LOCAL_STORY_BANK, ROMANCE_STORY_BANK }

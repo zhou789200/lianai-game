@@ -5,10 +5,11 @@ import type {
   GeneratedStoryChoice,
   StoryCacheEntry,
   StorybookChapterDef,
+  StoryThread,
   StoryTrace,
 } from './types'
 import { buildLocalStory } from '../../shared/localStoryBank.mjs'
-import { STORYBOOK_CHAPTERS } from '../data/content'
+import { CHAPTERS, STORYBOOK_CHAPTERS } from '../data/content'
 
 export const STORY_GENERATE_ENDPOINT = './api/story/generate'
 export const STORY_CACHE_LIMIT = 6
@@ -21,11 +22,17 @@ export interface DynamicStoryChapter {
 }
 
 export interface StoryGenerationRequest {
+  mode: StoryThread
   storySeed: string
   playerName: string
   shopName: string
   petName: string
   storyTurn: number
+  focusCharacter: {
+    name: string
+    role: string
+    value: number
+  } | null
   storyFlags: string[]
   relationships: Array<{
     name: string
@@ -62,6 +69,7 @@ interface StoryMemory {
 interface FetchStoryOptions {
   signal?: AbortSignal
   fetchImpl?: typeof fetch
+  thread?: StoryThread
 }
 
 export interface StoryPrefetch {
@@ -73,6 +81,7 @@ export interface StoryPrefetch {
 
 interface StoryPrefetchOptions {
   fetchImpl?: typeof fetch
+  thread?: StoryThread
 }
 
 function hashString(value: string): string {
@@ -116,12 +125,36 @@ function cleanChapterIndex(value: unknown): number | undefined {
 }
 
 export function nextDynamicStoryChapterIndex(
-  state: Pick<GameState, 'storyTurn'>,
+  state: Pick<GameState, 'storyTurn' | 'romanceTurn'>,
+  thread: StoryThread = 'storybook',
 ): number {
+  const turn = thread === 'romance' ? state.romanceTurn : state.storyTurn
   return Math.min(
     999,
-    DYNAMIC_STORY_START_INDEX + Math.max(0, Math.trunc(state.storyTurn || 0)),
+    DYNAMIC_STORY_START_INDEX + Math.max(0, Math.trunc(turn || 0)),
   )
+}
+
+export function dynamicStoryChapterIndexFor(
+  state: Pick<GameState, 'storyTraces' | 'storyTurn' | 'romanceTurn'>,
+  storyId: string,
+  thread: StoryThread = 'storybook',
+): number {
+  const trace = state.storyTraces.find(
+    (item) =>
+      item.id ===
+      (thread === 'romance' ? `romance_trace_${storyId}` : `trace_${storyId}`),
+  )
+  if (!trace) return nextDynamicStoryChapterIndex(state, thread)
+  return (
+    listDynamicStoryChapters(state, thread).find(
+      (chapter) => chapter.trace.id === trace.id,
+    )?.chapterIndex ?? nextDynamicStoryChapterIndex(state, thread)
+  )
+}
+
+function traceThread(trace: StoryTrace): StoryThread {
+  return trace.thread === 'romance' ? 'romance' : 'storybook'
 }
 
 /**
@@ -130,10 +163,14 @@ export function nextDynamicStoryChapterIndex(
  * the chapterIndex field.
  */
 export function listDynamicStoryChapters(
-  state: Pick<GameState, 'storyTraces' | 'storyTurn'>,
+  state: Pick<GameState, 'storyTraces' | 'storyTurn' | 'romanceTurn'>,
+  thread: StoryThread = 'storybook',
 ): DynamicStoryChapter[] {
-  const traces = [...state.storyTraces].sort((a, b) => a.at - b.at)
-  const archivedOffset = Math.max(0, state.storyTurn - traces.length)
+  const traces = state.storyTraces
+    .filter((trace) => traceThread(trace) === thread)
+    .sort((a, b) => a.at - b.at)
+  const turn = thread === 'romance' ? state.romanceTurn : state.storyTurn
+  const archivedOffset = Math.max(0, turn - traces.length)
   return traces.map((trace, position) => ({
     trace,
     chapterIndex:
@@ -142,17 +179,21 @@ export function listDynamicStoryChapters(
   }))
 }
 
-function buildStoryMemories(state: GameState): StoryMemory[] {
-  const dynamicMemories = state.storyTraces.map((trace) => ({
-    at: trace.at,
-    title: cleanText(trace.title, 36),
-    scene: cleanText(trace.scene, 48),
-    memoryAnchors: cleanStringArray(trace.memoryAnchors, 3, 64),
-    clue: cleanText(trace.clue, 120),
-    choice: cleanText(trace.choice, 100),
-    outcome: cleanText(trace.outcome, 160),
-  }))
-  const staticMemories = (state.storyChoices ?? []).map((record) => {
+function buildStoryMemories(state: GameState, thread: StoryThread): StoryMemory[] {
+  const dynamicMemories = state.storyTraces
+    .filter((trace) => traceThread(trace) === thread)
+    .map((trace) => ({
+      at: trace.at,
+      title: cleanText(trace.title, 36),
+      scene: cleanText(trace.scene, 48),
+      memoryAnchors: cleanStringArray(trace.memoryAnchors, 3, 64),
+      clue: cleanText(trace.clue, 120),
+      choice: cleanText(trace.choice, 100),
+      outcome: cleanText(trace.outcome, 160),
+    }))
+  const staticMemories = (state.storyChoices ?? [])
+    .filter((record) => record.source === thread)
+    .map((record) => {
     const storyFlags = cleanStringArray(record.storyFlags, 3, 64)
     return {
       at: record.at,
@@ -167,7 +208,7 @@ function buildStoryMemories(state: GameState): StoryMemory[] {
       choice: cleanText(record.optionText, 100),
       outcome: cleanText(record.reply, 160),
     }
-  })
+    })
 
   return [...dynamicMemories, ...staticMemories]
     .filter(
@@ -181,8 +222,11 @@ function buildStoryMemories(state: GameState): StoryMemory[] {
     .slice(0, 5)
 }
 
-export function buildStoryGenerationRequest(state: GameState): StoryGenerationRequest {
-  const allMemories = buildStoryMemories(state)
+export function buildStoryGenerationRequest(
+  state: GameState,
+  thread: StoryThread = 'storybook',
+): StoryGenerationRequest {
+  const allMemories = buildStoryMemories(state, thread)
   const memories = allMemories.map((memory) => ({
     title: memory.title,
     memoryAnchors: memory.memoryAnchors,
@@ -192,14 +236,48 @@ export function buildStoryGenerationRequest(state: GameState): StoryGenerationRe
   }))
   const latest = memories[0]
   const latestMemory = allMemories[0]
+  const currentChapter = CHAPTERS.find((chapter) => chapter.id === state.chapterId)
+  const currentRelationship = currentChapter
+    ? state.relationships.find(
+        (relationship) => relationship.id === currentChapter.characterId,
+      )
+    : null
+  const focusRelationship =
+    currentRelationship ??
+    state.relationships
+      .filter((relationship) => relationship.met || relationship.value > 0)
+      .sort((a, b) => b.value - a.value)[0] ??
+    null
 
   return {
+    mode: thread,
     storySeed: cleanStorySeed(state.storySeed) || 'legacy',
     playerName: cleanText(state.playerName, 20) || '店长',
     shopName: cleanText(state.shopName, 32) || '海风镇宠物咖啡馆',
     petName: cleanText(state.pet.name, 16) || '布丁',
-    storyTurn: Math.max(0, Math.min(999, Math.trunc(state.storyTurn || 0))),
-    storyFlags: state.storyFlags.map((flag) => cleanText(flag, 64)).filter(Boolean).slice(0, 20),
+    storyTurn: Math.max(
+      0,
+      Math.min(
+        999,
+        Math.trunc(
+          (thread === 'romance' ? state.romanceTurn : state.storyTurn) || 0,
+        ),
+      ),
+    ),
+    focusCharacter: focusRelationship
+      ? {
+          name: cleanText(focusRelationship.name, 24),
+          role: cleanText(focusRelationship.role, 32),
+          value: Math.max(0, Math.min(100, focusRelationship.value)),
+        }
+      : null,
+    storyFlags:
+      thread === 'romance'
+        ? []
+        : state.storyFlags
+            .map((flag) => cleanText(flag, 64))
+            .filter(Boolean)
+            .slice(0, 20),
     relationships: state.relationships
       .filter((relationship) => relationship.met || relationship.value > 0)
       .sort((a, b) => b.value - a.value)
@@ -229,9 +307,12 @@ export function buildStoryGenerationRequest(state: GameState): StoryGenerationRe
  * turn. This prevents a stale cache entry from leaking into a different
  * branch or a different save that happens to be on the same chapter number.
  */
-export function storyCacheKey(state: GameState): string {
-  const request = buildStoryGenerationRequest(state)
-  return `story_${hashString(JSON.stringify(request))}`
+export function storyCacheKey(
+  state: GameState,
+  thread: StoryThread = 'storybook',
+): string {
+  const request = buildStoryGenerationRequest(state, thread)
+  return `${thread}_${hashString(JSON.stringify(request))}`
 }
 
 function normalizeBeat(value: unknown): GeneratedStoryBeat | null {
@@ -288,8 +369,11 @@ export function normalizeStoryCache(value: unknown): StoryCacheEntry[] {
   return entries
 }
 
-export function findCachedGeneratedStory(state: GameState): GeneratedStory | null {
-  const key = storyCacheKey(state)
+export function findCachedGeneratedStory(
+  state: GameState,
+  thread: StoryThread = 'storybook',
+): GeneratedStory | null {
+  const key = storyCacheKey(state, thread)
   const entry = state.storyCache.find((item) => item.key === key)
   if (!entry) return null
   try {
@@ -386,6 +470,10 @@ export function normalizeStoryTrace(
   const scene = cleanText(value.scene, 48)
   const source =
     value.source === 'ai' ? 'ai' : value.source === 'local' ? 'local' : null
+  const thread: StoryThread =
+    value.thread === 'romance' || id.startsWith('romance_trace_')
+      ? 'romance'
+      : 'storybook'
   const choice = cleanText(value.choice, 100)
   const outcome = cleanText(value.outcome, 320)
   const memoryAnchors = cleanStringArray(value.memoryAnchors, 3, 64)
@@ -424,6 +512,7 @@ export function normalizeStoryTrace(
   return {
     id,
     at: value.at,
+    thread,
     ...(chapterIndex ? { chapterIndex } : {}),
     title,
     subtitle,
@@ -447,12 +536,15 @@ export function normalizeStoryTrace(
 export function createLocalStoryFallback(
   state: GameState,
   at = Date.now(),
+  thread: StoryThread = 'storybook',
 ): GeneratedStory {
-  const request = buildStoryGenerationRequest(state)
+  const request = buildStoryGenerationRequest(state, thread)
   return buildLocalStory(
     {
+      mode: thread,
       petName: state.pet.name,
-      storyTurn: state.storyTurn,
+      storyTurn: request.storyTurn,
+      focusCharacter: request.focusCharacter,
       storySeed: request.storySeed,
       memories: request.memories,
     },
@@ -465,7 +557,8 @@ export async function fetchGeneratedStory(
   state: GameState,
   options: FetchStoryOptions = {},
 ): Promise<GeneratedStory> {
-  const cached = findCachedGeneratedStory(state)
+  const thread = options.thread ?? 'storybook'
+  const cached = findCachedGeneratedStory(state, thread)
   if (cached) return cached
 
   try {
@@ -473,7 +566,7 @@ export async function fetchGeneratedStory(
     const response = await requestFetch(STORY_GENERATE_ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(buildStoryGenerationRequest(state)),
+      body: JSON.stringify(buildStoryGenerationRequest(state, thread)),
       signal: options.signal,
     })
 
@@ -489,7 +582,7 @@ export async function fetchGeneratedStory(
     return normalizeGeneratedStory(payload)
   } catch (error) {
     if (options.signal?.aborted) throw error
-    return createLocalStoryFallback(state)
+    return createLocalStoryFallback(state, Date.now(), thread)
   }
 }
 
@@ -498,11 +591,13 @@ export function storyTraceFromChoice(
   choice: GeneratedStoryChoice,
   at = Date.now(),
   chapterIndex?: number,
+  thread: StoryThread = 'storybook',
 ): StoryTrace {
   const outcome = [choice.reply, choice.consequence].filter(Boolean).join(' ')
   return {
-    id: `trace_${story.id}`,
+    id: thread === 'romance' ? `romance_trace_${story.id}` : `trace_${story.id}`,
     at,
+    thread,
     ...(cleanChapterIndex(chapterIndex) ? { chapterIndex } : {}),
     title: story.title,
     subtitle: story.subtitle,
@@ -532,15 +627,22 @@ export function prepareContinuationState(
   story: GeneratedStory,
   choice: GeneratedStoryChoice,
   at = Date.now(),
+  thread: StoryThread = 'storybook',
 ): GameState {
-  const trace = storyTraceFromChoice(story, choice, at)
+  const trace = storyTraceFromChoice(story, choice, at, undefined, thread)
   const alreadyRecorded = state.storyTraces.some((item) => item.id === trace.id)
+  const isRomance = thread === 'romance'
   return {
     ...state,
     storyTraces: alreadyRecorded
       ? state.storyTraces
       : appendStoryTrace(state.storyTraces, trace),
-    storyTurn: alreadyRecorded ? state.storyTurn : state.storyTurn + 1,
+    storyTraceId: isRomance ? state.storyTraceId : trace.id,
+    romanceTraceId: isRomance ? trace.id : state.romanceTraceId,
+    storyTurn:
+      isRomance || alreadyRecorded ? state.storyTurn : state.storyTurn + 1,
+    romanceTurn:
+      !isRomance || alreadyRecorded ? state.romanceTurn : state.romanceTurn + 1,
   }
 }
 
@@ -550,14 +652,21 @@ export function prefetchStoryAfterChoice(
   choice: GeneratedStoryChoice,
   options: FetchStoryOptions = {},
 ): Promise<GeneratedStory> {
-  return fetchGeneratedStory(prepareContinuationState(state, story, choice), options)
+  const thread = options.thread ?? 'storybook'
+  return fetchGeneratedStory(
+    prepareContinuationState(state, story, choice, Date.now(), thread),
+    options,
+  )
 }
 
 export function storyPrefetchKey(
   story: GeneratedStory,
   choice: GeneratedStoryChoice,
+  thread: StoryThread = 'storybook',
 ): string {
-  return `${story.id}:${choice.id}`
+  return thread === 'romance'
+    ? `romance:${story.id}:${choice.id}`
+    : `${story.id}:${choice.id}`
 }
 
 export function createStoryPrefetch(
@@ -567,11 +676,19 @@ export function createStoryPrefetch(
   options: StoryPrefetchOptions = {},
 ): StoryPrefetch {
   const controller = new AbortController()
-  const continuationState = prepareContinuationState(state, story, choice)
-  const cacheKey = storyCacheKey(continuationState)
+  const thread = options.thread ?? 'storybook'
+  const continuationState = prepareContinuationState(
+    state,
+    story,
+    choice,
+    Date.now(),
+    thread,
+  )
+  const cacheKey = storyCacheKey(continuationState, thread)
   const promise = fetchGeneratedStory(continuationState, {
     fetchImpl: options.fetchImpl,
     signal: controller.signal,
+    thread,
   })
 
   // The cache can be discarded before the player reaches the next page.
@@ -579,7 +696,7 @@ export function createStoryPrefetch(
   void promise.catch(() => undefined)
 
   return {
-    key: storyPrefetchKey(story, choice),
+    key: storyPrefetchKey(story, choice, thread),
     cacheKey,
     promise,
     abort: () => controller.abort(),
@@ -593,7 +710,7 @@ export function reuseStoryPrefetch(
   choice: GeneratedStoryChoice,
   options: StoryPrefetchOptions = {},
 ): StoryPrefetch {
-  const key = storyPrefetchKey(story, choice)
+  const key = storyPrefetchKey(story, choice, options.thread ?? 'storybook')
   if (current?.key === key) return current
 
   current?.abort()

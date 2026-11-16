@@ -388,7 +388,13 @@ function reducer(runtime: Runtime, action: Action): Runtime {
       const chapter = CHAPTERS.find((c) => c.id === action.id)
       if (!chapter) return runtime
       return {
-        state: { ...s, chapterId: chapter.id, chapterBeat: 0, updatedAt: Date.now() },
+        state: {
+          ...s,
+          chapterId: chapter.id,
+          chapterBeat: 0,
+          romanceTraceId: null,
+          updatedAt: Date.now(),
+        },
         notices: runtime.notices,
       }
     }
@@ -580,20 +586,41 @@ function reducer(runtime: Runtime, action: Action): Runtime {
     }
 
     case 'selectStoryTrace': {
-      if (!s.storyTraces.some((trace) => trace.id === action.id)) return runtime
-      if (s.storyTraceId === action.id) return runtime
+      const trace = s.storyTraces.find((item) => item.id === action.id)
+      if (!trace) return runtime
+      const isRomance = trace.thread === 'romance'
+      if (isRomance ? s.romanceTraceId === action.id : s.storyTraceId === action.id) {
+        return runtime
+      }
       return {
-        state: { ...s, storyTraceId: action.id, updatedAt: Date.now() },
+        state: {
+          ...s,
+          storyTraceId: isRomance ? s.storyTraceId : action.id,
+          romanceTraceId: isRomance ? action.id : s.romanceTraceId,
+          updatedAt: Date.now(),
+        },
         notices: runtime.notices,
       }
     }
 
     case 'rememberStoryTrace': {
+      const isRomance = action.trace.thread === 'romance'
       const alreadyRecorded = s.storyTraces.some((trace) => trace.id === action.trace.id)
       if (alreadyRecorded) {
-        if (s.storyTraceId === action.trace.id) return runtime
+        if (
+          isRomance
+            ? s.romanceTraceId === action.trace.id
+            : s.storyTraceId === action.trace.id
+        ) {
+          return runtime
+        }
         return {
-          state: { ...s, storyTraceId: action.trace.id, updatedAt: Date.now() },
+          state: {
+            ...s,
+            storyTraceId: isRomance ? s.storyTraceId : action.trace.id,
+            romanceTraceId: isRomance ? action.trace.id : s.romanceTraceId,
+            updatedAt: Date.now(),
+          },
           notices: runtime.notices,
         }
       }
@@ -601,8 +628,10 @@ function reducer(runtime: Runtime, action: Action): Runtime {
         state: {
           ...s,
           storyTraces: appendStoryTrace(s.storyTraces, action.trace),
-          storyTraceId: action.trace.id,
-          storyTurn: s.storyTurn + 1,
+          storyTraceId: isRomance ? s.storyTraceId : action.trace.id,
+          romanceTraceId: isRomance ? action.trace.id : s.romanceTraceId,
+          storyTurn: isRomance ? s.storyTurn : s.storyTurn + 1,
+          romanceTurn: isRomance ? s.romanceTurn + 1 : s.romanceTurn,
           stats: { ...s.stats, choicesMade: s.stats.choicesMade + 1 },
           tasks: bumpTasks(s.tasks, 'story_step', 1),
           updatedAt: Date.now(),

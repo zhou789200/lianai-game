@@ -377,19 +377,70 @@ async function main() {
     })()`)
     await sleep(400)
 
-    // 关掉开场说明
+    // 新手引导：逐步切换真实页面，最后从设置中重播并跳过。
     const introStarted = await evaluate(`(() => {
-      const b = [...document.querySelectorAll('.modal .btn')].find(
-        (x) => x.textContent.includes('开始第一天'),
+      return !!document.querySelector('.tour__card');
+    })()`)
+    if (introStarted) {
+      const expectedViews = ['home', 'cafe', 'story', 'home', 'home']
+      for (let index = 0; index < expectedViews.length; index += 1) {
+        await sleep(300)
+        await shoot(`intro-${index + 1}`)
+        const layout = await evaluate(`(() => {
+          const card = document.querySelector('.tour__card');
+          const target = document.querySelector('.tour__spotlight');
+          const root = document.querySelector('.tour');
+          if (!card || !target || !root) return null;
+          const c = card.getBoundingClientRect();
+          const t = target.getBoundingClientRect();
+          const r = root.getBoundingClientRect();
+          const stepTarget = document.querySelector(['[data-tour="home-actions"]',
+            '[data-tour="cafe-start"]', '[data-tour="story-book"]',
+            '[data-tour="daily-tasks"]', '[data-tour="settings"]'][${index}]);
+          const b = stepTarget?.getBoundingClientRect();
+          return { cardVisible: getComputedStyle(card).visibility === 'visible',
+            inBounds: c.left >= r.left && c.right <= r.right && c.top >= r.top && c.bottom <= r.bottom,
+            noOverlap: c.bottom < t.top || c.top > t.bottom,
+            aligned: !!b && Math.abs(t.left - b.left + 6) < 1 && Math.abs(t.top - b.top + 6) < 1,
+            scale: getComputedStyle(document.querySelector('.phone')).getPropertyValue('--app-scale'),
+            canvas: document.querySelector('.phone__canvas').getBoundingClientRect().toJSON(),
+            root: r.toJSON(), target: b?.toJSON(), spotlight: t.toJSON(),
+            offset: b ? { x: t.left - b.left, y: t.top - b.top } : null };
+        })()`)
+        if (!layout?.cardVisible || !layout.inBounds || !layout.noOverlap || !layout.aligned) {
+          throw new Error(`新手引导第 ${index + 1} 步布局异常: ${JSON.stringify(layout)}`)
+        }
+        await evaluate(`(() => {
+          const b = [...document.querySelectorAll('.tour__card .btn')].find(
+            (x) => x.textContent.includes('下一步') || x.textContent.includes('开始游戏'),
+          );
+          b?.click();
+        })()`)
+      }
+    }
+    await sleep(400)
+    await evaluate(`document.querySelector('[data-tour="settings"]')?.click()`)
+    await sleep(200)
+    const replayOpened = await evaluate(`(() => {
+      const b = [...document.querySelectorAll('.setting-row')].find(
+        (x) => x.textContent.includes('新手引导'),
       );
-      if (b) b.click();
+      b?.click();
       return !!b;
     })()`)
-    await sleep(400)
+    await sleep(200)
+    const skipClosed = await evaluate(`(() => {
+      document.querySelector('.tour__skip')?.click();
+      return true;
+    })()`)
+    await sleep(200)
+    if (await evaluate(`!!document.querySelector('.tour__card')`)) {
+      throw new Error('跳过新手引导后仍未关闭')
+    }
 
     if (!accountGateReady || !guestStarted || !introStarted) {
       throw new Error(
-        `首次进入流程不完整: accountGate=${accountGateReady}, guest=${guestStarted}, intro=${introStarted}`,
+        `首次进入流程不完整: accountGate=${accountGateReady}, guest=${guestStarted}, intro=${introStarted}, replay=${replayOpened}, skip=${skipClosed}`,
       )
     }
 

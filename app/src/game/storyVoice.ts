@@ -54,19 +54,16 @@ interface SpeakStoryTextOptions {
   onFinished?: () => void
 }
 
+const NARRATION_PROFILE: VoiceProfile = {
+  pitch: 1.02,
+  rate: 0.94,
+  gender: 'female',
+  voiceHints: ['xiaoxiao', 'xiaoyi', 'xiaomo', 'huihui', 'yaoyao', 'tingting', 'meijia'],
+}
+
 const CHARACTER_PROFILES: Record<string, VoiceProfile> = {
-  旁白: {
-    pitch: 1.02,
-    rate: 0.94,
-    gender: 'female',
-    voiceHints: ['xiaoxiao', 'xiaoyi', 'xiaomo', 'huihui', 'yaoyao', 'tingting', 'meijia'],
-  },
-  你: {
-    pitch: 0.86,
-    rate: 0.9,
-    gender: 'female',
-    voiceHints: ['xiaomo', 'xiaoyi', 'xiaoxiao', 'huihui', 'yaoyao'],
-  },
+  旁白: NARRATION_PROFILE,
+  你: NARRATION_PROFILE,
   林澈: {
     pitch: 1.1,
     rate: 1.1,
@@ -452,8 +449,7 @@ function speakWithSystemVoice(
   utterance.lang = 'zh-CN'
   utterance.pitch = profile.pitch
   utterance.rate = profile.rate
-  utterance.volume =
-    (speaker === '旁白' ? 0.9 : 0.94) * getEffectiveSoundVolume()
+  utterance.volume = 0.9 * getEffectiveSoundVolume()
 
   currentOwner = owner
   currentUtterance = utterance
@@ -521,6 +517,12 @@ export function speakStoryText({
   onFinished,
 }: SpeakStoryTextOptions): boolean {
   const content = cleanStoryText(text)
+  let finished = false
+  const finish = () => {
+    if (finished) return
+    finished = true
+    onFinished?.()
+  }
   if (
     !isSoundEnabled() ||
     !isStoryVoiceEnabled() ||
@@ -535,7 +537,7 @@ export function speakStoryText({
   if (!isGameAudioSupported()) {
     const id = playbackId
     currentOwner = owner
-    return speakWithSystemVoice(content, speaker, owner, id, onFinished)
+    return speakWithSystemVoice(content, speaker, owner, id, finish)
   }
   primeGameAudio()
 
@@ -552,14 +554,15 @@ export function speakStoryText({
         if (id !== playbackId) return
         currentOwner = null
         currentPlayback = null
-        onFinished?.()
+        finish()
       },
     })
     if (playback) {
       currentPlayback = playback
       return true
     }
-    onFinished?.()
+    finish()
+    return false
   }
 
   const subscription = requestOnlineAudio(content, speaker, voiceKey)
@@ -580,14 +583,14 @@ export function speakStoryText({
           if (id !== playbackId) return
           currentOwner = null
           currentPlayback = null
-          onFinished?.()
+          finish()
         },
       })
       if (playback) {
         currentPlayback = playback
         cancelCurrentRequest = null
       } else {
-        onFinished?.()
+        finish()
       }
     })
     .catch((error: unknown) => {
@@ -595,9 +598,12 @@ export function speakStoryText({
       cancelCurrentRequest = null
       // 翻页主动取消请求时不应突然朗读已经离开的旧台词。
       if (shouldUseSystemVoiceFallback(error)) {
-        if (!speakWithSystemVoice(content, speaker, owner, id, onFinished)) {
-          onFinished?.()
+        if (!speakWithSystemVoice(content, speaker, owner, id, finish)) {
+          finish()
         }
+      } else {
+        // 解码失败等不可恢复错误不能一直阻塞自动剧情。
+        finish()
       }
     })
 

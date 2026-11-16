@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, ReactNode } from 'react'
+import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react'
 
 export type ButtonVariant = 'primary' | 'gold' | 'sea' | 'cream' | 'ghost'
 
@@ -13,7 +13,7 @@ export interface UiButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 /**
  * 统一按钮：具备正常 / 按下 / 禁用 / 加载状态，最小触控高度 44px（sm 为辅助操作）。
  */
-export function UiButton({
+export const UiButton = forwardRef<HTMLButtonElement, UiButtonProps>(function UiButton({
   variant = 'cream',
   size = 'md',
   block = false,
@@ -24,7 +24,7 @@ export function UiButton({
   type = 'button',
   disabled,
   ...rest
-}: UiButtonProps) {
+}, ref) {
   const classes = [
     'btn',
     `btn--${variant}`,
@@ -38,6 +38,7 @@ export function UiButton({
 
   return (
     <button
+      ref={ref}
       type={type}
       className={classes}
       disabled={disabled || loading}
@@ -48,4 +49,4 @@ export function UiButton({
       <span>{children}</span>
     </button>
   )
-}
+})

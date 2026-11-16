@@ -52,6 +52,7 @@ export function AppHeader({ onOpenSettings, onOpenRomance }: AppHeaderProps) {
           <button
             type="button"
             className="icon-btn icon-btn--sm"
+            data-tour="settings"
             onClick={onOpenSettings}
             aria-label="打开存档与设置"
             title="存档与设置"

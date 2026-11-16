@@ -112,6 +112,7 @@ export function HomeView({ onNavigate }: { onNavigate: (v: ViewKey) => void }) {
         <button
           type="button"
           className={`home2__quest${claimable > 0 ? ' is-hot' : ''}`}
+          data-tour="daily-tasks"
           onClick={() => setSheet(true)}
         >
           <Sparkles size={14} />
@@ -150,7 +151,7 @@ export function HomeView({ onNavigate }: { onNavigate: (v: ViewKey) => void }) {
 
       <DialogueBand lines={lines} speaker={speaker} tone={tone} />
 
-      <div className="home2__actions">
+      <div className="home2__actions" data-tour="home-actions">
         <button
           type="button"
           className="home2__act home2__act--primary"

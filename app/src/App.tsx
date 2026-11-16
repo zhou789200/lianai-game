@@ -53,13 +53,16 @@ function Game() {
     () => hasChosenGuestMode() || hasGuestSave(),
   )
   const [introDismissed, setIntroDismissed] = useState(false)
+  const [replayingIntro, setReplayingIntro] = useState(false)
+  const [introSession, setIntroSession] = useState(0)
 
   const showAccountGate =
     authReady && !userData.user && !guestChosen
   // 新档案先做账号选择；试玩后才看新手说明，避免两个弹窗叠在一起。
   const needsIntro =
     authReady && !hasSeenIntro() && (!!userData.user || guestChosen)
-  const showIntro = !showAccountGate && needsIntro && !introDismissed
+  const showIntro =
+    !showAccountGate && (needsIntro || replayingIntro) && !introDismissed
 
   const zone = figureZone(view)
   const inRun = view === 'business' && runId !== null
@@ -103,12 +106,11 @@ function Game() {
 
   return (
     <PhoneShell figure={zone} tone={useImmersiveCafe ? 'cafe' : 'default'}>
-      {/* 场景层始终挂载：底图常驻，切页只是切 opacity，
-          从咖啡店玩法返回时也不会重新加载图片。 */}
+      {/* 场景层始终参与合成：咖啡店自己铺满时只盖住它，不能设为
+          visibility:hidden，否则 Android WebView 会丢弃纹理并在返回时闪空底。 */}
       <SceneRenderer
         view={view === 'romance' ? 'story' : view}
         decor={state.decor}
-        hidden={useImmersiveCafe}
       />
 
       <div className="app">
@@ -177,6 +179,14 @@ function Game() {
         <SettingsModal
           onClose={() => setShowSettings(false)}
           onOpenAccount={openAccount}
+          onReplayIntro={() => {
+            stopStoryVoice()
+            setShowSettings(false)
+            setView('home')
+            setReplayingIntro(true)
+            setIntroDismissed(false)
+            setIntroSession((session) => session + 1)
+          }}
         />
       ) : null}
       {showAccount && !showAccountGate ? (
@@ -187,9 +197,12 @@ function Game() {
       ) : null}
       {showIntro && !showAccountGate && !showSettings ? (
         <IntroModal
+          key={introSession}
+          onNavigate={navigate}
           onClose={() => {
             rememberIntroSeen()
             setIntroDismissed(true)
+            setReplayingIntro(false)
           }}
         />
       ) : null}

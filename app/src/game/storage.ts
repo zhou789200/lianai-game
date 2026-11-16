@@ -121,6 +121,8 @@ export function createInitialState(): GameState {
     storyCache: [],
     storyTraceId: null,
     storyTurn: 0,
+    romanceTraceId: null,
+    romanceTurn: 0,
 
     tasks: createInitialTasks(),
     tasksDate: todayKey(),
@@ -238,25 +240,65 @@ function normalizeState(state: GameState): GameState {
   const validStoryTraces = rawStoryTraces
     .map((trace) => normalizeStoryTrace(trace))
     .filter((trace): trace is GameState['storyTraces'][number] => trace !== null)
+  const retainedTraces = validStoryTraces.slice(0, 30)
+  const storybookRetainedTraces = retainedTraces.filter(
+    (trace) => trace.thread !== 'romance',
+  )
+  const romanceRetainedTraces = retainedTraces.filter(
+    (trace) => trace.thread === 'romance',
+  )
   const storyTurn = Math.max(
     typeof state.storyTurn === 'number' && Number.isFinite(state.storyTurn)
       ? Math.trunc(state.storyTurn)
       : 0,
-    validStoryTraces.length,
+    storybookRetainedTraces.length,
   )
-  const retainedTraces = validStoryTraces.slice(0, 30)
-  const archivedOffset = Math.max(0, storyTurn - retainedTraces.length)
-  const storyTraces = retainedTraces.map((trace, index) => ({
-    ...trace,
-    chapterIndex:
-      trace.chapterIndex ??
-      DYNAMIC_STORY_START_INDEX + archivedOffset + (retainedTraces.length - 1 - index),
-  }))
+  const storyArchivedOffset = Math.max(
+    0,
+    storyTurn - storybookRetainedTraces.length,
+  )
   const storedStoryTraceId =
     typeof state.storyTraceId === 'string' ? state.storyTraceId : null
-  const storyTraceId = retainedTraces.some((trace) => trace.id === storedStoryTraceId)
+  const storyTraceId = storybookRetainedTraces.some(
+    (trace) => trace.id === storedStoryTraceId,
+  )
     ? storedStoryTraceId
     : null
+  const romanceTurn = Math.max(
+    typeof state.romanceTurn === 'number' && Number.isFinite(state.romanceTurn)
+      ? Math.trunc(state.romanceTurn)
+      : 0,
+    romanceRetainedTraces.length,
+  )
+  const romanceArchivedOffset = Math.max(
+    0,
+    romanceTurn - romanceRetainedTraces.length,
+  )
+  const storedRomanceTraceId =
+    typeof state.romanceTraceId === 'string' ? state.romanceTraceId : null
+  const romanceTraceId = romanceRetainedTraces.some(
+    (trace) => trace.id === storedRomanceTraceId,
+  )
+    ? storedRomanceTraceId
+    : null
+  const storyTraces = retainedTraces.map((trace) => {
+    const isRomance = trace.thread === 'romance'
+    const threadTraces = isRomance
+      ? romanceRetainedTraces
+      : storybookRetainedTraces
+    const position = threadTraces.findIndex((item) => item.id === trace.id)
+    const archivedOffset = isRomance
+      ? romanceArchivedOffset
+      : storyArchivedOffset
+    return {
+      ...trace,
+      chapterIndex:
+        trace.chapterIndex ??
+        DYNAMIC_STORY_START_INDEX +
+          archivedOffset +
+          (threadTraces.length - 1 - position),
+    }
+  })
   const storyChoices = normalizeStoryChoices(state.storyChoices)
   const storedStorySeed = cleanStorySeed(state.storySeed)
   const migrationSeedSource = [
@@ -327,6 +369,8 @@ function normalizeState(state: GameState): GameState {
     storyCache,
     storyTraceId,
     storyTurn: Math.max(0, storyTurn),
+    romanceTraceId,
+    romanceTurn: Math.max(0, romanceTurn),
     activeRunId: state.activeRunId ?? null,
     lastSettledRunId: state.lastSettledRunId ?? null,
     lastBusiness: state.lastBusiness ?? null,

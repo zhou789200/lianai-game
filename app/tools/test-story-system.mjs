@@ -10,6 +10,7 @@ import {
   createStoryMiddleware,
   generateStory,
   modelStoryToResponse,
+  ROMANCE_SYSTEM_PROMPT,
   sanitizeGenerationRequest,
 } from '../server/story-api.mjs'
 
@@ -42,10 +43,11 @@ const storage = await import(pathToFileURL(path.join(OUT_DIR, 'storage.js')).hre
 
 process.on('exit', () => rmSync(OUT_DIR, { recursive: true, force: true }))
 
-function trace(index, chapterIndex) {
+function trace(index, chapterIndex, thread = 'storybook') {
   return {
     id: `trace-${index}`,
     at: 1_790_000_000_000 + index,
+    thread,
     ...(chapterIndex ? { chapterIndex } : {}),
     title: `番外 ${index}`,
     subtitle: '海风经过吧台',
@@ -55,6 +57,19 @@ function trace(index, chapterIndex) {
     clue: `线索 ${index}`,
     choice: `选择 ${index}`,
     outcome: `结果 ${index}`,
+  }
+}
+
+function romanceTrace(index, chapterIndex) {
+  return {
+    ...trace(index, chapterIndex, 'romance'),
+    id: `romance_trace_${index}`,
+    title: `日常 ${index}`,
+    subtitle: '窗边多留了一会儿',
+    scene: '傍晚 · 咖啡馆',
+    clue: `未说完的话 ${index}`,
+    choice: `相处选择 ${index}`,
+    outcome: `关系变化 ${index}`,
   }
 }
 
@@ -293,6 +308,65 @@ test('loading clears a current trace that no longer exists', () => {
   }
 })
 
+test('legacy traces without a thread stay in the storybook channel', () => {
+  const current = storage.createInitialState()
+  const legacy = { ...trace(0) }
+  delete legacy.thread
+  const loaded = storage.parseGameState({
+    ...current,
+    storyTraces: [legacy],
+    storyTurn: 1,
+    storyTraceId: legacy.id,
+  })
+
+  assert.deepEqual(
+    dynamicStory
+      .listDynamicStoryChapters(loaded, 'storybook')
+      .map(({ trace: item }) => item.id),
+    [legacy.id],
+  )
+  assert.deepEqual(dynamicStory.listDynamicStoryChapters(loaded, 'romance'), [])
+  assert.equal(loaded.romanceTraceId, null)
+})
+
+test('storybook and romance channels keep independent turns, ids, and catalogs', () => {
+  const current = storage.createInitialState()
+  const storybookTrace = trace(0, 3)
+  const romance = romanceTrace(1, 3)
+  const state = {
+    ...current,
+    storyTurn: 2,
+    romanceTurn: 5,
+    storyTraceId: storybookTrace.id,
+    romanceTraceId: romance.id,
+    storyTraces: [romance, storybookTrace],
+  }
+
+  assert.equal(dynamicStory.nextDynamicStoryChapterIndex(state, 'storybook'), 5)
+  assert.equal(dynamicStory.nextDynamicStoryChapterIndex(state, 'romance'), 8)
+  assert.deepEqual(
+    dynamicStory
+      .listDynamicStoryChapters(state, 'storybook')
+      .map(({ trace: item }) => item.id),
+    [storybookTrace.id],
+  )
+  assert.deepEqual(
+    dynamicStory
+      .listDynamicStoryChapters(state, 'romance')
+      .map(({ trace: item }) => item.id),
+    [romance.id],
+  )
+
+  const romanceStateWithoutTrace = {
+    ...state,
+    storyTraces: [storybookTrace],
+  }
+  assert.deepEqual(
+    dynamicStory.listDynamicStoryChapters(romanceStateWithoutTrace, 'romance'),
+    [],
+  )
+})
+
 test('loaded story traces keep the newest 30 valid records', () => {
   const current = storage.createInitialState()
   const saved = {
@@ -496,6 +570,54 @@ test('choice prefetch starts immediately, carries continuity, and reuses its pro
     `${story.choices[0].reply} ${story.choices[0].consequence}`,
   )
   assert.equal(capturedRequest.continuity.previousClue, story.clue)
+})
+
+test('romance continuation advances only the romance turn and thread id', () => {
+  const state = {
+    ...storage.createInitialState(),
+    storyTurn: 4,
+    romanceTurn: 2,
+    storyTraceId: 'storybook-current',
+  }
+  const story = generatedStory()
+  const nextState = dynamicStory.prepareContinuationState(
+    state,
+    story,
+    story.choices[1],
+    900,
+    'romance',
+  )
+
+  assert.equal(nextState.storyTurn, 4)
+  assert.equal(nextState.romanceTurn, 3)
+  assert.equal(nextState.storyTraceId, 'storybook-current')
+  assert.match(nextState.romanceTraceId, /^romance_trace_/)
+  assert.equal(nextState.storyTraces[0].thread, 'romance')
+
+  const repeated = dynamicStory.prepareContinuationState(
+    nextState,
+    story,
+    story.choices[1],
+    900,
+    'romance',
+  )
+  assert.equal(repeated.storyTurn, 4)
+  assert.equal(repeated.romanceTurn, 3)
+})
+
+test('romance and storybook requests produce different cache keys', () => {
+  const state = storage.createInitialState()
+  const storybookKey = dynamicStory.storyCacheKey(state, 'storybook')
+  const romanceKey = dynamicStory.storyCacheKey(state, 'romance')
+
+  assert.notEqual(storybookKey, romanceKey)
+  assert.match(storybookKey, /^storybook_/)
+  assert.match(romanceKey, /^romance_/)
+
+  const romanceRequest = dynamicStory.buildStoryGenerationRequest(state, 'romance')
+  assert.equal(romanceRequest.mode, 'romance')
+  assert.equal(romanceRequest.focusCharacter?.name, '林澈')
+  assert.equal(romanceRequest.storyTurn, 0)
 })
 
 test('romance skip applies defaults from the current beat and unlocks what the relationship allows', () => {
@@ -740,6 +862,59 @@ test('local fallback keeps the first 24 chapters distinct', () => {
   assert.equal(stories[23].source, 'local')
 })
 
+test('romance local fallback uses the focus character and stays out of mystery plots', async () => {
+  const state = storage.createInitialState()
+  state.storySeed = 'legacy'
+  state.romanceTurn = 0
+
+  const first = await dynamicStory.fetchGeneratedStory(state, {
+    thread: 'romance',
+    fetchImpl: async () => new Response('not found', { status: 404 }),
+  })
+  state.romanceTurn = 1
+  state.storyTraces = [
+    dynamicStory.storyTraceFromChoice(first, first.choices[0], 1, 3, 'romance'),
+    ...state.storyTraces,
+  ]
+  const second = await dynamicStory.fetchGeneratedStory(state, {
+    thread: 'romance',
+    fetchImpl: async () => new Response('not found', { status: 404 }),
+  })
+
+  for (const story of [first, second]) {
+    const text = JSON.stringify(story)
+    assert.match(text, /林澈/)
+    assert.doesNotMatch(text, /旧港|线索|嫌疑人|调查|悬疑|谜团|证据/)
+  }
+  assert.notEqual(first.title, second.title)
+  assert.notEqual(first.beats[0].text, second.beats[0].text)
+  assert.notEqual(first.choices[0].consequence, second.choices[0].consequence)
+})
+
+test('romance fallback keeps consecutive chapters visibly different', () => {
+  const state = storage.createInitialState()
+  state.storySeed = 'legacy'
+  const stories = Array.from({ length: 24 }, (_, storyTurn) => {
+    state.romanceTurn = storyTurn
+    state.storyTraces =
+      storyTurn > 0 ? [romanceTrace(storyTurn - 1)] : []
+    return dynamicStory.createLocalStoryFallback(
+      state,
+      1_790_300_000_000 + storyTurn,
+      'romance',
+    )
+  })
+
+  assert.equal(new Set(stories.map((story) => story.title)).size, 24)
+  assert.equal(new Set(stories.map((story) => story.beats[0].text)).size, 24)
+  assert.equal(
+    new Set(stories.map((story) => story.choices[0].consequence)).size,
+    24,
+  )
+  assert.ok(stories.every((story) => !/旧港|线索|嫌疑人|调查|悬疑|谜团|证据/.test(JSON.stringify(story))))
+  assert.equal(stories[23].source, 'local')
+})
+
 test('local fallback is stable for one seed and varies across seeds', () => {
   const state = storage.createInitialState()
   state.storyTurn = 7
@@ -812,10 +987,40 @@ test('server sanitizes oversized input and rejects non-object bodies', () => {
   assert.equal(request.continuity.previousOutcome.length, 160)
   assert.equal(request.continuity.previousClue.length, 120)
   assert.equal(request.continuity.previousAnchors.length, 3)
+  assert.equal(request.mode, 'storybook')
+  assert.equal(request.focusCharacter, null)
   assert.equal(sanitizeGenerationRequest({}).storySeed, 'legacy')
 
   assert.throws(() => sanitizeGenerationRequest(null), (error) => error.status === 400)
   assert.throws(() => sanitizeGenerationRequest('not-json'), (error) => error.status === 400)
+})
+
+test('server sanitizes romance mode and focus character', () => {
+  const request = sanitizeGenerationRequest({
+    mode: 'romance',
+    focusCharacter: {
+      name: '林澈',
+      role: '咖啡馆的咖啡师',
+      value: 128,
+    },
+    storyFlags: ['story:should-not-follow'],
+  })
+
+  assert.equal(request.mode, 'romance')
+  assert.deepEqual(request.focusCharacter, {
+    name: '林澈',
+    role: '咖啡馆的咖啡师',
+    value: 100,
+  })
+
+  assert.equal(sanitizeGenerationRequest({ mode: 'unexpected' }).mode, 'storybook')
+  assert.equal(
+    sanitizeGenerationRequest({
+      mode: 'romance',
+      focusCharacter: { name: '', role: '店长', value: 20 },
+    }).focusCharacter,
+    null,
+  )
 })
 
 test('server falls back locally without a key and after model failure', async () => {
@@ -905,6 +1110,50 @@ test('server sends a compatible chat completion request and accepts model JSON',
   assert.ok(story.choices[0].consequence)
 })
 
+test('server sends the romance prompt for romance requests', async () => {
+  const modelStory = {
+    ...generatedStory(),
+    title: '窗边多留一会儿',
+    subtitle: '打烊前的一杯热饮',
+    scene: '傍晚 · 窗边',
+    beats: [
+      '林澈把热饮放到你手边，没有立刻离开。',
+      { type: 'dialogue', speaker: '林澈', text: '今天可以晚一点关店吗？' },
+      '你抬头时，他正看着你。',
+    ],
+  }
+  delete modelStory.id
+  delete modelStory.source
+  delete modelStory.degraded
+  let capturedBody = null
+
+  const story = await generateStory(
+    {
+      mode: 'romance',
+      focusCharacter: { name: '林澈', role: '咖啡师', value: 42 },
+      petName: '布丁',
+      storyTurn: 2,
+    },
+    {
+      apiKey: 'test-key',
+      fetchImpl: async (_url, init) => {
+        capturedBody = JSON.parse(String(init.body))
+        return new Response(
+          JSON.stringify({
+            choices: [{ message: { content: JSON.stringify(modelStory) } }],
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        )
+      },
+    },
+  )
+
+  assert.equal(capturedBody.messages[0].content, ROMANCE_SYSTEM_PROMPT)
+  assert.match(capturedBody.messages[1].content, /恋爱日常续篇/)
+  assert.equal(story.title, '窗边多留一会儿')
+  assert.equal(story.choices[0].reply.includes('布丁'), false)
+})
+
 test('server normalizes string-encoded story fields and partial choices', () => {
   const story = modelStoryToResponse({
     title: '旧伞立在门边',
@@ -933,6 +1182,34 @@ test('server normalizes string-encoded story fields and partial choices', () => 
   assert.equal(story.choices[1].text, '等失主回来')
   assert.equal(story.choices[1].reply, '你把伞留在了门边。')
   assert.deepEqual(story.memoryAnchors, ['旧伞', '门廊水痕'])
+})
+
+test('romance model fallback text uses the focus character instead of the cat', () => {
+  const story = modelStoryToResponse(
+    {
+      title: '一盏没关的灯',
+      subtitle: '还不想走的人',
+      scene: '打烊后 · 吧台',
+      beats: [
+        '林澈把最后一张椅子摆好。',
+        { type: 'dialogue', speaker: '', content: '灯先别关。' },
+        '你看过去时，他没有避开。',
+      ],
+      choices: ['再陪他坐一会儿', '先说晚安'],
+      memoryAnchors: ['打烊后留着的灯'],
+      clue: '他还有一句话没说。',
+    },
+    {
+      mode: 'romance',
+      petName: '布丁',
+      focusCharacter: { name: '林澈', role: '咖啡师', value: 40 },
+    },
+  )
+
+  assert.equal(story.beats[1].speaker, '林澈')
+  assert.match(story.choices[0].reply, /林澈/)
+  assert.doesNotMatch(story.choices[0].reply, /布丁/)
+  assert.match(story.choices[0].consequence, /林澈/)
 })
 
 async function withStoryServer(run) {

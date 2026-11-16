@@ -1810,6 +1810,17 @@
   gap: 10px;
 }
 
+/* 续写与回看直接占用恋爱主页面，章节卡仍从原版的下半部分开始。 */
+.screen--romance-flowing,
+.screen--romance-reader {
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.screen--romance-reader {
+  display: contents;
+}
+
 .story-head {
   position: relative;
 }
@@ -1920,6 +1931,98 @@
   flex: 0 0 auto;
   justify-content: flex-end;
   padding-bottom: 2px;
+}
+
+.story-stage__content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+}
+
+.story-stage__content[role='button'] {
+  cursor: pointer;
+}
+
+.story-reader-state {
+  min-height: 148px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  text-align: center;
+}
+
+.story-reader-state strong {
+  color: var(--ink-900);
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+}
+
+.story-reader-state p {
+  max-width: 270px;
+  color: var(--ink-600);
+  font-size: var(--fs-sm);
+  line-height: 1.6;
+}
+
+.story-reader-loading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+}
+
+.story-reader-loading .storybook__draft-loader {
+  flex: 0 0 auto;
+  width: 38px;
+  height: 38px;
+}
+
+.story-reader-loading .storybook__draft-loader svg {
+  width: 18px;
+  height: 18px;
+}
+
+.story-reader-loading p {
+  margin: 0;
+  color: var(--ink-700);
+  font-size: var(--fs-md);
+  line-height: 1.65;
+}
+
+.story-reader-choice {
+  width: 100%;
+}
+
+.story-reader-outcome {
+  width: 100%;
+}
+
+.story-reader-narration {
+  position: relative;
+  padding-left: 17px;
+}
+
+.story-reader-narration::before {
+  content: '';
+  position: absolute;
+  top: 7px;
+  bottom: 7px;
+  left: 0;
+  width: 3px;
+  border-radius: 99px;
+  background: linear-gradient(180deg, var(--gold-300), var(--coral-300));
+}
+
+.story-reader-choice,
+.story-reader-outcome,
+.story-bubble,
+.story-reply,
+.story-narration {
+  overflow-wrap: anywhere;
 }
 
 .story-narration {

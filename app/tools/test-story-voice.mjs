@@ -5,6 +5,7 @@ import {
   createStoryVoiceMiddleware,
   resolveStoryVoiceProfile,
   sanitizeStoryVoiceRequest,
+  synthesizeStoryVoiceWithRetry,
 } from '../server/story-voice-api.mjs'
 import {
   getStoryAutoAdvanceDelay,
@@ -14,6 +15,36 @@ import {
 } from '../shared/storyVoiceFailure.mjs'
 
 const AUDIO = Buffer.concat([Buffer.from([0xff, 0xf3, 0xa4, 0xc4]), Buffer.alloc(256)])
+
+test('synthesis retries an interrupted audio stream without hiding cancellation', async () => {
+  let calls = 0
+  const audio = await synthesizeStoryVoiceWithRetry(async () => {
+    calls += 1
+    if (calls === 1) throw new Error('interrupted')
+    return AUDIO
+  })
+  assert.equal(audio, AUDIO)
+  assert.equal(calls, 2)
+
+  await assert.rejects(
+    synthesizeStoryVoiceWithRetry(async () => {
+      calls += 1
+      throw new Error('unavailable')
+    }),
+    /unavailable/,
+  )
+  assert.equal(calls, 4)
+
+  const controller = new AbortController()
+  controller.abort()
+  await assert.rejects(
+    synthesizeStoryVoiceWithRetry(async () => {
+      calls += 1
+    }, '取消测试', {}, { signal: controller.signal }),
+    /语音请求已取消/,
+  )
+  assert.equal(calls, 4)
+})
 
 async function startServer(options = {}) {
   const middleware = createStoryVoiceMiddleware({
@@ -34,24 +65,28 @@ async function startServer(options = {}) {
   }
 }
 
-test('story voice keeps narration, heroine, and Lin Che clearly distinct', () => {
+test('story voice keeps narration, heroine, and male leads clearly characterized', () => {
   const narration = resolveStoryVoiceProfile('旁白')
   const heroine = resolveStoryVoiceProfile('你')
   const linChe = resolveStoryVoiceProfile('林澈')
+  const guHuai = resolveStoryVoiceProfile('顾淮')
   const alternateSpelling = resolveStoryVoiceProfile('林撤')
 
   assert.equal(narration.voice, 'zh-CN-XiaoxiaoNeural')
-  assert.equal(heroine.voice, 'zh-CN-XiaomoNeural')
+  assert.equal(heroine.voice, 'zh-CN-XiaoxiaoNeural')
   assert.equal(linChe.voice, 'zh-CN-YunxiNeural')
+  assert.equal(guHuai.voice, 'zh-CN-YunjianNeural')
   assert.equal(alternateSpelling.voice, linChe.voice)
   assert.equal(narration.rate, 0.94)
-  assert.equal(heroine.rate, 0.92)
-  assert.equal(heroine.pitch, '-6Hz')
+  assert.equal(heroine.rate, narration.rate)
+  assert.equal(heroine.pitch, narration.pitch)
+  assert.equal(heroine.volume, narration.volume)
   assert.equal(linChe.rate, 1.1)
   assert.equal(linChe.pitch, '+5Hz')
-  assert.notEqual(heroine.voice, narration.voice)
+  assert.equal(heroine.voice, narration.voice)
   assert.notEqual(linChe.voice, narration.voice)
   assert.notEqual(linChe.voice, heroine.voice)
+  assert.notEqual(guHuai.voice, linChe.voice)
 })
 
 test('online voice timeout falls back to system speech while cancellation stays silent', () => {

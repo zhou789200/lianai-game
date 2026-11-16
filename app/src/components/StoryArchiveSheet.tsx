@@ -1,9 +1,15 @@
 import { useState } from 'react'
 import { BookOpen, ChevronRight, X } from 'lucide-react'
+import { RomanceStoryReader } from './RomanceStoryReader'
 import { useTypewriter } from '../game/useTypewriter'
 import { useStoryAutoAdvance, useStoryVoice } from '../game/useStoryVoice'
-import type { GeneratedStoryBeat, StoryTrace } from '../game/types'
+import type {
+  GeneratedStoryBeat,
+  Relationship,
+  StoryTrace,
+} from '../game/types'
 import { StoryVoiceButton } from './StoryVoiceButton'
+import { UiButton } from './UiButton'
 
 interface ArchivePage {
   key: string
@@ -19,6 +25,9 @@ export function StoryArchiveSheet({
   onOpenNext,
   onClose,
   voiceEnabled = true,
+  returnLabel = '返回剧情本',
+  readerMode = 'overlay',
+  character,
 }: {
   trace: StoryTrace
   chapterIndex: number
@@ -26,6 +35,9 @@ export function StoryArchiveSheet({
   onOpenNext?: () => void
   onClose: () => void
   voiceEnabled?: boolean
+  returnLabel?: string
+  readerMode?: 'overlay' | 'romance'
+  character?: Relationship
 }) {
   const [pageIndex, setPageIndex] = useState(0)
   const selectedChoice = trace.choices?.find(
@@ -96,6 +108,113 @@ export function StoryArchiveSheet({
   function advance(automatic = false) {
     cancelAutoAdvance()
     advancePage(automatic)
+  }
+
+  if (readerMode === 'romance') {
+    return (
+      <RomanceStoryReader
+        chapterIndex={chapterIndex}
+        title={trace.title}
+        subtitle={trace.subtitle}
+        scene={trace.scene}
+        character={character}
+        completedPages={pageIndex}
+        totalPages={pages.length}
+        onClose={onClose}
+        closeLabel="关闭章节回看"
+        ariaLabel={`阅读《${trace.title}》`}
+        controls={
+          <>
+            {!isLastPage ? (
+              <UiButton
+                variant="primary"
+                block
+                icon={<ChevronRight size={16} />}
+                onClick={() => advance()}
+              >
+                {typed.done ? '继续' : '显示完整句子'}
+              </UiButton>
+            ) : primaryAction ? (
+              <UiButton
+                variant="primary"
+                block
+                icon={<ChevronRight size={16} />}
+                onClick={primaryAction.run}
+              >
+                {primaryAction.label}
+              </UiButton>
+            ) : null}
+            <UiButton variant="ghost" block onClick={onClose}>
+              {returnLabel}
+            </UiButton>
+          </>
+        }
+      >
+        <div
+          className="story-stage__content"
+          role={!isLastPage ? 'button' : undefined}
+          tabIndex={!isLastPage ? 0 : undefined}
+          onClick={() => {
+            if (!isLastPage) advance()
+          }}
+          onKeyDown={(event) => {
+            if (isLastPage) return
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault()
+              advance()
+            }
+          }}
+        >
+          {page.choice ? (
+            <div className="story-reply story-reader-outcome">
+              <div className="story-reply__head">
+                <span className="story-reply__label">你说了</span>
+                <span className="story-reply__option">{page.choice}</span>
+              </div>
+              <p className="story-reply__text">
+                {typed.visible}
+                {typed.done ? null : (
+                  <i className="storybook__caret" aria-hidden="true" />
+                )}
+              </p>
+            </div>
+          ) : tone === 'me' ? (
+            <div className="story-bubble story-bubble--me">
+              <span className="story-bubble__speaker">
+                {page.beat.type === 'dialogue' ? page.beat.speaker : '你'}
+              </span>
+              <p className="story-bubble__text">
+                {typed.visible}
+                {typed.done ? null : (
+                  <i className="storybook__caret" aria-hidden="true" />
+                )}
+              </p>
+            </div>
+          ) : tone === 'character' ? (
+            <div className="story-bubble">
+              <span className="story-bubble__speaker">
+                {page.beat.type === 'dialogue' ? page.beat.speaker : '他'}
+              </span>
+              <p className="story-bubble__text">
+                {typed.visible}
+                {typed.done ? null : (
+                  <i className="storybook__caret" aria-hidden="true" />
+                )}
+              </p>
+            </div>
+          ) : (
+            <div className="story-narration story-reader-narration">
+              <p className="story-bubble__text">
+                {typed.visible}
+                {typed.done ? null : (
+                  <i className="storybook__caret" aria-hidden="true" />
+                )}
+              </p>
+            </div>
+          )}
+        </div>
+      </RomanceStoryReader>
+    )
   }
 
   return (
@@ -196,10 +315,10 @@ export function StoryArchiveSheet({
                   event.stopPropagation()
                   onClose()
                 }}
-                aria-label="返回剧情本"
+                aria-label={returnLabel}
               >
                 <BookOpen size={16} />
-                <span>返回剧情本</span>
+                <span>{returnLabel}</span>
               </button>
               {primaryAction ? (
                 <button

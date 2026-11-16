@@ -196,6 +196,7 @@ export function StoryView() {
         <button
           type="button"
           className="storybook__brand"
+          data-tour="story-book"
           onClick={() => setCatalogOpen(true)}
           aria-label="打开章节目录"
         >

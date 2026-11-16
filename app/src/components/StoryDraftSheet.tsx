@@ -1,13 +1,16 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import {
   ChevronRight,
-  Feather,
   LoaderCircle,
   RefreshCw,
+  Sparkles,
   X,
 } from 'lucide-react'
+import { RomanceStoryReader } from './RomanceStoryReader'
 import { StoryVoiceButton } from './StoryVoiceButton'
+import { UiButton } from './UiButton'
 import {
+  dynamicStoryChapterIndexFor,
   fetchGeneratedStory,
   nextDynamicStoryChapterIndex,
   prepareContinuationState,
@@ -23,30 +26,37 @@ import type {
   GameState,
   GeneratedStory,
   GeneratedStoryChoice,
+  StoryThread,
 } from '../game/types'
 
 type DraftState = 'loading' | 'ready' | 'error'
 
-export function StoryDraftSheet({ onClose }: { onClose: () => void }) {
+export function StoryDraftSheet({
+  thread = 'storybook',
+  onClose,
+}: {
+  thread?: StoryThread
+  onClose: () => void
+}) {
   const { state, actions } = useGame()
   const [draftState, setDraftState] = useState<DraftState>('loading')
   const [story, setStory] = useState<GeneratedStory | null>(null)
   const [selected, setSelected] = useState<GeneratedStoryChoice | null>(null)
   const [pageIndex, setPageIndex] = useState(0)
-  const [chapterNumber, setChapterNumber] = useState(() =>
-    nextDynamicStoryChapterIndex(state),
-  )
   const [error, setError] = useState('')
   const requestRef = useRef<AbortController | null>(null)
   const prefetchRef = useRef<StoryPrefetch | null>(null)
+  const chapterNumber = story
+    ? dynamicStoryChapterIndexFor(state, story.id, thread)
+    : nextDynamicStoryChapterIndex(state, thread)
 
   const loadStory = async (
     sourceState: GameState,
     signal?: AbortSignal,
   ): Promise<GeneratedStory> => {
-    const nextStory = await fetchGeneratedStory(sourceState, { signal })
+    const nextStory = await fetchGeneratedStory(sourceState, { signal, thread })
     if (signal?.aborted) return nextStory
-    actions.cacheGeneratedStory(storyCacheKey(sourceState), nextStory)
+    actions.cacheGeneratedStory(storyCacheKey(sourceState, thread), nextStory)
     return nextStory
   }
 
@@ -60,7 +70,6 @@ export function StoryDraftSheet({ onClose }: { onClose: () => void }) {
     setStory(null)
     setSelected(null)
     setPageIndex(0)
-    setChapterNumber(nextDynamicStoryChapterIndex(state))
     setError('')
 
     try {
@@ -98,6 +107,7 @@ export function StoryDraftSheet({ onClose }: { onClose: () => void }) {
       sourceState,
       sourceStory,
       choice,
+      { thread },
     )
     prefetchRef.current = prefetch
     void prefetch.promise.then(
@@ -111,9 +121,13 @@ export function StoryDraftSheet({ onClose }: { onClose: () => void }) {
 
   const choose = (choice: GeneratedStoryChoice) => {
     if (!story || selected) return
-    // This handler only runs after a user choice, so the timestamp is stable for this trace.
-    // eslint-disable-next-line react-hooks/purity
-    const trace = storyTraceFromChoice(story, choice, Date.now(), chapterNumber)
+    const trace = storyTraceFromChoice(
+      story,
+      choice,
+      undefined,
+      chapterNumber,
+      thread,
+    )
     actions.rememberStoryTrace(trace)
     void prepareNextStory(state, story, choice)
     setSelected(choice)
@@ -130,13 +144,21 @@ export function StoryDraftSheet({ onClose }: { onClose: () => void }) {
     try {
       const nextStory = await prefetch.promise
       if (prefetchRef.current?.key !== prefetch.key) return
-      const continuationState = prepareContinuationState(state, story, selected)
-      actions.cacheGeneratedStory(storyCacheKey(continuationState), nextStory)
+      const continuationState = prepareContinuationState(
+        state,
+        story,
+        selected,
+        undefined,
+        thread,
+      )
+      actions.cacheGeneratedStory(
+        storyCacheKey(continuationState, thread),
+        nextStory,
+      )
       prefetchRef.current = null
       setStory(nextStory)
       setSelected(null)
       setPageIndex(0)
-      setChapterNumber((current) => Math.min(999, current + 1))
       setDraftState('ready')
     } catch (reason) {
       if (prefetchRef.current?.key !== prefetch.key) return
@@ -209,10 +231,189 @@ export function StoryDraftSheet({ onClose }: { onClose: () => void }) {
         ? 'me'
         : 'character'
       : 'narration'
+  const readerLabel = thread === 'romance' ? '恋爱续页' : '故事续页'
+  const readerCharacter =
+    thread === 'romance'
+      ? state.relationships.find(
+          (relationship) => relationship.met || relationship.value > 0,
+        )
+      : undefined
 
   function advance(automatic = false) {
     cancelAutoAdvance()
     advanceDraft(automatic)
+  }
+
+  if (thread === 'romance') {
+    const readerControls = (
+      <>
+        {draftState === 'ready' && story && !isChoicePage ? (
+          <UiButton
+            variant="primary"
+            block
+            icon={<ChevronRight size={16} />}
+            onClick={(event) => {
+              event.stopPropagation()
+              advance()
+            }}
+          >
+            {selected
+              ? '继续下一情节'
+              : typed.done
+                ? '继续'
+                : '显示完整句子'}
+          </UiButton>
+        ) : draftState === 'loading' ? (
+          <UiButton
+            variant="primary"
+            block
+            loading
+            icon={<LoaderCircle size={16} />}
+          >
+            正在续写
+          </UiButton>
+        ) : null}
+        <UiButton
+          variant="ghost"
+          block
+          onClick={close}
+        >
+          返回恋爱
+        </UiButton>
+      </>
+    )
+
+    return (
+      <RomanceStoryReader
+        chapterIndex={chapterNumber}
+        title={story?.title ?? '下一章'}
+        subtitle={story?.subtitle ?? '故事正从刚才的选择继续'}
+        scene={story?.scene ?? '故事之后 · 咖啡馆'}
+        character={readerCharacter}
+        completedPages={completedPages}
+        totalPages={totalPages}
+        onClose={close}
+        closeLabel={`关闭${readerLabel}`}
+        ariaLabel={readerLabel}
+        controls={readerControls}
+      >
+        <div
+          className="story-stage__content"
+          role={!isChoicePage && draftState === 'ready' ? 'button' : undefined}
+          tabIndex={!isChoicePage && draftState === 'ready' ? 0 : undefined}
+          onClick={() => advance()}
+          onKeyDown={(event) => {
+            if (isChoicePage) return
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault()
+              advance()
+            }
+          }}
+        >
+          {draftState === 'loading' ? (
+            <div className="story-narration story-reader-loading">
+              <span className="storybook__draft-loader" aria-hidden="true">
+                <LoaderCircle size={24} />
+              </span>
+              <p>下一页正在展开，故事会接住刚才的片段。</p>
+            </div>
+          ) : null}
+
+          {draftState === 'error' ? (
+            <div className="story-narration story-reader-state">
+              <span className="storybook__draft-error-icon" aria-hidden="true">
+                <RefreshCw size={20} />
+              </span>
+              <strong>这一页暂时没有接上</strong>
+              <p>{error}</p>
+              <UiButton
+                variant="ghost"
+                size="sm"
+                icon={<RefreshCw size={15} />}
+                onClick={(event) => {
+                  event.stopPropagation()
+                  void generate()
+                }}
+              >
+                再翻一次
+              </UiButton>
+            </div>
+          ) : null}
+
+          {isChoicePage && story ? (
+            <div className="story-choice story-reader-choice">
+              <p className="story-choice__prompt">
+                <Sparkles size={14} />
+                接下来怎么做？
+              </p>
+              <div className="story-choice__options">
+                {story.choices.map((choice) => (
+                  <button
+                    key={choice.id}
+                    type="button"
+                    className="story-option"
+                    onClick={() => choose(choice)}
+                  >
+                    <span>{choice.text}</span>
+                    <ChevronRight size={16} />
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {draftState === 'ready' && story && !isChoicePage ? (
+            selected ? (
+              <div className="story-reply story-reader-outcome">
+                <div className="story-reply__head">
+                  <span className="story-reply__label">你说了</span>
+                  <span className="story-reply__option">{selected.text}</span>
+                </div>
+                <p className="story-reply__text">
+                  {typed.visible}
+                  {typed.done ? null : (
+                    <i className="storybook__caret" aria-hidden="true" />
+                  )}
+                </p>
+              </div>
+            ) : tone === 'me' ? (
+              <div className="story-bubble story-bubble--me">
+                <span className="story-bubble__speaker">
+                  {currentBeat?.speaker ?? '你'}
+                </span>
+                <p className="story-bubble__text">
+                  {typed.visible}
+                  {typed.done ? null : (
+                    <i className="storybook__caret" aria-hidden="true" />
+                  )}
+                </p>
+              </div>
+            ) : tone === 'character' ? (
+              <div className="story-bubble">
+                <span className="story-bubble__speaker">
+                  {currentBeat?.speaker ?? '他'}
+                </span>
+                <p className="story-bubble__text">
+                  {typed.visible}
+                  {typed.done ? null : (
+                    <i className="storybook__caret" aria-hidden="true" />
+                  )}
+                </p>
+              </div>
+            ) : (
+              <div className="story-narration story-reader-narration">
+                <p className="story-bubble__text">
+                  {typed.visible}
+                  {typed.done ? null : (
+                    <i className="storybook__caret" aria-hidden="true" />
+                  )}
+                </p>
+              </div>
+            )
+          ) : null}
+        </div>
+      </RomanceStoryReader>
+    )
   }
 
   return (
@@ -220,7 +421,7 @@ export function StoryDraftSheet({ onClose }: { onClose: () => void }) {
       className="storybook__draft-layer storybook__draft-layer--reader"
       role="dialog"
       aria-modal="true"
-      aria-label="故事续页"
+      aria-label={readerLabel}
       onClick={(event) => {
         if (event.target === event.currentTarget) close()
       }}
@@ -243,7 +444,7 @@ export function StoryDraftSheet({ onClose }: { onClose: () => void }) {
               type="button"
               className="storybook__icon-btn storybook__draft-reader-close"
               onClick={close}
-              aria-label="关闭故事续页"
+              aria-label={`关闭${readerLabel}`}
             >
               <X size={14} />
             </button>
@@ -251,8 +452,8 @@ export function StoryDraftSheet({ onClose }: { onClose: () => void }) {
         ) : (
           <header className="storybook__draft-reader-minihead">
             <span>
-              <Feather size={15} />
-              故事续页
+              <Sparkles size={15} />
+              {readerLabel}
             </span>
             <div className="storybook__draft-reader-minihead-actions">
               <StoryVoiceButton className="storybook__icon-btn storybook__draft-reader-voice" />
@@ -260,7 +461,7 @@ export function StoryDraftSheet({ onClose }: { onClose: () => void }) {
                 type="button"
                 className="storybook__icon-btn storybook__draft-reader-close"
                 onClick={close}
-                aria-label="关闭故事续页"
+                aria-label={`关闭${readerLabel}`}
               >
                 <X size={14} />
               </button>

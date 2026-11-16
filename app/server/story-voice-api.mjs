@@ -10,6 +10,7 @@ const CACHE_TTL_MS = 10 * 60_000
 const CACHE_MAX_BYTES = 16 * 1024 * 1024
 const CONNECTION_TIMEOUT_MS = 15_000
 const SYNTHESIS_TIMEOUT_MS = 30_000
+const SYNTHESIS_ATTEMPTS = 2
 
 const VOICE_PROFILES = {
   旁白: {
@@ -19,10 +20,10 @@ const VOICE_PROFILES = {
     volume: 91,
   },
   你: {
-    voice: 'zh-CN-XiaomoNeural',
-    rate: 0.92,
-    pitch: '-6Hz',
-    volume: 94,
+    voice: 'zh-CN-XiaoxiaoNeural',
+    rate: 0.94,
+    pitch: '-2Hz',
+    volume: 91,
   },
   林澈: {
     voice: 'zh-CN-YunxiNeural',
@@ -127,7 +128,7 @@ function cacheKeyFor(request) {
     .digest('base64url')
 }
 
-export async function synthesizeStoryVoiceAudio(text, profile, options = {}) {
+async function synthesizeStoryVoiceAttempt(text, profile, options = {}) {
   const signal = options.signal
   if (signal?.aborted) throw new StoryVoiceApiError('语音请求已取消', 499)
 
@@ -150,13 +151,17 @@ export async function synthesizeStoryVoiceAudio(text, profile, options = {}) {
       volume: profile.volume,
     })
     const chunks = []
+    let totalBytes = 0
 
     await new Promise((resolve, reject) => {
       let settled = false
+      let streamEnded = false
       const finish = () => {
         if (settled) return
         settled = true
-        resolve()
+        // close 也可能由连接中断触发；只有正常 end 才代表合成完整。
+        if (streamEnded) resolve()
+        else reject(new Error('语音流在合成完成前关闭'))
       }
       const fail = (error) => {
         if (settled) return
@@ -168,8 +173,14 @@ export async function synthesizeStoryVoiceAudio(text, profile, options = {}) {
         fail(new StoryVoiceApiError('语音请求已取消', 499))
       }
 
-      audioStream.on('data', (chunk) => chunks.push(chunk))
-      audioStream.once('end', finish)
+      audioStream.on('data', (chunk) => {
+        chunks.push(chunk)
+        totalBytes += chunk.length
+      })
+      audioStream.once('end', () => {
+        streamEnded = true
+        finish()
+      })
       audioStream.once('close', finish)
       audioStream.once('error', fail)
       if (signal) {
@@ -179,12 +190,33 @@ export async function synthesizeStoryVoiceAudio(text, profile, options = {}) {
     })
 
     const audio = Buffer.concat(chunks)
-    if (audio.length < 128) throw new Error('语音服务返回了空音频')
+    if (audio.length < 128 || totalBytes < 128) {
+      throw new Error('语音服务返回了空音频')
+    }
     return audio
   } finally {
     removeAbortListener()
     tts.close()
   }
+}
+
+export async function synthesizeStoryVoiceAudio(text, profile, options = {}) {
+  const synthesize = options.synthesize ?? synthesizeStoryVoiceAttempt
+  return synthesizeStoryVoiceWithRetry(synthesize, text, profile, options)
+}
+
+export async function synthesizeStoryVoiceWithRetry(synthesize, text, profile, options = {}) {
+  let lastError
+  for (let attempt = 0; attempt < SYNTHESIS_ATTEMPTS; attempt += 1) {
+    if (options.signal?.aborted) throw new StoryVoiceApiError('语音请求已取消', 499)
+    try {
+      return await synthesize(text, profile, options)
+    } catch (error) {
+      if (error instanceof StoryVoiceApiError || options.signal?.aborted) throw error
+      lastError = error
+    }
+  }
+  throw lastError
 }
 
 function readJsonBody(req) {

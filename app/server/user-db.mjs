@@ -172,6 +172,9 @@ function validateStoryTrace(value, message) {
   const trace = requireRecord(value, message)
   requireNonEmptyText(trace.id, message, 64)
   requireTimestamp(trace.at, message)
+  if (trace.thread !== undefined) {
+    requireStringUnion(trace.thread, ['storybook', 'romance'], message)
+  }
   requireNonEmptyText(trace.title, message, 36)
   requireNonEmptyText(trace.subtitle, message, 48)
   requireNonEmptyText(trace.scene, message, 48)
@@ -305,6 +308,8 @@ function validateSaveState(state) {
   }
   requireOptionalText(state.storyTraceId, message)
   if (state.storyTurn !== undefined) requireFiniteNumber(state.storyTurn, message)
+  requireOptionalText(state.romanceTraceId, message)
+  if (state.romanceTurn !== undefined) requireFiniteNumber(state.romanceTurn, message)
 
   for (const task of requireArray(state.tasks, message)) {
     const record = requireRecord(task, message)

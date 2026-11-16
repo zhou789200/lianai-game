@@ -5,9 +5,15 @@ export interface LocalStoryMemory {
 }
 
 export interface LocalStoryRequest {
+  mode?: 'storybook' | 'romance'
   storySeed?: string
   petName?: string
   storyTurn?: number
+  focusCharacter?: {
+    name: string
+    role: string
+    value: number
+  } | null
   memories?: LocalStoryMemory[]
 }
 
@@ -44,3 +50,4 @@ export function buildLocalStory(
 ): LocalStory
 
 export const LOCAL_STORY_BANK: ReadonlyArray<unknown>
+export const ROMANCE_STORY_BANK: ReadonlyArray<unknown>

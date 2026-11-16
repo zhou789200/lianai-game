@@ -744,6 +744,7 @@ export function CafePlayScene({ canStart, onStart }: CafePlaySceneProps) {
       <div className="cafe-play__action-row">
         <UiButton
           className="cafe-play__start"
+          data-tour="cafe-start"
           variant="gold"
           icon={<Play size={17} />}
           disabled={!canStart}

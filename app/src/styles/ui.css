@@ -854,6 +854,155 @@
   gap: 8px;
 }
 
+/* ---------- 新手实景引导 ---------- */
+.tour {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-modal);
+}
+
+.tour__guard {
+  position: absolute;
+  inset: 0;
+}
+
+.tour__spotlight {
+  position: absolute;
+  border: 2px solid #ffe4a0;
+  border-radius: 18px;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+
+.tour__shade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  background: rgba(38, 26, 14, 0.68);
+  pointer-events: none;
+}
+
+.tour__shade--top {
+  top: 0;
+}
+
+.tour__shade--bottom {
+  bottom: 0;
+}
+
+.tour__shade--left {
+  left: 0;
+  right: auto;
+}
+
+.tour__shade--right {
+  right: 0;
+}
+
+.tour__card {
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  padding: 15px 16px 16px;
+  border: 1.5px solid rgba(150, 112, 42, 0.42);
+  border-radius: 8px;
+  background: linear-gradient(170deg, #fffaf0 0%, #f5e6ca 100%);
+  box-shadow: var(--shadow-float);
+}
+
+.tour__topline,
+.tour__heading,
+.tour__actions {
+  display: flex;
+  align-items: center;
+}
+
+.tour__topline {
+  justify-content: space-between;
+  min-height: 32px;
+}
+
+.tour__count {
+  color: var(--ink-600);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+}
+
+.tour__skip {
+  min-width: 52px;
+  min-height: 36px;
+  padding: 0 8px;
+  border: 0;
+  background: transparent;
+  color: var(--ink-600);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+
+.tour__heading {
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.tour__heading h2 {
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+  color: var(--ink-900);
+  line-height: 1.35;
+}
+
+.tour__icon {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--sea-100);
+  color: var(--sea-700);
+}
+
+.tour__text {
+  margin-top: 10px;
+  color: var(--ink-700);
+  font-size: var(--fs-sm);
+  line-height: 1.65;
+}
+
+.tour__progress {
+  display: flex;
+  gap: 5px;
+  margin: 13px 0;
+}
+
+.tour__progress i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--cream-400);
+}
+
+.tour__progress i.is-active {
+  width: 20px;
+  border-radius: 4px;
+  background: var(--coral-500);
+}
+
+.tour__actions {
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.tour__actions .btn {
+  min-width: 112px;
+}
+
+.tour__skip:focus-visible,
+.tour__card .btn:focus-visible {
+  outline: 2px solid var(--coral-500);
+  outline-offset: 2px;
+}
+
 /* ---------- 空状态 ---------- */
 .empty {
   display: flex;

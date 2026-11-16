@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import {
   AlertCircle,
+  ArrowRight,
   AudioLines,
+  BookOpen,
   Check,
   Cloud,
   Database,
@@ -27,6 +29,7 @@ import { UiButton } from './UiButton'
 interface SettingsModalProps {
   onClose: () => void
   onOpenAccount: (mode: 'register' | 'login') => void
+  onReplayIntro: () => void
 }
 
 type PendingAction = 'reset' | 'logout' | 'keep-local' | 'use-remote' | null
@@ -65,6 +68,7 @@ function currentFullscreenElement(): Element | null {
 export function SettingsModal({
   onClose,
   onOpenAccount,
+  onReplayIntro,
 }: SettingsModalProps) {
   const { state, lastSavedAt, saveError, userData, authBusy, actions } = useGame()
   const [confirmReset, setConfirmReset] = useState(false)
@@ -423,6 +427,17 @@ export function SettingsModal({
         >
           <i />
         </span>
+      </button>
+
+      <button type="button" className="setting-row" onClick={onReplayIntro}>
+        <span className="setting-row__icon">
+          <BookOpen size={16} />
+        </span>
+        <span className="setting-row__body">
+          <strong>新手引导</strong>
+          <small>重新查看营业、剧情、任务和存档的使用方法</small>
+        </span>
+        <ArrowRight size={15} aria-hidden="true" />
       </button>
 
       <div className="setting-volume" aria-disabled={!sound}>

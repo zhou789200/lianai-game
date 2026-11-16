@@ -6,6 +6,8 @@ export type ViewKey = 'home' | 'business' | 'cafe' | 'pet' | 'romance' | 'story'
 
 export type NoticeKind = 'success' | 'error' | 'info' | 'reward'
 
+export type StoryThread = 'storybook' | 'romance'
+
 export interface Notice {
   id: string
   kind: NoticeKind
@@ -63,6 +65,8 @@ export interface Reward {
 export interface StoryTrace {
   id: string
   at: number
+  /** 动态章节所属通道；旧存档缺省时按剧情本处理 */
+  thread?: StoryThread
   /** 剧情本中的稳定章节序号；旧存档可按生成顺序补齐 */
   chapterIndex?: number
   title: string
@@ -148,6 +152,10 @@ export interface GameState {
   storyTraceId: string | null
   /** 动态剧情已经推进的页数，不受剧情痕迹 30 条上限影响 */
   storyTurn: number
+  /** 当前正在阅读的恋爱续写 id；与剧情本阅读状态彼此独立 */
+  romanceTraceId: string | null
+  /** 恋爱续写已经推进的页数，不受剧情痕迹 30 条上限影响 */
+  romanceTurn: number
 
   tasks: TaskState[]
   /** 每日任务刷新日期 YYYY-MM-DD */
