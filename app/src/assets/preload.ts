@@ -69,6 +69,29 @@ let started = false
 const queued = new Set<string>()
 let running = 0
 
+/**
+ * 首屏优先级闸门。
+ * 场景底图（当前页）是最先要看的画面，立绘/宠物/装饰只是「下一个页面的准备」。
+ * 之前用固定延迟预热，2G/弱网下会和场景图抢同一段带宽，反而拖慢首屏。
+ * 现在改为：SceneRenderer 报告首屏场景图解码完成后才放行预热；
+ * 若图片加载失败或极慢，App 侧还有兜底放行，不会把预热永久卡死。
+ */
+let releaseGate: (() => void) | null = null
+const preloadGate = new Promise<void>((resolve) => {
+  releaseGate = resolve
+})
+
+/** SceneRenderer / App 在首屏稳定后调用，只需调用一次 */
+export function releasePreloadGate() {
+  releaseGate?.()
+  releaseGate = null
+}
+
+/** 等待首屏闸门；已放行时立即返回 */
+export function waitForPreloadGate(): Promise<void> {
+  return preloadGate
+}
+
 /** 预热队列：调用方只提交要加载的资源，调度统一在这里做 */
 function queueArt(sources: readonly string[]) {
   if (typeof window === 'undefined') return
@@ -121,13 +144,15 @@ export function preloadArt() {
   if (started || typeof window === 'undefined') return
   started = true
 
-  queueArt([
-    ...Object.values(CHARACTERS).map((a) => a.src),
-    ...Object.values(PETS).map((a) => a.src),
-    ...Object.values(PROPS).map((a) => a.src),
-    PET_FEED_HANDS.src,
-    PET_PLAY_HANDS.src,
-    PET_GROOM_HANDS.src,
-    PET_PHOTO_HANDS.src,
-  ])
+  void preloadGate.then(() => {
+    queueArt([
+      ...Object.values(CHARACTERS).map((a) => a.src),
+      ...Object.values(PETS).map((a) => a.src),
+      ...Object.values(PROPS).map((a) => a.src),
+      PET_FEED_HANDS.src,
+      PET_PLAY_HANDS.src,
+      PET_GROOM_HANDS.src,
+      PET_PHOTO_HANDS.src,
+    ])
+  })
 }

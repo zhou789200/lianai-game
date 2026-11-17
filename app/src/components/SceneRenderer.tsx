@@ -1,7 +1,8 @@
-import { memo, useEffect, useState, type CSSProperties } from 'react'
+import { memo, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { DECOR } from '../data/content'
 import { PROPS, SCENES } from '../assets/manifest'
 import type { SceneAsset, SceneKey } from '../assets/manifest'
+import { releasePreloadGate } from '../assets/preload'
 import { GameIcon } from './GameIcon'
 
 export type SceneVariant = 'home' | 'business' | 'cafe' | 'pet' | 'story'
@@ -53,26 +54,31 @@ function useArt(asset?: SceneAsset) {
    从根上消除「切页 → 底色一闪 → 再淡入」的屏闪。
    每张图解码完成前不参与绘制，所以首屏仍然有完整的 CSS 场景兜底。
 
-   加载时机：当前页立即加载，其余四张等首屏稳定后再按顺序补。
-   五张图合计约 1.5MB，若和首屏 JS/CSS 同时抢带宽，
-   弱网下会明显拖慢首屏；延迟加载后首屏只付一张图的代价，
-   而补图通常在用户点进下一个页面前就完成了，仍不会露底。
+   加载时机：当前页立即加载；其余四张等「当前页图片真正解码完成」
+   后一张一张补，立绘预热再排在它们之后。
+   五张图合计约 1.5MB，固定延迟会在弱网下和首屏抢带宽；
+   按解码完成信号排队，首屏只付一张图的代价。
    ============================================================ */
 const SCENE_ORDER: SceneKey[] = ['home', 'business', 'cafe', 'pet', 'story']
 
-/** 除当前页外，其余场景图的补载延迟（毫秒） */
-const SCENE_WARM_DELAY = 1600
+/** 当前页图片迟迟不完成时的兜底放行时间（毫秒），避免弱网把预热永久卡住 */
+const SCENE_WARM_FALLBACK = 4000
+/** 补载其余场景时的间隔，让出一部分带宽给当前页交互 */
+const SCENE_WARM_STEP = 260
 
 function SceneArt({
   asset,
   active,
   warm,
+  onReady,
 }: {
   asset: SceneAsset
   active: boolean
   warm: boolean
+  onReady?: () => void
 }) {
   const [ready, setReady] = useState(false)
+  const readyRef = useRef(false)
   // 当前页立刻加载；其余场景等首屏稳定后再补。
   // 切到某页时 active 变 true，React 会直接补上 src 开始下载，
   // 不需要等 warm，用户快速点页也能第一时间出图。
@@ -86,26 +92,62 @@ function SceneArt({
       aria-hidden="true"
       draggable={false}
       decoding="async"
-      onLoad={() => setReady(true)}
+      onLoad={() => {
+        setReady(true)
+        if (readyRef.current) return
+        readyRef.current = true
+        onReady?.()
+      }}
     />
   )
 }
 
 function BackgroundLayer({ view }: { view: SceneVariant }) {
   const [warm, setWarm] = useState(false)
+  /** 已放行补载的场景 key；当前页一开始就计入，避免重复下载 */
+  const [warmKeys, setWarmKeys] = useState<SceneKey[]>(() => [view])
+  const firstReadyRef = useRef(false)
 
   useEffect(() => {
-    // 首屏（当前页场景图解码）稳定后再补其余场景，避免抢首屏带宽。
-    const timer = window.setTimeout(() => setWarm(true), SCENE_WARM_DELAY)
+    // 兜底：当前页图片因弱网/解码失败迟迟不 ready 时，别让预热永久停摆。
+    const timer = window.setTimeout(() => {
+      if (!firstReadyRef.current) setWarm(true)
+    }, SCENE_WARM_FALLBACK)
     return () => window.clearTimeout(timer)
   }, [])
+
+  useEffect(() => {
+    if (!warm) return
+    const next = SCENE_ORDER.find((key) => !warmKeys.includes(key))
+    if (!next) {
+      // 五张都已放行，再让立绘/宠物素材开始预热。
+      releasePreloadGate()
+      return
+    }
+    const timer = window.setTimeout(
+      () => setWarmKeys((keys) => [...keys, next]),
+      SCENE_WARM_STEP,
+    )
+    return () => window.clearTimeout(timer)
+  }, [warm, warmKeys])
 
   return (
     <div className="scene__bg-layer">
       <CssScene />
       <div className="scene__bg-stack">
         {SCENE_ORDER.map((key) => (
-          <SceneArt key={key} asset={SCENES[key]} active={key === view} warm={warm} />
+          <SceneArt
+            key={key}
+            asset={SCENES[key]}
+            active={key === view}
+            warm={warmKeys.includes(key)}
+            onReady={() => {
+              // 当前页这张（首屏画面）解码完成，立刻开始补其余场景。
+              if (key !== view || firstReadyRef.current) return
+              firstReadyRef.current = true
+              setWarm(true)
+            }}
+          />
         ))}
       </div>
     </div>
