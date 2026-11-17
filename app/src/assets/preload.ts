@@ -24,8 +24,12 @@ import {
  * 带宽全占满，首屏反而迟迟出不来（弱网实测踩过这个坑）。
  */
 
-/** 咖啡店玩法里直接写死路径的图（未登记在 manifest） */
-const CAFE_SHOP_ART = [
+/**
+ * 咖啡店玩法专用图（未登记在 manifest）。
+ * 这批图合计约 1MB，只会在进入咖啡店后用到；首页预热它们
+ * 会跟首屏抢带宽（弱网下表现为主页迟迟出图），因此改为进店时再加载。
+ */
+export const CAFE_SHOP_ART = [
   'art/scene-cafe-shop-clean.webp',
   'art/cafe-barista-front.webp',
   'art/cafe-barista-side.webp',
@@ -34,6 +38,11 @@ const CAFE_SHOP_ART = [
   'art/cafe-cat-side.webp',
   'art/cafe-cat-back.webp',
 ]
+
+/** 咖啡店专用图的预热入口：由 CafeView 在首次挂载时调用。 */
+export function preloadCafeArt() {
+  queueArt(CAFE_SHOP_ART)
+}
 
 /** Network Information API 在部分内核里没有，按可选处理 */
 interface NetworkInformationLike {
@@ -57,6 +66,40 @@ function shouldSkipPreload(): boolean {
 }
 
 let started = false
+const queued = new Set<string>()
+let running = 0
+
+/** 预热队列：调用方只提交要加载的资源，调度统一在这里做 */
+function queueArt(sources: readonly string[]) {
+  if (typeof window === 'undefined') return
+  if (shouldSkipPreload()) return
+
+  const pending: string[] = []
+  for (const src of sources) {
+    if (!src || queued.has(src)) continue
+    queued.add(src)
+    pending.push(src)
+  }
+
+  const pump = () => {
+    while (running < CONCURRENCY && pending.length > 0) {
+      const src = pending.shift()
+      if (!src) return
+      running += 1
+      const img = new Image()
+      img.decoding = 'async'
+      const settle = () => {
+        running -= 1
+        pump()
+      }
+      img.onload = settle
+      img.onerror = settle
+      img.src = src
+    }
+  }
+
+  idle(pump)
+}
 
 /** 同时最多预热几张，避免一次把带宽打满、影响首屏交互 */
 const CONCURRENCY = 3
@@ -78,41 +121,13 @@ export function preloadArt() {
   if (started || typeof window === 'undefined') return
   started = true
 
-  if (shouldSkipPreload()) return
-
-  const seen = new Set<string>()
-  const queue: string[] = []
-  const push = (src: string) => {
-    if (!src || seen.has(src)) return
-    seen.add(src)
-    queue.push(src)
-  }
-
-  Object.values(CHARACTERS).forEach((a) => push(a.src))
-  Object.values(PETS).forEach((a) => push(a.src))
-  Object.values(PROPS).forEach((a) => push(a.src))
-  ;[PET_FEED_HANDS, PET_PLAY_HANDS, PET_GROOM_HANDS, PET_PHOTO_HANDS].forEach((a) => push(a.src))
-  CAFE_SHOP_ART.forEach(push)
-
-  let cursor = 0
-  let running = 0
-
-  const pump = () => {
-    while (running < CONCURRENCY && cursor < queue.length) {
-      const src = queue[cursor]
-      cursor += 1
-      running += 1
-      const img = new Image()
-      img.decoding = 'async'
-      const settle = () => {
-        running -= 1
-        pump()
-      }
-      img.onload = settle
-      img.onerror = settle
-      img.src = src
-    }
-  }
-
-  idle(pump)
+  queueArt([
+    ...Object.values(CHARACTERS).map((a) => a.src),
+    ...Object.values(PETS).map((a) => a.src),
+    ...Object.values(PROPS).map((a) => a.src),
+    PET_FEED_HANDS.src,
+    PET_PLAY_HANDS.src,
+    PET_GROOM_HANDS.src,
+    PET_PHOTO_HANDS.src,
+  ])
 }

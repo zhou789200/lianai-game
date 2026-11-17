@@ -1,4 +1,4 @@
-import { memo, useState, type CSSProperties } from 'react'
+import { memo, useEffect, useState, type CSSProperties } from 'react'
 import { DECOR } from '../data/content'
 import { PROPS, SCENES } from '../assets/manifest'
 import type { SceneAsset, SceneKey } from '../assets/manifest'
@@ -52,16 +52,36 @@ function useArt(asset?: SceneAsset) {
    这样底图不会被卸载重建、也不会重新走一遍加载状态，
    从根上消除「切页 → 底色一闪 → 再淡入」的屏闪。
    每张图解码完成前不参与绘制，所以首屏仍然有完整的 CSS 场景兜底。
+
+   加载时机：当前页立即加载，其余四张等首屏稳定后再按顺序补。
+   五张图合计约 1.5MB，若和首屏 JS/CSS 同时抢带宽，
+   弱网下会明显拖慢首屏；延迟加载后首屏只付一张图的代价，
+   而补图通常在用户点进下一个页面前就完成了，仍不会露底。
    ============================================================ */
 const SCENE_ORDER: SceneKey[] = ['home', 'business', 'cafe', 'pet', 'story']
 
-function SceneArt({ asset, active }: { asset: SceneAsset; active: boolean }) {
+/** 除当前页外，其余场景图的补载延迟（毫秒） */
+const SCENE_WARM_DELAY = 1600
+
+function SceneArt({
+  asset,
+  active,
+  warm,
+}: {
+  asset: SceneAsset
+  active: boolean
+  warm: boolean
+}) {
   const [ready, setReady] = useState(false)
+  // 当前页立刻加载；其余场景等首屏稳定后再补。
+  // 切到某页时 active 变 true，React 会直接补上 src 开始下载，
+  // 不需要等 warm，用户快速点页也能第一时间出图。
+  const wanted = active || warm
 
   return (
     <img
       className={`scene__bg${ready ? ' is-ready' : ''}${active ? ' is-active' : ''}`}
-      src={asset.src}
+      src={wanted ? asset.src : undefined}
       alt=""
       aria-hidden="true"
       draggable={false}
@@ -72,12 +92,20 @@ function SceneArt({ asset, active }: { asset: SceneAsset; active: boolean }) {
 }
 
 function BackgroundLayer({ view }: { view: SceneVariant }) {
+  const [warm, setWarm] = useState(false)
+
+  useEffect(() => {
+    // 首屏（当前页场景图解码）稳定后再补其余场景，避免抢首屏带宽。
+    const timer = window.setTimeout(() => setWarm(true), SCENE_WARM_DELAY)
+    return () => window.clearTimeout(timer)
+  }, [])
+
   return (
     <div className="scene__bg-layer">
       <CssScene />
       <div className="scene__bg-stack">
         {SCENE_ORDER.map((key) => (
-          <SceneArt key={key} asset={SCENES[key]} active={key === view} />
+          <SceneArt key={key} asset={SCENES[key]} active={key === view} warm={warm} />
         ))}
       </div>
     </div>
