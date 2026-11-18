@@ -9,8 +9,10 @@ import './styles/cafe-run.css'
 import './styles/cafe-play-scene.css'
 import './styles/cafe-show.css'
 import './styles/motion.css'
+import './styles/low-power.css'
 import App from './App'
 import { syncCanvasVars } from './game/viewport'
+import { initLowPowerMode } from './game/lowPower'
 
 const container = document.getElementById('root')
 if (!container) {
@@ -18,6 +20,7 @@ if (!container) {
 }
 
 // 首帧前先把画布缩放比写进 CSS 变量，避免挂载瞬间按 fallback 尺寸闪一下。
+initLowPowerMode()
 syncCanvasVars()
 
 createRoot(container).render(

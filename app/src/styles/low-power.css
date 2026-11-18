@@ -1,0 +1,54 @@
+/* ============================================================
+   旧内核 / 低内存设备降级
+   只关闭装饰动画、毛玻璃和混合模式，保留布局、文字与触控反馈。
+   由 src/game/lowPower.ts 在首帧前给 <html> 加 .low-power。
+   ============================================================ */
+
+html.low-power *,
+html.low-power *::before,
+html.low-power *::after {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  mix-blend-mode: normal !important;
+}
+
+/* 场景层的环境动画（光扫、尘埃、花瓣、底图淡入）全部停掉 */
+html.low-power .scene *,
+html.low-power .storybook__spark,
+html.low-power .storybook__page-curl,
+html.low-power .storybook__pip,
+html.low-power .storybook__next,
+html.low-power .storybook__next svg,
+html.low-power .storybook__ai-trigger svg,
+html.low-power .storybook__book,
+html.low-power .storybook__ai,
+html.low-power .nav__item.is-active .nav__icon {
+  animation: none !important;
+}
+
+/* 剧情翻页/文字入场也直接呈现，避免旧内核连续合成整张卡片 */
+html.low-power .storybook__page,
+html.low-power .storybook__speech,
+html.low-power .storybook__reply,
+html.low-power .storybook__choice,
+html.low-power .storybook__locked,
+html.low-power .storybook__finish,
+html.low-power .storybook__option {
+  animation: none !important;
+}
+
+html.low-power .scene__sweep,
+html.low-power .storybook__page,
+html.low-power .scene__bg {
+  will-change: auto !important;
+}
+
+/* 场景里最贵的几层高斯模糊；低性能设备直接换成清晰边缘 */
+html.low-power .scene__clouds,
+html.low-power .scene__village,
+html.low-power .scene__vine,
+html.low-power .scene__plant,
+html.low-power .scene--pet .scene__curtain,
+html.low-power .scene--story .scene__win {
+  filter: none !important;
+}

@@ -771,11 +771,14 @@
 
 .storybook__page {
   position: relative;
-  z-index: 2;
-  flex: 0 0 auto;
+  flex: 0 1 auto;
   width: 100%;
-  height: 500px;
-  min-height: 390px;
+  height: auto;
+  min-height: 350px;
+  max-height: 500px;
+  /* 高度跟随实际可用画面，不再写死 500px。
+     短屏（地址栏 + 工具栏占位）时收缩，内容区内部滚动。 */
+  max-height: min(500px, calc(100% - 170px));
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -917,8 +920,11 @@
   flex: 1 1 auto;
   min-height: 0;
   display: flex;
-  align-items: center;
+  /* 不能垂直居中：内容高于可视区时，flex 居中会把顶部裁到滚动区外。 */
+  align-items: flex-start;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   padding: 12px 17px 6px 21px;
   scrollbar-width: none;
 }
@@ -2047,9 +2053,9 @@
 
 .storybook__draft--reader {
   position: relative;
-  height: 500px;
-  min-height: 390px;
-  max-height: none;
+  height: auto;
+  min-height: 320px;
+  max-height: 100%;
   border-radius: 25px 25px 20px 20px;
 }
 
@@ -2294,8 +2300,9 @@
 
 @media (max-height: 760px) {
   .storybook__page {
-    height: 440px;
-    min-height: 350px;
+    min-height: 320px;
+    max-height: 440px;
+    max-height: min(440px, calc(100% - 160px));
   }
 
   .storybook__content {
@@ -2326,8 +2333,8 @@
   }
 
   .storybook__draft--reader {
-    height: 440px;
-    min-height: 350px;
+    min-height: 300px;
+    max-height: 100%;
   }
 
   .storybook__draft-reader-content {

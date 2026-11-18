@@ -28,10 +28,14 @@ app/work/
 !app/work/*.mjs
 .workbuddy/
 work/shots/
+work/releases/
+work/release-*/
+work/.last-release-*
 work/split/
 work/art/
 work/storybook/
 work/window-check/
+local-storage-backup-*.json
 work/demo/
 work/submit-docs/
 work/**/*.png
