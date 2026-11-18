@@ -10,8 +10,9 @@
   z-index: var(--z-content);
 }
 
-/* 剧情续页是应用内模态层：提示条出现时仍要保证其遮罩与关闭按钮可交互。 */
-.app:has(.storybook__draft-layer) {
+/* 剧情续页是应用内模态层：提示条出现时仍要保证其遮罩与关闭按钮可交互。
+   由 useAppStoryOverlay 切 class（:has() 在旧内核不被支持会整条失效）。 */
+.app--story-overlay {
   z-index: var(--z-story-overlay);
 }
 

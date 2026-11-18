@@ -19,6 +19,7 @@ import { StoryDraftSheet } from '../components/StoryDraftSheet'
 import { StoryVoiceButton } from '../components/StoryVoiceButton'
 import { UiButton } from '../components/UiButton'
 import { useStoryAutoAdvance, useStoryVoice } from '../game/useStoryVoice'
+import { useAppStoryOverlay } from '../game/overlayLayer'
 import type { StoryChoice } from '../game/types'
 
 interface ReplyState {
@@ -49,6 +50,8 @@ export function StoryView() {
     activeDynamicIndex >= 0 && activeDynamicIndex < dynamicChapters.length - 1
       ? dynamicChapters[activeDynamicIndex + 1]
       : null
+  const readerOpen = Boolean(activeDynamicChapter) || continuationOpen
+  useAppStoryOverlay(readerOpen)
 
   const available = chapter ? storybookChapterAvailable(state, chapter) : false
   const requirement = chapter ? storybookChapterRequirementText(state, chapter) : ''
@@ -89,10 +92,9 @@ export function StoryView() {
   const waitingForChoice = beat?.type === 'choice' && !activeReply
   const voiceEnabled =
     available &&
-    !activeDynamicChapter &&
+    !readerOpen &&
     !catalogOpen &&
-    !confirmSkip &&
-    !continuationOpen
+    !confirmSkip
   const voice = useStoryVoice(
     storyText,
     activeReply || beat?.type !== 'dialogue' ? '旁白' : beat.speaker,
@@ -185,12 +187,12 @@ export function StoryView() {
   return (
     <div
       className={`screen screen--storybook${
-        activeDynamicChapter ? ' screen--storybook--reading' : ''
+        readerOpen ? ' screen--storybook--reading' : ''
       }`}
     >
       <div
         className={`storybook__topbar${
-          activeDynamicChapter ? ' storybook__topbar--reading' : ''
+          readerOpen ? ' storybook__topbar--reading' : ''
         }`}
       >
         <button
@@ -203,7 +205,7 @@ export function StoryView() {
           <BookOpen size={15} />
           <span>剧情本</span>
         </button>
-        {!activeDynamicChapter ? (
+        {!readerOpen ? (
           <>
             <span className="storybook__top-progress t-num">
               CH.{chapter.index} · {progress}/{totalBeats}
@@ -223,7 +225,7 @@ export function StoryView() {
         ) : null}
       </div>
 
-      {!activeDynamicChapter ? (
+      {!readerOpen ? (
         <>
           <div className="storybook__space" aria-hidden="true">
             <span className="storybook__spark storybook__spark--a" />
@@ -525,7 +527,7 @@ export function StoryView() {
         />
       ) : null}
 
-      {activeDynamicChapter ? (
+      {activeDynamicChapter && !continuationOpen ? (
         <StoryArchiveSheet
           key={activeDynamicChapter.trace.id}
           trace={activeDynamicChapter.trace}
