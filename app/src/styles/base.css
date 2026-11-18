@@ -63,15 +63,16 @@ ul {
    尺寸全部由 JS 算好的 --app-w / --app-h 决定（手机端直接铺满可视视口），
    不依赖 dvh / vw 等各浏览器支持度不一的视口单位。
 
-   注意 top/height 用的是 --vv-top / --vv-h（visualViewport 的值），
-   而不是 inset: 0：地址栏、工具栏浮在页面上时，布局视口和可视视口并不相等，
-   只有贴着可视视口摆，画布才不会有一截藏在浏览器 UI 底下。 */
+   注意 top/height 跟随 visualViewport 的 --vv-top / --vv-h；
+   但默认不给浏览器工具栏预留额外保护带：ColorOS 等浏览器的布局视口
+   已扣过地址栏，再补一段会把页面整体下移并露出上下底。 */
 .stage {
   position: fixed;
   top: var(--vv-top, 0px);
   left: 0;
   right: 0;
   height: var(--vv-h, 100%);
+  padding-top: var(--top-guard, 0px);
   display: grid;
   place-items: center;
   overflow: hidden;
@@ -82,6 +83,7 @@ ul {
   position: relative;
   width: var(--app-w, 430px);
   height: var(--app-h, 932px);
+  flex: 0 0 auto;
   border-radius: calc(34px * var(--app-scale, 1));
   overflow: hidden;
   isolation: isolate;

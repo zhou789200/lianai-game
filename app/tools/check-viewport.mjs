@@ -193,38 +193,32 @@ const jitter2 = await client.send('Runtime.evaluate', { expression: MEASURE, ret
 results.push({ case: 'shrink-940->860 (Δ80)', ...jitter2.result.value })
 
 /*
- * 地址栏浮层模拟：真实浏览器工具栏占 56px，但 visualViewport 未扣减。
- * 这里把窗口高度临时加 56px 充当“布局视口”，再让 visualViewport 少 56px，
- * 验证 --top-guard 是否补上这段遮挡，并保证底部导航不因此被裁。
+ * 地址栏浮层验证：不加参数时保护带必须为 0，页面不能被整体下移；
+ * 只有显式 ?topguard=56 才允许单机型微调。
  */
 await client.send('Emulation.setDeviceMetricsOverride', { width: 360, height: 800, deviceScaleFactor: 3, mobile: true })
 await client.send('Page.navigate', { url: `http://127.0.0.1:${port}/` })
 await delay(1500)
-await client.send('Runtime.evaluate', {
-  expression: `(() => {
-    const vv = window.visualViewport
-    if (!vv) return false
-    Object.defineProperty(window, 'innerHeight', { configurable: true, get: () => 800 })
-    Object.defineProperty(vv, 'height', { configurable: true, get: () => 744 })
-    Object.defineProperty(vv, 'offsetTop', { configurable: true, get: () => 0 })
-    vv.dispatchEvent(new Event('resize'))
-    return true
-  })()`,
-  returnByValue: true,
-})
-await delay(600)
-const toolbar = await client.send('Runtime.evaluate', { expression: MEASURE, returnByValue: true })
-results.push({ case: 'toolbar-guard-360x800', ...toolbar.result.value })
+const defaultGuard = await client.send('Runtime.evaluate', { expression: MEASURE, returnByValue: true })
+results.push({ case: 'default-guard-360x800', ...defaultGuard.result.value })
+
+await client.send('Page.navigate', { url: `http://127.0.0.1:${port}/?topguard=56` })
+await delay(1500)
+const explicitGuard = await client.send('Runtime.evaluate', { expression: MEASURE, returnByValue: true })
+results.push({ case: 'explicit-guard-360x800', ...explicitGuard.result.value })
 
 console.log('')
 let failed = 0
 for (const r of results) {
   const canvasBottom = r.canvas?.bottom ?? 0
   const overflow = canvasBottom - r.vvH
-  const checked =
-    r.navInViewport !== null || r.case.startsWith('toolbar-guard')
+  const checked = r.navInViewport !== null
   const ok = overflow <= 1
-  if (checked && (!ok || (r.navInViewport === false))) failed += 1
+  const guardOk =
+    r.case.startsWith('default-guard')
+      ? r.topGuard === '0px'
+      : !r.case.startsWith('explicit-guard') || r.topGuard === '56px'
+  if (checked && (!ok || r.navInViewport === false || !guardOk)) failed += 1
   console.log(
     [
       ok ? '·' : (checked ? '✗' : '·'),

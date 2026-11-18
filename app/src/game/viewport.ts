@@ -43,21 +43,19 @@ const RECHECK_DELAYS = [60, 200, 460]
 /**
  * 浏览器工具栏顶部保护带。
  *
- * 个别安卓浏览器（ColorOS 自带浏览器、部分微信 X5）把地址栏浮在网页上，
- * 但 visualViewport.offsetTop 仍为 0，页面第一行会贴着地址栏下沿。
- * 用「布局视口 - 可视视口」估算浏览器 UI 占位，只在顶部明显被占时
- * 给画布加一条保护带；底部导航栏不在此列，避免整体下移后被系统栏裁掉。
+ * 默认必须为 0：ColorOS 自带浏览器的布局视口已经扣过地址栏，
+ * 再用「布局视口 - 可视视口」推算会把页面整体下移，上下露底。
+ * 只有确认某些浏览器真的把地址栏浮在页面上、visualViewport 又不报
+ * offsetTop 时，才通过 URL 参数 ?topguard=<px> 做单机型微调。
  */
 const MIN_TOP_GUARD = 12
 const MAX_TOP_GUARD = 72
 
-function readTopGuard(vv: VisualViewport | null, h: number) {
-  if (!vv) return 0
-  const layoutH = Math.round(window.innerHeight || document.documentElement.clientHeight || 0)
-  if (!layoutH) return 0
-  const raw = Math.round(layoutH - h - Math.max(0, Math.round(vv.offsetTop || 0)))
-  if (raw < MIN_TOP_GUARD) return 0
-  return Math.min(raw, MAX_TOP_GUARD)
+function readTopGuard() {
+  if (typeof window === 'undefined') return 0
+  const requested = Number(new URLSearchParams(window.location.search).get('topguard'))
+  if (!Number.isFinite(requested) || requested < MIN_TOP_GUARD) return 0
+  return Math.min(Math.round(requested), MAX_TOP_GUARD)
 }
 
 export interface CanvasMetrics {
@@ -79,7 +77,7 @@ function readViewport() {
   const w = Math.round(vv?.width || window.innerWidth || document.documentElement.clientWidth || DESIGN_W)
   const h = Math.round(vv?.height || window.innerHeight || document.documentElement.clientHeight || DESIGN_H)
   const top = Math.round(vv?.offsetTop || 0)
-  const topGuard = readTopGuard(vv, h)
+  const topGuard = readTopGuard()
   return { w, h, top, topGuard }
 }
 

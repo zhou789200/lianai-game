@@ -30,10 +30,7 @@ export function PhoneShell({
         aria-label="海风镇宠物咖啡馆"
         data-figure={figure ?? undefined}
         data-tone={tone}
-        style={{
-          ['--app-scale' as string]: String(metrics.scale),
-          marginTop: metrics.topGuard,
-        }}
+        style={{ ['--app-scale' as string]: String(metrics.scale) }}
       >
         <div
           className="phone__canvas"
