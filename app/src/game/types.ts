@@ -190,16 +190,6 @@ export interface GameState {
     rating: number
     coins: number
   } | null
-  /** 营业中已上菜收益快照；结算时入账并清空，中断时作废 */
-  pendingRunRewards?: {
-    coins: number
-    exp: number
-  } | null
-  /** 旧版中断恢复遗留的收益字段；现在统一置空，保留仅为兼容旧存档 */
-  recoveredRunRewards?: {
-    coins: number
-    exp: number
-  } | null
 }
 
 /* ---------- 静态内容定义 ---------- */

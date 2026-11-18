@@ -26,6 +26,7 @@ import {
   todayKey,
 } from './storage'
 import { regenerateStamina, spendStamina } from './stamina'
+import { createSaveScheduler } from './saveScheduler'
 import {
   CHAPTERS,
   DECOR,
@@ -127,8 +128,6 @@ type Action =
   | { type: 'claimTask'; id: string; coins: number; exp: number }
   | { type: 'bumpTask'; id: string; amount: number }
   | { type: 'beginCafeRun'; runId: string }
-  | { type: 'recordRunRewards'; coins: number; exp: number }
-  | { type: 'clearRecoveredRunRewards' }
   | { type: 'settleCafe'; summary: CafeSettleSummary }
 
 let noticeSeed = 0
@@ -689,24 +688,9 @@ function reducer(runtime: Runtime, action: Action): Runtime {
       const nextState: GameState = {
         ...spendStamina(s, BUSINESS_STAMINA_COST),
         activeRunId: action.runId,
-        pendingRunRewards: null,
       }
       return { state: nextState, notices: runtime.notices }
     }
-
-    case 'recordRunRewards': {
-      const nextPending = {
-        coins: (s.pendingRunRewards?.coins ?? 0) + action.coins,
-        exp: (s.pendingRunRewards?.exp ?? 0) + action.exp,
-      }
-      return {
-        state: { ...s, pendingRunRewards: nextPending, updatedAt: Date.now() },
-        notices: runtime.notices,
-      }
-    }
-
-    case 'clearRecoveredRunRewards':
-      return { state: { ...s, recoveredRunRewards: null }, notices: runtime.notices }
 
     case 'settleCafe': {
       const sum = action.summary
@@ -724,7 +708,6 @@ function reducer(runtime: Runtime, action: Action): Runtime {
           rating: sum.rating,
           coins: sum.coins + sum.tips,
         },
-        pendingRunRewards: null,
         stats: {
           ...s.stats,
           businessRuns: s.stats.businessRuns + 1,
@@ -815,7 +798,6 @@ interface GameContextValue {
     grantCoins: (amount: number, silent?: boolean) => void
     serveOrder: (coins: number, exp: number) => void
     settleBusiness: (served: number, total: number, perfect: boolean) => void
-    recordRunRewards: (coins: number, exp: number) => void
     startBusiness: () => ActionResult
     beginCafeRun: (runId: string) => ActionResult
     settleCafe: (summary: CafeSettleSummary) => ActionResult
@@ -886,6 +868,29 @@ export function GameProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     stateRef.current = runtime.state
   }, [runtime.state])
+
+  /**
+   * 本地存档写入节流。
+   * 写入函数在触发时读取「当前」的模式与账号，而不是排期时的快照：
+   * 账号可能在这 400ms 内切换，闭包里的旧值会把数据写进错误的键。
+   */
+  const localSaveSchedulerRef = useRef<ReturnType<typeof createSaveScheduler> | null>(null)
+  if (localSaveSchedulerRef.current === null && typeof window !== 'undefined') {
+    localSaveSchedulerRef.current = createSaveScheduler(() => {
+      const mode = persistenceModeRef.current
+      const account = mode === 'account' ? accountRef.current : null
+      const ok =
+        account !== null
+          ? saveAccountState(account.id, stateRef.current)
+          : saveState(stateRef.current)
+      if (ok) {
+        setLastSavedAt(Date.now())
+        setSaveError((current) => (current?.startsWith('存档写入失败') ? null : current))
+      } else {
+        setSaveError('存档写入失败，请检查浏览器存储权限')
+      }
+    })
+  }
 
   const activateGuest = useCallback((message: string | null = null) => {
     requestEpochRef.current += 1
@@ -991,17 +996,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
     const mode = persistenceModeRef.current
     const account = mode === 'account' ? accountRef.current : null
     const epoch = requestEpochRef.current
-    const localOk =
-      mode === 'account' && account
-        ? saveAccountState(account.id, snapshot)
-        : saveState(snapshot)
-
-    if (localOk) {
-      setLastSavedAt(Date.now())
-      setSaveError(null)
-    } else {
-      setSaveError('存档写入失败，请检查浏览器存储权限')
-    }
+    // 本地写盘走节流；账号同步仍按每次变更快照排队，保证云端是最新版本。
+    localSaveSchedulerRef.current?.schedule()
 
     if (!account) return
     const timer = window.setTimeout(() => {
@@ -1095,6 +1091,21 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
     return () => window.clearTimeout(timer)
   }, [runtime.state, syncReady, userData.user?.id, activateGuest])
+
+  // 节流期间离开页面（切后台、关闭、刷新）必须先把最新进度落盘。
+  useEffect(() => {
+    const flush = () => localSaveSchedulerRef.current?.flush()
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') flush()
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    window.addEventListener('pagehide', flush)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+      window.removeEventListener('pagehide', flush)
+      flush()
+    }
+  }, [])
 
   const loginWithAccount = useCallback(
     async (username: string, password: string) => {
@@ -1418,23 +1429,6 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   const state = runtime.state
 
-  const recoveredRunRewards = state.recoveredRunRewards
-  useEffect(() => {
-    if (!recoveredRunRewards) return
-    const { coins, exp } = recoveredRunRewards
-    if (coins > 0 || exp > 0) {
-      dispatch({ type: 'reward', reward: { kind: 'coins', amount: coins } })
-      dispatch({ type: 'reward', reward: { kind: 'exp', amount: exp }, silent: true })
-      dispatch({
-        type: 'notice',
-        kind: 'reward',
-        title: '营业中断结算',
-        text: `已保留 +${coins} 金币 · +${exp} 经验`,
-      })
-    }
-    dispatch({ type: 'clearRecoveredRunRewards' })
-  }, [recoveredRunRewards])
-
   const pushNotice = useCallback(
     (kind: NoticeKind, title: string, text?: string) => dispatch({ type: 'notice', kind, title, text }),
     [],
@@ -1528,7 +1522,6 @@ export function GameProvider({ children }: { children: ReactNode }) {
       serveOrder: (coins, exp) => dispatch({ type: 'serveOrder', coins, exp }),
       settleBusiness: (served, total, perfect) =>
         dispatch({ type: 'settleBusiness', served, total, perfect }),
-    recordRunRewards: (coins, exp) => dispatch({ type: 'recordRunRewards', coins, exp }),
       beginCafeRun: (runId) => {
         if (state.activeRunId) {
           return fail('已经有一局营业正在进行中')

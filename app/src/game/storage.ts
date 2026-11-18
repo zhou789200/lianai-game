@@ -144,7 +144,6 @@ export function createInitialState(): GameState {
     activeRunId: null,
     lastSettledRunId: null,
     lastBusiness: null,
-    pendingRunRewards: null,
   }
 }
 
@@ -226,6 +225,19 @@ export function parseGameState(value: unknown): GameState | null {
 
 /** 兼容旧存档：补齐 R3 新增字段 */
 function normalizeState(state: GameState): GameState {
+  // 旧存档可能还带 pendingRunRewards / recoveredRunRewards，展开后会原样写回。
+  // 这两个字段已经从 GameState 移除，这里显式剔除，避免每次存档都被旧数据拖大。
+  const {
+    pendingRunRewards: _pendingRunRewards,
+    recoveredRunRewards: _recoveredRunRewards,
+    ...legacyFreeState
+  } = state as GameState & {
+    pendingRunRewards?: unknown
+    recoveredRunRewards?: unknown
+  }
+  void _pendingRunRewards
+  void _recoveredRunRewards
+  state = legacyFreeState as GameState
   const hasKnownStoryChapter =
     typeof state.storyChapterId === 'string' &&
     STORYBOOK_CHAPTERS.some((chapter) => chapter.id === state.storyChapterId)
@@ -374,13 +386,6 @@ function normalizeState(state: GameState): GameState {
     activeRunId: state.activeRunId ?? null,
     lastSettledRunId: state.lastSettledRunId ?? null,
     lastBusiness: state.lastBusiness ?? null,
-    pendingRunRewards:
-      state.pendingRunRewards && typeof state.pendingRunRewards === 'object'
-        ? {
-            coins: typeof state.pendingRunRewards.coins === 'number' ? state.pendingRunRewards.coins : 0,
-            exp: typeof state.pendingRunRewards.exp === 'number' ? state.pendingRunRewards.exp : 0,
-          }
-        : null,
   }
 }
 
@@ -395,8 +400,6 @@ export function reconcileAbandonedRun(state: GameState): GameState {
     ...state,
     activeRunId: null,
     stamina: Math.min(state.staminaMax, state.stamina + BUSINESS_STAMINA_COST),
-    pendingRunRewards: null,
-    recoveredRunRewards: null,
     updatedAt: Date.now(),
   })
 }

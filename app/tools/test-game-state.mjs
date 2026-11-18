@@ -111,24 +111,55 @@ test('regeneration ignores a regen clock that sits in the future', () => {
 
 test('abandoned run refunds stamina once and never pays out rewards', () => {
   const base = storage.createInitialState()
+  // 旧存档可能残留 pendingRunRewards / recoveredRunRewards，正常化后必须被剔除。
   const running = {
     ...base,
     stamina: base.stamina - storage.BUSINESS_STAMINA_COST,
     activeRunId: 'run-abandoned',
     pendingRunRewards: { coins: 180, exp: 40 },
+    recoveredRunRewards: { coins: 20, exp: 5 },
   }
 
   const recovered = storage.reconcileAbandonedRun(running)
   assert.equal(recovered.activeRunId, null)
   assert.equal(recovered.stamina, base.stamina)
-  assert.equal(recovered.pendingRunRewards, null)
-  assert.equal(recovered.recoveredRunRewards, null, '中断的中营业不应结转收益')
+  assert.equal('pendingRunRewards' in recovered, false, '旧收益字段不应继续写回存档')
+  assert.equal('recoveredRunRewards' in recovered, false, '旧收益字段不应继续写回存档')
   assert.equal(recovered.coins, base.coins)
   assert.equal(recovered.stats.coinsEarned, base.stats.coinsEarned)
 
   // 再次进入首页不应该重复退还体力
   const again = storage.reconcileAbandonedRun(recovered)
   assert.equal(again.stamina, base.stamina)
+})
+
+test('settled run clears the active run id and records the snapshot', () => {
+  const base = storage.createInitialState()
+  const running = {
+    ...base,
+    stamina: base.stamina - storage.BUSINESS_STAMINA_COST,
+    activeRunId: 'run-settled',
+  }
+  const settled = {
+    ...running,
+    activeRunId: null,
+    lastSettledRunId: 'run-settled',
+    lastBusiness: {
+      at: 1_790_000_000_000,
+      served: 6,
+      failed: 0,
+      rating: 5,
+      coins: 180,
+    },
+  }
+
+  const normalized = storage.parseGameState(settled)
+  assert.ok(normalized)
+  assert.equal(normalized.activeRunId, null)
+  assert.equal(normalized.lastSettledRunId, 'run-settled')
+  assert.deepEqual(normalized.lastBusiness, settled.lastBusiness)
+  // 结算后不应再触发体力退还
+  assert.equal(storage.reconcileAbandonedRun(normalized).stamina, running.stamina)
 })
 
 /* ---------------- 存档：边界收敛 ---------------- */

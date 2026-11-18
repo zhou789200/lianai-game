@@ -10,7 +10,7 @@
   "scripts": {
     "dev": "node scripts/dev.mjs",
     "lint": "eslint .",
-    "test": "node --test tools/test-cafe-session.mjs tools/test-game-state.mjs tools/test-global-bgm.mjs tools/test-pet-voice.mjs tools/test-story-system.mjs tools/test-story-voice.mjs tools/test-user-db.mjs",
+    "test": "node --test tools/test-cafe-session.mjs tools/test-game-state.mjs tools/test-global-bgm.mjs tools/test-low-power.mjs tools/test-save-scheduler.mjs tools/test-pet-voice.mjs tools/test-story-system.mjs tools/test-story-voice.mjs tools/test-user-db.mjs",
     "build": "tsc --noEmit && node scripts/build.mjs",
     "check:small": "node tools/check-small-screens.mjs",
     "deploy:hk": "node scripts/deploy-hk.mjs",
