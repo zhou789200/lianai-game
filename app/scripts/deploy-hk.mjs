@@ -52,6 +52,22 @@ const DOMAIN = process.env.SEABREEZE_DOMAIN ?? 'zljgg.xyz'
 const WINDOWS_HOME =
   process.platform === 'win32' ? process.env.USERPROFILE?.trim() : ''
 const HOME = WINDOWS_HOME || os.homedir()
+/**
+ * 项目在 Windows 桌面上，但 node 可能来自 WSL / Git Bash。
+ * WSL 的 /root 不是用户目录；在 Windows 项目里遇到这种组合要直接停，
+ * 不能生成 /root/.ssh 密钥，也不能拿它去连生产服务器。
+ */
+if (
+  process.platform !== 'win32' &&
+  HOME === '/root' &&
+  /^\/mnt\/[a-z]\//i.test(APP_ROOT)
+) {
+  console.error(
+    '\n✗ 正在用 WSL/Linux 的 Node 运行 Windows 项目，拒绝继续。\n' +
+      '请在 PowerShell 中执行，或使用根目录的 deploy-hk.cmd / deploy-hk.ps1。\n',
+  )
+  process.exit(1)
+}
 const KEY = expandHome(
   process.env.SEABREEZE_SSH_KEY ?? path.join(HOME, '.ssh', 'seabreeze_hk_deploy'),
 )
