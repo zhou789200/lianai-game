@@ -31,11 +31,15 @@ export const DESIGN_H = 932
 const DESKTOP_PAD = 18
 
 /**
- * 视口「变大」时的抖动阈值。
- * 地址栏收起会让可用高度突然变高，这种情况不重算，避免画布忽大忽小；
- * 但视口「变小」必须立刻跟随——否则画布会比屏幕高，上下被裁。
+ * 视口「变大」后的收敛延迟。
+ *
+ * 地址栏 / 底部工具条收起会让可用高度变高，画布必须跟着长高，
+ * 否则底部会露出一条页面底色。但这些收起动作是逐帧动画，
+ * 事件触发时读到的是中间值：直接跟会让画布被连续缩放好几次。
+ * 因此变大只登记候选值，等 200ms 没有新的变化再一次性应用；
+ * 视口「变小」仍然立刻跟随——否则画布比屏幕高，上下会被裁。
  */
-const GROW_JITTER = 60
+const GROW_SETTLE_MS = 200
 
 /** 地址栏收放动画的收敛时间，视口变化后再补测几次拿到最终值 */
 const RECHECK_DELAYS = [60, 200, 460]
@@ -157,20 +161,43 @@ export function useCanvasMetrics(): CanvasMetrics {
     let prev = readViewport()
     let frame = 0
     const timers = new Set<number>()
+    let growTimer = 0
+    let pendingGrow: ReturnType<typeof readViewport> | null = null
 
     const measure = () => {
       frame = 0
       const next = readViewport()
       const widthChanged = Math.abs(next.w - prev.w) > 1
       // 收缩一定跟随（否则画布比视口高会被裁）；
-      // 变大只有在超过阈值时才重算，避免地址栏动画导致画布反复缩放。
+      // 变大等动画收敛后再跟随，避免画布被连续缩放。
       const shrank = next.h < prev.h - 1 || next.w < prev.w - 1
-      const grewALot = next.h - prev.h > GROW_JITTER
+      const grew = next.h > prev.h + 1
       const moved = next.top !== prev.top
       const guardChanged = next.topGuard !== prev.topGuard
-      if (!widthChanged && !shrank && !grewALot && !moved && !guardChanged) return
-      prev = next
-      setMetrics(computeMetrics(next.w, next.h, next.top, next.topGuard))
+      if (widthChanged || shrank || moved || guardChanged) {
+        if (growTimer) {
+          window.clearTimeout(growTimer)
+          growTimer = 0
+          pendingGrow = null
+        }
+        prev = next
+        setMetrics(computeMetrics(next.w, next.h, next.top, next.topGuard))
+        return
+      }
+      if (!grew) return
+      // 只登记，不立刻重排；等这轮收放动画结束再应用最终高度。
+      pendingGrow = next
+      if (growTimer) window.clearTimeout(growTimer)
+      growTimer = window.setTimeout(() => {
+        growTimer = 0
+        const settled = pendingGrow
+        pendingGrow = null
+        if (!settled) return
+        const latest = readViewport()
+        if (latest.h < settled.h - 1) return
+        prev = latest
+        setMetrics(computeMetrics(latest.w, latest.h, latest.top, latest.topGuard))
+      }, GROW_SETTLE_MS)
     }
 
     const schedule = () => {
@@ -195,6 +222,7 @@ export function useCanvasMetrics(): CanvasMetrics {
 
     return () => {
       if (frame) window.cancelAnimationFrame(frame)
+      if (growTimer) window.clearTimeout(growTimer)
       timers.forEach((t) => window.clearTimeout(t))
       timers.clear()
       window.removeEventListener('resize', schedule)
