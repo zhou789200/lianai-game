@@ -40,6 +40,26 @@ const GROW_JITTER = 60
 /** 地址栏收放动画的收敛时间，视口变化后再补测几次拿到最终值 */
 const RECHECK_DELAYS = [60, 200, 460]
 
+/**
+ * 浏览器工具栏顶部保护带。
+ *
+ * 个别安卓浏览器（ColorOS 自带浏览器、部分微信 X5）把地址栏浮在网页上，
+ * 但 visualViewport.offsetTop 仍为 0，页面第一行会贴着地址栏下沿。
+ * 用「布局视口 - 可视视口」估算浏览器 UI 占位，只在顶部明显被占时
+ * 给画布加一条保护带；底部导航栏不在此列，避免整体下移后被系统栏裁掉。
+ */
+const MIN_TOP_GUARD = 12
+const MAX_TOP_GUARD = 72
+
+function readTopGuard(vv: VisualViewport | null, h: number) {
+  if (!vv) return 0
+  const layoutH = Math.round(window.innerHeight || document.documentElement.clientHeight || 0)
+  if (!layoutH) return 0
+  const raw = Math.round(layoutH - h - Math.max(0, Math.round(vv.offsetTop || 0)))
+  if (raw < MIN_TOP_GUARD) return 0
+  return Math.min(raw, MAX_TOP_GUARD)
+}
+
 export interface CanvasMetrics {
   scale: number
   width: number
@@ -50,6 +70,8 @@ export interface CanvasMetrics {
   viewportH: number
   /** 可视视口在布局视口中的纵向偏移（iOS 键盘/滚动时非 0） */
   viewportTop: number
+  /** 浏览器工具栏遮挡的顶部保护带（物理像素） */
+  topGuard: number
 }
 
 function readViewport() {
@@ -57,24 +79,29 @@ function readViewport() {
   const w = Math.round(vv?.width || window.innerWidth || document.documentElement.clientWidth || DESIGN_W)
   const h = Math.round(vv?.height || window.innerHeight || document.documentElement.clientHeight || DESIGN_H)
   const top = Math.round(vv?.offsetTop || 0)
-  return { w, h, top }
+  const topGuard = readTopGuard(vv, h)
+  return { w, h, top, topGuard }
 }
 
-export function computeMetrics(w: number, h: number, top = 0): CanvasMetrics {
+export function computeMetrics(w: number, h: number, top = 0, topGuard = 0): CanvasMetrics {
   const pad = w <= 480 ? 0 : DESKTOP_PAD
   const mobile = w <= 480
   const raw = mobile
     ? (w - pad * 2) / DESIGN_W
     : Math.min((w - pad * 2) / DESIGN_W, (h - pad * 2) / DESIGN_H)
   const scale = Number.isFinite(raw) && raw > 0 ? raw : 1
-  const canvasHeight = mobile ? Math.max(1, (h - pad * 2) / scale) : DESIGN_H
+  const guard = mobile ? Math.max(0, topGuard) : 0
+  const canvasHeight = mobile
+    ? Math.max(1, (h - pad * 2 - guard) / scale)
+    : DESIGN_H
   return {
     scale: Math.round(scale * 1e4) / 1e4,
     width: mobile ? w - pad * 2 : Math.round(DESIGN_W * scale),
-    height: mobile ? h - pad * 2 : Math.round(DESIGN_H * scale),
+    height: mobile ? h - pad * 2 - guard : Math.round(DESIGN_H * scale),
     canvasHeight: Math.round(canvasHeight * 1e2) / 1e2,
     viewportH: h,
     viewportTop: top,
+    topGuard: guard,
   }
 }
 
@@ -86,12 +113,13 @@ export function applyCanvasVars(metrics: CanvasMetrics) {
   root.style.setProperty('--app-canvas-h', `${metrics.canvasHeight}px`)
   root.style.setProperty('--vv-h', `${metrics.viewportH}px`)
   root.style.setProperty('--vv-top', `${metrics.viewportTop}px`)
+  root.style.setProperty('--top-guard', `${metrics.topGuard}px`)
 }
 
 /** 首帧渲染前同步写入，避免画布先按 fallback 尺寸出现再跳变。 */
 export function syncCanvasVars(): CanvasMetrics {
-  const { w, h, top } = readViewport()
-  const metrics = computeMetrics(w, h, top)
+  const { w, h, top, topGuard } = readViewport()
+  const metrics = computeMetrics(w, h, top, topGuard)
   applyCanvasVars(metrics)
   return metrics
 }
@@ -120,10 +148,11 @@ export function useCanvasMetrics(): CanvasMetrics {
         canvasHeight: DESIGN_H,
         viewportH: DESIGN_H,
         viewportTop: 0,
+        topGuard: 0,
       }
     }
-    const { w, h, top } = readViewport()
-    return computeMetrics(w, h, top)
+    const { w, h, top, topGuard } = readViewport()
+    return computeMetrics(w, h, top, topGuard)
   })
 
   useEffect(() => {
@@ -140,9 +169,10 @@ export function useCanvasMetrics(): CanvasMetrics {
       const shrank = next.h < prev.h - 1 || next.w < prev.w - 1
       const grewALot = next.h - prev.h > GROW_JITTER
       const moved = next.top !== prev.top
-      if (!widthChanged && !shrank && !grewALot && !moved) return
+      const guardChanged = next.topGuard !== prev.topGuard
+      if (!widthChanged && !shrank && !grewALot && !moved && !guardChanged) return
       prev = next
-      setMetrics(computeMetrics(next.w, next.h, next.top))
+      setMetrics(computeMetrics(next.w, next.h, next.top, next.topGuard))
     }
 
     const schedule = () => {
@@ -157,7 +187,7 @@ export function useCanvasMetrics(): CanvasMetrics {
       }
     }
 
-    applyCanvasVars(computeMetrics(prev.w, prev.h, prev.top))
+    applyCanvasVars(computeMetrics(prev.w, prev.h, prev.top, prev.topGuard))
     window.addEventListener('resize', schedule)
     window.addEventListener('orientationchange', schedule)
     window.addEventListener('pageshow', schedule)

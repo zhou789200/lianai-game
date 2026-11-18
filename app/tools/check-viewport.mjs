@@ -104,7 +104,7 @@ const MEASURE = `
   const canvas = document.querySelector('.phone__canvas')
   const phone = document.querySelector('.phone')
   const appbar = document.querySelector('.appbar')
-  const nav = document.querySelector('.navbar') || document.querySelector('.tabbar')
+  const nav = document.querySelector('.nav')
   const cs = getComputedStyle(document.documentElement)
   return {
     innerW: window.innerWidth, innerH: window.innerHeight,
@@ -114,9 +114,14 @@ const MEASURE = `
     dpr: window.devicePixelRatio,
     scaleVar: cs.getPropertyValue('--app-scale').trim(),
     appW: cs.getPropertyValue('--app-w').trim(), appH: cs.getPropertyValue('--app-h').trim(),
+    topGuard: cs.getPropertyValue('--top-guard').trim(),
     scrollH: document.documentElement.scrollHeight, scrollY: window.scrollY,
     phone: r(phone), canvas: r(canvas), appbar: r(appbar), nav: r(nav),
     title: r(document.querySelector('.appbar__plate')),
+    navInViewport: nav
+      ? nav.getBoundingClientRect().top >= -1 &&
+        nav.getBoundingClientRect().bottom <= window.innerHeight + 1
+      : null,
   }
 })()
 `
@@ -187,14 +192,39 @@ await delay(900)
 const jitter2 = await client.send('Runtime.evaluate', { expression: MEASURE, returnByValue: true })
 results.push({ case: 'shrink-940->860 (Δ80)', ...jitter2.result.value })
 
+/*
+ * 地址栏浮层模拟：真实浏览器工具栏占 56px，但 visualViewport 未扣减。
+ * 这里把窗口高度临时加 56px 充当“布局视口”，再让 visualViewport 少 56px，
+ * 验证 --top-guard 是否补上这段遮挡，并保证底部导航不因此被裁。
+ */
+await client.send('Emulation.setDeviceMetricsOverride', { width: 360, height: 800, deviceScaleFactor: 3, mobile: true })
+await client.send('Page.navigate', { url: `http://127.0.0.1:${port}/` })
+await delay(1500)
+await client.send('Runtime.evaluate', {
+  expression: `(() => {
+    const vv = window.visualViewport
+    if (!vv) return false
+    Object.defineProperty(window, 'innerHeight', { configurable: true, get: () => 800 })
+    Object.defineProperty(vv, 'height', { configurable: true, get: () => 744 })
+    Object.defineProperty(vv, 'offsetTop', { configurable: true, get: () => 0 })
+    vv.dispatchEvent(new Event('resize'))
+    return true
+  })()`,
+  returnByValue: true,
+})
+await delay(600)
+const toolbar = await client.send('Runtime.evaluate', { expression: MEASURE, returnByValue: true })
+results.push({ case: 'toolbar-guard-360x800', ...toolbar.result.value })
+
 console.log('')
 let failed = 0
 for (const r of results) {
   const canvasBottom = r.canvas?.bottom ?? 0
   const overflow = canvasBottom - r.vvH
-  const checked = true
+  const checked =
+    r.navInViewport !== null || r.case.startsWith('toolbar-guard')
   const ok = overflow <= 1
-  if (checked && !ok) failed += 1
+  if (checked && (!ok || (r.navInViewport === false))) failed += 1
   console.log(
     [
       ok ? '·' : (checked ? '✗' : '·'),
@@ -202,6 +232,8 @@ for (const r of results) {
       `视口 ${r.vvH}px`,
       `缩放 ${r.scaleVar}`,
       `画布 ${r.appW}×${r.appH}`,
+      `保护带 ${r.topGuard}`,
+      `导航可见 ${r.navInViewport ?? '-'}`,
       `左右留白 ${r.canvas?.left ?? 0}px`,
       `溢出 ${overflow >= 0 ? '+' : ''}${overflow}px`,
     ].join('  '),
