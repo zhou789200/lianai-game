@@ -33,10 +33,20 @@ export function initLowPowerMode(): boolean {
       const chromeMajor = Number(ua.match(/Chrome\/(\d+)/)?.[1] ?? 999)
       const memory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 8
       const cores = navigator.hardwareConcurrency ?? 8
+      const android = /Android/i.test(ua)
+      /**
+       * Android 厂商浏览器 / 应用内 WebView 上报的 Chrome 版本并不可信：
+       * ColorOS 浏览器会写 Chrome/115，实际仍使用旧合成器。
+       * 这类环境统一走稳定绘制模式；桌面 Chrome / Edge 不受影响。
+       */
+      const vendorBrowser =
+        /HeyTapBrowser|OppoBrowser|MiuiBrowser|HuaweiBrowser|VivoBrowser|UCBrowser|Quark|MQQBrowser|MicroMessenger|baiduboxapp|SogouMobileBrowser|LenovoBrowser/i.test(
+          ua,
+        )
       enabled =
-        (ua.includes('wv') && chromeMajor < 110) ||
+        (android && (vendorBrowser || ua.includes('wv') || chromeMajor < 120)) ||
         memory <= 2 ||
-        (chromeMajor < 100 && memory <= 4) ||
+        (chromeMajor < 110 && memory <= 4) ||
         cores <= 2
     }
   }

@@ -37,6 +37,28 @@ html.low-power .storybook__option {
   animation: none !important;
 }
 
+/* 旧 Chromium 在剧情卡这棵子树上会把入场动画产生的半透明纹理
+   与卡片自身的圆角裁切合并，底部的第二个选项偶尔不进入最终帧。
+   卡片取消额外的层叠上下文与遮罩，滚动区退出定位参与，
+   选项再单独建层，切页时不会被下方的场景图层盖住。 */
+html.low-power .storybook__page {
+  isolation: auto !important;
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+}
+
+html.low-power .storybook__content {
+  position: static;
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+}
+
+html.low-power .storybook__option {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  isolation: isolate;
+}
+
 html.low-power .scene__sweep,
 html.low-power .storybook__page,
 html.low-power .scene__bg {
