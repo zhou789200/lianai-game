@@ -13,7 +13,7 @@ export interface AppHeaderProps {
  * 与参考图的「圆头像 + 名牌 + 右侧圆钮」结构一致。
  */
 export function AppHeader({ onOpenSettings, onOpenRomance }: AppHeaderProps) {
-  const { state } = useGame()
+  const { state, charm } = useGame()
   const mainRel = state.relationships[0]
   const stars = Math.max(1, Math.min(5, state.level))
 
@@ -40,7 +40,7 @@ export function AppHeader({ onOpenSettings, onOpenRomance }: AppHeaderProps) {
             </span>
           </div>
           <p className="appbar__sub">
-            Lv.{state.level} · 魅力 {state.decor.length > 0 ? '在线' : '待布置'}
+            Lv.{state.level} · 魅力 {charm}
           </p>
         </div>
 
