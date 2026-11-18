@@ -52,6 +52,8 @@ work/**/*.jpeg
 work/**/*.webp
 work/**/*.log
 work/codebuddy-help.*
+# 真机排查与对比用的截图（根目录 screenshots/）
+screenshots/
 .codex-voice-probe-*.mp3
 *.log
 *.log.*
