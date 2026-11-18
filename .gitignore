@@ -38,6 +38,14 @@ work/window-check/
 local-storage-backup-*.json
 work/demo/
 work/submit-docs/
+work/unix*.txt
+work/ps.txt
+work/window.txt
+work/*-crop.png
+work/cold-*.png
+work/tab-*.png
+work/final-*.png
+work/diag-*.png
 work/**/*.png
 work/**/*.jpg
 work/**/*.jpeg
