@@ -44,8 +44,16 @@ const HOST = process.env.SEABREEZE_HOST ?? '47.242.226.94'
 const USER = process.env.SEABREEZE_USER ?? 'root'
 const REMOTE_DIR = process.env.SEABREEZE_DIR ?? '/opt/seabreeze'
 const DOMAIN = process.env.SEABREEZE_DOMAIN ?? 'zljgg.xyz'
+/**
+ * Windows 上必须优先用 USERPROFILE。
+ * 从 Git Bash / WSL 启动时 os.homedir() 可能返回 Linux 的 /root，
+ * 会让部署密钥写到错误位置。
+ */
+const WINDOWS_HOME =
+  process.platform === 'win32' ? process.env.USERPROFILE?.trim() : ''
+const HOME = WINDOWS_HOME || os.homedir()
 const KEY = expandHome(
-  process.env.SEABREEZE_SSH_KEY ?? path.join(os.homedir(), '.ssh', 'seabreeze_hk_deploy'),
+  process.env.SEABREEZE_SSH_KEY ?? path.join(HOME, '.ssh', 'seabreeze_hk_deploy'),
 )
 const BACKUP_DIR = process.env.SEABREEZE_BACKUP_DIR ?? '/opt/seabreeze-backups'
 const KEEP_BACKUPS = Number(process.env.SEABREEZE_KEEP_BACKUPS ?? 6)
@@ -97,9 +105,9 @@ const TARGET = `${USER}@${HOST}`
 const SSH_ATTEMPTS = 3
 
 function expandHome(value) {
-  if (value === '~') return os.homedir()
+  if (value === '~') return HOME
   if (value.startsWith('~/') || value.startsWith('~\\')) {
-    return path.join(os.homedir(), value.slice(2))
+    return path.join(HOME, value.slice(2))
   }
   return value
 }
