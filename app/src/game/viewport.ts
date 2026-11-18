@@ -45,6 +45,14 @@ const GROW_SETTLE_MS = 200
 const RECHECK_DELAYS = [60, 200, 460]
 
 /**
+ * 视口看门狗间隔。
+ *
+ * 厂商浏览器偶尔只改可视视口、不派发任何事件。1.2s 足够在「底部露底」
+ * 被玩家注意到之前自愈，又不会在空闲时造成可感知的唤醒开销。
+ */
+const VIEWPORT_WATCHDOG_MS = 1200
+
+/**
  * 浏览器工具栏顶部保护带。
  *
  * 默认必须为 0：ColorOS 自带浏览器的布局视口已经扣过地址栏，
@@ -164,6 +172,21 @@ export function useCanvasMetrics(): CanvasMetrics {
     let growTimer = 0
     let pendingGrow: ReturnType<typeof readViewport> | null = null
 
+    /** 度量值不变时跳过，避免看门狗轮询触发无意义重渲染。 */
+    const commit = (next: CanvasMetrics) => {
+      setMetrics((current) =>
+        current.scale === next.scale &&
+        current.width === next.width &&
+        current.height === next.height &&
+        current.canvasHeight === next.canvasHeight &&
+        current.viewportH === next.viewportH &&
+        current.viewportTop === next.viewportTop &&
+        current.topGuard === next.topGuard
+          ? current
+          : next,
+      )
+    }
+
     const measure = () => {
       frame = 0
       const next = readViewport()
@@ -181,7 +204,7 @@ export function useCanvasMetrics(): CanvasMetrics {
           pendingGrow = null
         }
         prev = next
-        setMetrics(computeMetrics(next.w, next.h, next.top, next.topGuard))
+        commit(computeMetrics(next.w, next.h, next.top, next.topGuard))
         return
       }
       if (!grew) return
@@ -196,7 +219,7 @@ export function useCanvasMetrics(): CanvasMetrics {
         const latest = readViewport()
         if (latest.h < settled.h - 1) return
         prev = latest
-        setMetrics(computeMetrics(latest.w, latest.h, latest.top, latest.topGuard))
+        commit(computeMetrics(latest.w, latest.h, latest.top, latest.topGuard))
       }, GROW_SETTLE_MS)
     }
 
@@ -212,23 +235,51 @@ export function useCanvasMetrics(): CanvasMetrics {
       }
     }
 
+    /*
+     * 看门狗：ColorOS / UC / 夸克等浏览器在地址栏收放、切后台再回来、
+     * 从别的页面按返回键跳回时，偶尔什么都不派发（resize / pageshow / focus
+     * 全都没有），画布就停在旧高度，底部露出一条页面底色。
+     * 低频轮询一次 visualViewport，尺寸真变了才提交；空闲时只是一次读值，
+     * 不触发任何重渲染。隐藏时跳过，不和后台省电策略对着干。
+     */
+    const watchdog = window.setInterval(() => {
+      if (document.visibilityState === 'hidden') return
+      const next = readViewport()
+      if (
+        Math.abs(next.w - prev.w) <= 1 &&
+        Math.abs(next.h - prev.h) <= 1 &&
+        next.top === prev.top
+      ) {
+        return
+      }
+      prev = next
+      commit(computeMetrics(next.w, next.h, next.top, next.topGuard))
+    }, VIEWPORT_WATCHDOG_MS)
+
     applyCanvasVars(computeMetrics(prev.w, prev.h, prev.top, prev.topGuard))
     window.addEventListener('resize', schedule)
     window.addEventListener('orientationchange', schedule)
     window.addEventListener('pageshow', schedule)
     window.addEventListener('focus', schedule)
+    // 切后台再回来时浏览器工具栏状态可能已经变了，但上述事件不一定派发
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') schedule()
+    }
+    document.addEventListener('visibilitychange', onVisibility)
     window.visualViewport?.addEventListener('resize', schedule)
     window.visualViewport?.addEventListener('scroll', schedule)
 
     return () => {
       if (frame) window.cancelAnimationFrame(frame)
       if (growTimer) window.clearTimeout(growTimer)
+      window.clearInterval(watchdog)
       timers.forEach((t) => window.clearTimeout(t))
       timers.clear()
       window.removeEventListener('resize', schedule)
       window.removeEventListener('orientationchange', schedule)
       window.removeEventListener('pageshow', schedule)
       window.removeEventListener('focus', schedule)
+      document.removeEventListener('visibilitychange', onVisibility)
       window.visualViewport?.removeEventListener('resize', schedule)
       window.visualViewport?.removeEventListener('scroll', schedule)
     }
