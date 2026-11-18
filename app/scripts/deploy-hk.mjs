@@ -573,9 +573,22 @@ function buildAndPack(stamp) {
 
   step(4, 6, '打包产物')
   rmSync(archive, { force: true })
+  /*
+   * Windows 自带的 bsdtar（tar.exe）会把「带盘符的绝对路径」当成远程主机，
+   * 报 `Cannot connect to C: resolve failed`。归档路径一律走相对路径：
+   * 用归档相对 APP_ROOT 的形式，工作目录设成 APP_ROOT。
+   */
   run(
     TAR,
-    ['-czf', archive, 'dist', 'server', 'shared', 'package.json', 'package-lock.json'],
+    [
+      '-czf',
+      path.relative(APP_ROOT, archive),
+      'dist',
+      'server',
+      'shared',
+      'package.json',
+      'package-lock.json',
+    ],
     { cwd: APP_ROOT },
   )
   if (!existsSync(archive) || statSync(archive).size === 0) fail('打包失败：压缩包为空。')
