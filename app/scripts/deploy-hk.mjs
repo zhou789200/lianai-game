@@ -83,11 +83,18 @@ const SSH_OPTS = [
   '-o',
   'StrictHostKeyChecking=accept-new',
   '-o',
+  'ConnectTimeout=20',
+  '-o',
+  'ConnectionAttempts=1',
+  '-o',
+  'TCPKeepAlive=yes',
+  '-o',
   'ServerAliveInterval=15',
   '-o',
   'ServerAliveCountMax=4',
 ]
 const TARGET = `${USER}@${HOST}`
+const SSH_ATTEMPTS = 3
 
 function expandHome(value) {
   if (value === '~') return os.homedir()
@@ -116,6 +123,7 @@ function run(command, args, options = {}) {
     encoding: 'utf8',
     stdio: options.capture ? ['ignore', 'pipe', 'pipe'] : 'inherit',
     shell: options.shell ?? false,
+    timeout: options.timeout,
   })
   if (result.error) throw result.error
   if (result.status !== 0) {
@@ -254,20 +262,51 @@ function ensureKey() {
   }
 }
 
-function checkSsh() {
-  const result = spawnSync('ssh', [...SSH_OPTS, TARGET, 'echo __SEABREEZE_OK__'], {
-    encoding: 'utf8',
-    timeout: 30_000,
-  })
-  if (result.status !== 0 || !result.stdout.includes('__SEABREEZE_OK__')) {
-    const detail = [result.stdout, result.stderr].filter(Boolean).join('\n').trim()
-    fail(
-      `SSH 免密登录失败：${TARGET}\n${detail}\n\n` +
-        '请检查：1) 公钥是否已加入服务器 authorized_keys；2) 私钥路径是否正确；3) 服务器 22 端口是否可连。\n' +
-        '查看本机公钥：npm run deploy:hk -- --print-key',
+function sshFailureHint(detail) {
+  if (/Connection timed out|Connection reset|kex_exchange_identification|banner exchange/i.test(detail)) {
+    return (
+      '服务器可访问，但 SSH 在密钥交换阶段超时或被重置。\n' +
+      '这通常是云防火墙/SSH 服务瞬时限流，或服务器内存紧张导致 sshd 无法及时响应；' +
+      '网站 HTTPS 仍可能正常。请稍后重试，或到云控制台检查实例负载与安全组。'
     )
   }
-  log(`✓ SSH 免密登录正常：${TARGET}`)
+  if (/Permission denied|publickey/i.test(detail)) {
+    return (
+      'SSH 认证失败。请确认公钥已加入服务器 /root/.ssh/authorized_keys，' +
+      '私钥路径正确，并检查 authorized_keys 权限。\n' +
+      '查看本机公钥：npm run deploy:hk -- --print-key'
+    )
+  }
+  if (/Could not resolve|Name or service not known/i.test(detail)) {
+    return '无法解析服务器地址，请检查网络与 SEABREEZE_HOST。'
+  }
+  return (
+    '请检查：1) 服务器 22 端口是否可连；2) 公钥是否正确安装；' +
+    '3) 本机网络是否限制了 SSH。\n查看本机公钥：npm run deploy:hk -- --print-key'
+  )
+}
+
+function checkSsh() {
+  let detail = ''
+  for (let attempt = 1; attempt <= SSH_ATTEMPTS; attempt += 1) {
+    const result = spawnSync('ssh', [...SSH_OPTS, TARGET, 'echo __SEABREEZE_OK__'], {
+      encoding: 'utf8',
+      timeout: 45_000,
+    })
+    if (result.status === 0 && (result.stdout ?? '').includes('__SEABREEZE_OK__')) {
+      log(`✓ SSH 免密登录正常：${TARGET}`)
+      return
+    }
+    detail = [result.stdout, result.stderr, result.error?.message]
+      .filter(Boolean)
+      .join('\n')
+      .trim()
+    if (attempt < SSH_ATTEMPTS) {
+      log(`  SSH 第 ${attempt} 次连接失败，3 秒后重试…`)
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 3000)
+    }
+  }
+  fail(`SSH 登录失败：${TARGET}\n${detail}\n\n${sshFailureHint(detail)}`)
 }
 
 function remoteScript(body, { captureOutput = true } = {}) {
@@ -632,9 +671,28 @@ async function deploy() {
   step(5, 6, '上传并切换')
   const remoteArchive = `/tmp/seabreeze-${stamp}.tar.gz`
   log(`上传 ${formatBytes(statSync(release.archive).size)} → ${TARGET}:${remoteArchive}`)
-  run('scp', [...SSH_OPTS, '-q', release.archive, `${TARGET}:${remoteArchive}`], {
-    cwd: APP_ROOT,
-  })
+  let uploaded = false
+  for (let attempt = 1; attempt <= SSH_ATTEMPTS; attempt += 1) {
+    const result = spawnSync(
+      'scp',
+      [...SSH_OPTS, '-q', release.archive, `${TARGET}:${remoteArchive}`],
+      { cwd: APP_ROOT, encoding: 'utf8', timeout: 5 * 60 * 1000 },
+    )
+    if (result.status === 0) {
+      uploaded = true
+      break
+    }
+    const detail = [result.stdout, result.stderr, result.error?.message]
+      .filter(Boolean)
+      .join('\n')
+      .trim()
+    if (attempt === SSH_ATTEMPTS) {
+      fail(`上传失败（已重试 ${SSH_ATTEMPTS} 次）：${detail}\n\n${sshFailureHint(detail)}`)
+    }
+    log(`  上传第 ${attempt} 次失败，3 秒后重试…`)
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 3000)
+  }
+  if (!uploaded) fail('上传失败：未知错误。')
 
   const script = remoteScriptText(stamp, release.digest)
   const result = remoteScript(script)
