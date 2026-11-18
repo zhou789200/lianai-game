@@ -52,3 +52,16 @@ html.low-power .scene--pet .scene__curtain,
 html.low-power .scene--story .scene__win {
   filter: none !important;
 }
+
+/* 旧 Chromium 在剧情页的大面积图层上会把底部导航的后续子项
+   合进已失效的纹理，表现为只剩第一个按钮。给导航一个独立的
+   合成层，并去掉会生成额外缓冲的细节，保证五个按钮一起绘制。 */
+html.low-power .nav {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  isolation: isolate;
+}
+
+html.low-power .nav__item {
+  transform: translateZ(0);
+}
