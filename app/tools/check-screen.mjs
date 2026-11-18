@@ -233,6 +233,8 @@ const MEASURE = `
     appbar: at('.appbar'),
     nav: at('.nav'),
     screen: at('.screen'),
+    safeTop: getComputedStyle(document.documentElement).getPropertyValue('--safe-top').trim(),
+    safeBottom: getComputedStyle(document.documentElement).getPropertyValue('--safe-bottom').trim(),
   }
 })()
 `
@@ -292,6 +294,9 @@ async function main() {
         height: vp.height,
         deviceScaleFactor: 2,
         mobile: vp.width < 600,
+      })
+      await client.send('Emulation.setSafeAreaInsetsOverride', {
+        insets: { top: 47, right: 0, bottom: 34, left: 0 },
       })
       await client.send('Page.navigate', { url })
       await sleep(1200)
