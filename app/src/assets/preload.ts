@@ -1,5 +1,4 @@
 import {
-  CHARACTERS,
   PETS,
   PET_FEED_HANDS,
   PET_GROOM_HANDS,
@@ -146,7 +145,6 @@ export function preloadArt() {
 
   void preloadGate.then(() => {
     queueArt([
-      ...Object.values(CHARACTERS).map((a) => a.src),
       ...Object.values(PETS).map((a) => a.src),
       ...Object.values(PROPS).map((a) => a.src),
       PET_FEED_HANDS.src,
