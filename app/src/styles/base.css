@@ -29,6 +29,22 @@ body {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   overflow: hidden;
+  /* 厂商浏览器（ColorOS / MIUI 等）长按会弹「选择复制 / 标记广告 / 问 AI」，
+     营业里的「按住不放」正好会被它盖住并打断制作。整块画布是游戏界面，
+     没有要复制的文本，直接关掉选择与长按预览；输入框再单独放开。 */
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* 需要选中的场景（输入框 / 显式标记）自行覆盖回来 */
+input,
+textarea,
+[contenteditable='true'],
+.is-selectable {
+  -webkit-touch-callout: default;
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 #root {
