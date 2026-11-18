@@ -21,6 +21,7 @@ import { StoryDraftSheet } from '../components/StoryDraftSheet'
 import { StoryVoiceButton } from '../components/StoryVoiceButton'
 import { UiButton } from '../components/UiButton'
 import { useStoryAutoAdvance, useStoryVoice } from '../game/useStoryVoice'
+import { useAppStoryOverlay } from '../game/overlayLayer'
 import type { StoryChoice } from '../game/types'
 
 interface ReplyState {
@@ -68,6 +69,7 @@ export function RomanceView() {
   const replyScope = chapter?.id ?? 'none'
   const activeReply = reply?.scope === replyScope ? reply : null
   const readerOpen = Boolean(activeDynamicChapter) || continuationOpen
+  useAppStoryOverlay(readerOpen)
 
   useLayoutEffect(() => {
     if (!readerOpen) return

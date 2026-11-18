@@ -1,0 +1,89 @@
+/* ============================================================
+   旧内核 / 低内存设备降级
+   只关闭装饰动画、毛玻璃和混合模式，保留布局、文字与触控反馈。
+   由 src/game/lowPower.ts 在首帧前给 <html> 加 .low-power。
+   ============================================================ */
+
+html.low-power *,
+html.low-power *::before,
+html.low-power *::after {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  mix-blend-mode: normal !important;
+}
+
+/* 场景层的环境动画（光扫、尘埃、花瓣、底图淡入）全部停掉 */
+html.low-power .scene *,
+html.low-power .storybook__spark,
+html.low-power .storybook__page-curl,
+html.low-power .storybook__pip,
+html.low-power .storybook__next,
+html.low-power .storybook__next svg,
+html.low-power .storybook__ai-trigger svg,
+html.low-power .storybook__book,
+html.low-power .storybook__ai,
+html.low-power .nav__item.is-active .nav__icon {
+  animation: none !important;
+}
+
+/* 剧情翻页/文字入场也直接呈现，避免旧内核连续合成整张卡片 */
+html.low-power .storybook__page,
+html.low-power .storybook__speech,
+html.low-power .storybook__reply,
+html.low-power .storybook__choice,
+html.low-power .storybook__locked,
+html.low-power .storybook__finish,
+html.low-power .storybook__option {
+  animation: none !important;
+}
+
+/* 旧 Chromium 在剧情卡这棵子树上会把入场动画产生的半透明纹理
+   与卡片自身的圆角裁切合并，底部的第二个选项偶尔不进入最终帧。
+   卡片取消额外的层叠上下文与遮罩，滚动区退出定位参与，
+   选项再单独建层，切页时不会被下方的场景图层盖住。 */
+html.low-power .storybook__page {
+  isolation: auto !important;
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+}
+
+html.low-power .storybook__content {
+  position: static;
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+}
+
+html.low-power .storybook__option {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  isolation: isolate;
+}
+
+html.low-power .scene__sweep,
+html.low-power .storybook__page,
+html.low-power .scene__bg {
+  will-change: auto !important;
+}
+
+/* 场景里最贵的几层高斯模糊；低性能设备直接换成清晰边缘 */
+html.low-power .scene__clouds,
+html.low-power .scene__village,
+html.low-power .scene__vine,
+html.low-power .scene__plant,
+html.low-power .scene--pet .scene__curtain,
+html.low-power .scene--story .scene__win {
+  filter: none !important;
+}
+
+/* 旧 Chromium 在剧情页的大面积图层上会把底部导航的后续子项
+   合进已失效的纹理，表现为只剩第一个按钮。给导航一个独立的
+   合成层，并去掉会生成额外缓冲的细节，保证五个按钮一起绘制。 */
+html.low-power .nav {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  isolation: isolate;
+}
+
+html.low-power .nav__item {
+  transform: translateZ(0);
+}

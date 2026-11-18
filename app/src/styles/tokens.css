@@ -45,6 +45,7 @@
   --sea-500: #4e9d90;
   --sea-600: #3e8c86;
   --sea-700: #2d635c;
+  --sea-800: #264f4a;
   --sea-900: #1f4642;
 
   /* ---- 旧金：黄铜灯、拉花、描边（--gold-500 的完整色阶）---- */
@@ -125,8 +126,8 @@
   /* ---- 安全区 ----
      env() 上报的是物理像素，画布又被整体缩放，
      这里除以 --app-scale 换算回逻辑坐标，缩放后正好等于物理安全区。 */
-  --safe-top: calc(env(safe-area-inset-top, 0px) / var(--app-scale, 1));
-  --safe-bottom: calc(env(safe-area-inset-bottom, 0px) / var(--app-scale, 1));
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
 
   /* ---- 布局骨架：悬浮顶栏高度 & 立绘展示区 ---- */
   --header-h: 96px; /* 顶部资源栏内容高度（不含刘海安全区） */

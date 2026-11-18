@@ -146,16 +146,6 @@ export function BusinessView({ runId, onExit }: BusinessViewProps) {
   const previousServedRef = useRef(0)
   const previousDirtyCountRef = useRef(0)
   const previousEventIdRef = useRef<string | null>(null)
-  const sessionRewardsRef = useRef({ coins: 0, exp: 0 })
-
-  useEffect(() => {
-    const totalCoins = session.coins + session.tips
-    const deltaCoins = totalCoins - sessionRewardsRef.current.coins
-    const deltaExp = session.exp - sessionRewardsRef.current.exp
-    if (deltaCoins <= 0 && deltaExp <= 0) return
-    sessionRewardsRef.current = { coins: totalCoins, exp: session.exp }
-    actions.recordRunRewards(deltaCoins, deltaExp)
-  }, [session.coins, session.tips, session.exp, actions])
 
   useEffect(() => {
     focusedRef.current = focusedOrderId

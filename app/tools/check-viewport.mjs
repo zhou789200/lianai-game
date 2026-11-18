@@ -104,7 +104,7 @@ const MEASURE = `
   const canvas = document.querySelector('.phone__canvas')
   const phone = document.querySelector('.phone')
   const appbar = document.querySelector('.appbar')
-  const nav = document.querySelector('.navbar') || document.querySelector('.tabbar')
+  const nav = document.querySelector('.nav')
   const cs = getComputedStyle(document.documentElement)
   return {
     innerW: window.innerWidth, innerH: window.innerHeight,
@@ -114,9 +114,14 @@ const MEASURE = `
     dpr: window.devicePixelRatio,
     scaleVar: cs.getPropertyValue('--app-scale').trim(),
     appW: cs.getPropertyValue('--app-w').trim(), appH: cs.getPropertyValue('--app-h').trim(),
+    topGuard: cs.getPropertyValue('--top-guard').trim(),
     scrollH: document.documentElement.scrollHeight, scrollY: window.scrollY,
     phone: r(phone), canvas: r(canvas), appbar: r(appbar), nav: r(nav),
     title: r(document.querySelector('.appbar__plate')),
+    navInViewport: nav
+      ? nav.getBoundingClientRect().top >= -1 &&
+        nav.getBoundingClientRect().bottom <= window.innerHeight + 1
+      : null,
   }
 })()
 `
@@ -187,14 +192,33 @@ await delay(900)
 const jitter2 = await client.send('Runtime.evaluate', { expression: MEASURE, returnByValue: true })
 results.push({ case: 'shrink-940->860 (Δ80)', ...jitter2.result.value })
 
+/*
+ * 地址栏浮层验证：不加参数时保护带必须为 0，页面不能被整体下移；
+ * 只有显式 ?topguard=56 才允许单机型微调。
+ */
+await client.send('Emulation.setDeviceMetricsOverride', { width: 360, height: 800, deviceScaleFactor: 3, mobile: true })
+await client.send('Page.navigate', { url: `http://127.0.0.1:${port}/` })
+await delay(1500)
+const defaultGuard = await client.send('Runtime.evaluate', { expression: MEASURE, returnByValue: true })
+results.push({ case: 'default-guard-360x800', ...defaultGuard.result.value })
+
+await client.send('Page.navigate', { url: `http://127.0.0.1:${port}/?topguard=56` })
+await delay(1500)
+const explicitGuard = await client.send('Runtime.evaluate', { expression: MEASURE, returnByValue: true })
+results.push({ case: 'explicit-guard-360x800', ...explicitGuard.result.value })
+
 console.log('')
 let failed = 0
 for (const r of results) {
   const canvasBottom = r.canvas?.bottom ?? 0
   const overflow = canvasBottom - r.vvH
-  const checked = true
+  const checked = r.navInViewport !== null
   const ok = overflow <= 1
-  if (checked && !ok) failed += 1
+  const guardOk =
+    r.case.startsWith('default-guard')
+      ? r.topGuard === '0px'
+      : !r.case.startsWith('explicit-guard') || r.topGuard === '56px'
+  if (checked && (!ok || r.navInViewport === false || !guardOk)) failed += 1
   console.log(
     [
       ok ? '·' : (checked ? '✗' : '·'),
@@ -202,6 +226,8 @@ for (const r of results) {
       `视口 ${r.vvH}px`,
       `缩放 ${r.scaleVar}`,
       `画布 ${r.appW}×${r.appH}`,
+      `保护带 ${r.topGuard}`,
+      `导航可见 ${r.navInViewport ?? '-'}`,
       `左右留白 ${r.canvas?.left ?? 0}px`,
       `溢出 ${overflow >= 0 ? '+' : ''}${overflow}px`,
     ].join('  '),

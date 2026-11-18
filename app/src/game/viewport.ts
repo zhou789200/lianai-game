@@ -31,14 +31,44 @@ export const DESIGN_H = 932
 const DESKTOP_PAD = 18
 
 /**
- * 视口「变大」时的抖动阈值。
- * 地址栏收起会让可用高度突然变高，这种情况不重算，避免画布忽大忽小；
- * 但视口「变小」必须立刻跟随——否则画布会比屏幕高，上下被裁。
+ * 视口「变大」后的收敛延迟。
+ *
+ * 地址栏 / 底部工具条收起会让可用高度变高，画布必须跟着长高，
+ * 否则底部会露出一条页面底色。但这些收起动作是逐帧动画，
+ * 事件触发时读到的是中间值：直接跟会让画布被连续缩放好几次。
+ * 因此变大只登记候选值，等 200ms 没有新的变化再一次性应用；
+ * 视口「变小」仍然立刻跟随——否则画布比屏幕高，上下会被裁。
  */
-const GROW_JITTER = 60
+const GROW_SETTLE_MS = 200
 
 /** 地址栏收放动画的收敛时间，视口变化后再补测几次拿到最终值 */
 const RECHECK_DELAYS = [60, 200, 460]
+
+/**
+ * 视口看门狗间隔。
+ *
+ * 厂商浏览器偶尔只改可视视口、不派发任何事件。1.2s 足够在「底部露底」
+ * 被玩家注意到之前自愈，又不会在空闲时造成可感知的唤醒开销。
+ */
+const VIEWPORT_WATCHDOG_MS = 1200
+
+/**
+ * 浏览器工具栏顶部保护带。
+ *
+ * 默认必须为 0：ColorOS 自带浏览器的布局视口已经扣过地址栏，
+ * 再用「布局视口 - 可视视口」推算会把页面整体下移，上下露底。
+ * 只有确认某些浏览器真的把地址栏浮在页面上、visualViewport 又不报
+ * offsetTop 时，才通过 URL 参数 ?topguard=<px> 做单机型微调。
+ */
+const MIN_TOP_GUARD = 12
+const MAX_TOP_GUARD = 72
+
+function readTopGuard() {
+  if (typeof window === 'undefined') return 0
+  const requested = Number(new URLSearchParams(window.location.search).get('topguard'))
+  if (!Number.isFinite(requested) || requested < MIN_TOP_GUARD) return 0
+  return Math.min(Math.round(requested), MAX_TOP_GUARD)
+}
 
 export interface CanvasMetrics {
   scale: number
@@ -50,6 +80,8 @@ export interface CanvasMetrics {
   viewportH: number
   /** 可视视口在布局视口中的纵向偏移（iOS 键盘/滚动时非 0） */
   viewportTop: number
+  /** 浏览器工具栏遮挡的顶部保护带（物理像素） */
+  topGuard: number
 }
 
 function readViewport() {
@@ -57,24 +89,29 @@ function readViewport() {
   const w = Math.round(vv?.width || window.innerWidth || document.documentElement.clientWidth || DESIGN_W)
   const h = Math.round(vv?.height || window.innerHeight || document.documentElement.clientHeight || DESIGN_H)
   const top = Math.round(vv?.offsetTop || 0)
-  return { w, h, top }
+  const topGuard = readTopGuard()
+  return { w, h, top, topGuard }
 }
 
-export function computeMetrics(w: number, h: number, top = 0): CanvasMetrics {
+export function computeMetrics(w: number, h: number, top = 0, topGuard = 0): CanvasMetrics {
   const pad = w <= 480 ? 0 : DESKTOP_PAD
   const mobile = w <= 480
   const raw = mobile
     ? (w - pad * 2) / DESIGN_W
     : Math.min((w - pad * 2) / DESIGN_W, (h - pad * 2) / DESIGN_H)
   const scale = Number.isFinite(raw) && raw > 0 ? raw : 1
-  const canvasHeight = mobile ? Math.max(1, (h - pad * 2) / scale) : DESIGN_H
+  const guard = mobile ? Math.max(0, topGuard) : 0
+  const canvasHeight = mobile
+    ? Math.max(1, (h - pad * 2 - guard) / scale)
+    : DESIGN_H
   return {
     scale: Math.round(scale * 1e4) / 1e4,
     width: mobile ? w - pad * 2 : Math.round(DESIGN_W * scale),
-    height: mobile ? h - pad * 2 : Math.round(DESIGN_H * scale),
+    height: mobile ? h - pad * 2 - guard : Math.round(DESIGN_H * scale),
     canvasHeight: Math.round(canvasHeight * 1e2) / 1e2,
     viewportH: h,
     viewportTop: top,
+    topGuard: guard,
   }
 }
 
@@ -86,12 +123,13 @@ export function applyCanvasVars(metrics: CanvasMetrics) {
   root.style.setProperty('--app-canvas-h', `${metrics.canvasHeight}px`)
   root.style.setProperty('--vv-h', `${metrics.viewportH}px`)
   root.style.setProperty('--vv-top', `${metrics.viewportTop}px`)
+  root.style.setProperty('--top-guard', `${metrics.topGuard}px`)
 }
 
 /** 首帧渲染前同步写入，避免画布先按 fallback 尺寸出现再跳变。 */
 export function syncCanvasVars(): CanvasMetrics {
-  const { w, h, top } = readViewport()
-  const metrics = computeMetrics(w, h, top)
+  const { w, h, top, topGuard } = readViewport()
+  const metrics = computeMetrics(w, h, top, topGuard)
   applyCanvasVars(metrics)
   return metrics
 }
@@ -120,29 +158,69 @@ export function useCanvasMetrics(): CanvasMetrics {
         canvasHeight: DESIGN_H,
         viewportH: DESIGN_H,
         viewportTop: 0,
+        topGuard: 0,
       }
     }
-    const { w, h, top } = readViewport()
-    return computeMetrics(w, h, top)
+    const { w, h, top, topGuard } = readViewport()
+    return computeMetrics(w, h, top, topGuard)
   })
 
   useEffect(() => {
     let prev = readViewport()
     let frame = 0
     const timers = new Set<number>()
+    let growTimer = 0
+    let pendingGrow: ReturnType<typeof readViewport> | null = null
+
+    /** 度量值不变时跳过，避免看门狗轮询触发无意义重渲染。 */
+    const commit = (next: CanvasMetrics) => {
+      setMetrics((current) =>
+        current.scale === next.scale &&
+        current.width === next.width &&
+        current.height === next.height &&
+        current.canvasHeight === next.canvasHeight &&
+        current.viewportH === next.viewportH &&
+        current.viewportTop === next.viewportTop &&
+        current.topGuard === next.topGuard
+          ? current
+          : next,
+      )
+    }
 
     const measure = () => {
       frame = 0
       const next = readViewport()
       const widthChanged = Math.abs(next.w - prev.w) > 1
       // 收缩一定跟随（否则画布比视口高会被裁）；
-      // 变大只有在超过阈值时才重算，避免地址栏动画导致画布反复缩放。
+      // 变大等动画收敛后再跟随，避免画布被连续缩放。
       const shrank = next.h < prev.h - 1 || next.w < prev.w - 1
-      const grewALot = next.h - prev.h > GROW_JITTER
+      const grew = next.h > prev.h + 1
       const moved = next.top !== prev.top
-      if (!widthChanged && !shrank && !grewALot && !moved) return
-      prev = next
-      setMetrics(computeMetrics(next.w, next.h, next.top))
+      const guardChanged = next.topGuard !== prev.topGuard
+      if (widthChanged || shrank || moved || guardChanged) {
+        if (growTimer) {
+          window.clearTimeout(growTimer)
+          growTimer = 0
+          pendingGrow = null
+        }
+        prev = next
+        commit(computeMetrics(next.w, next.h, next.top, next.topGuard))
+        return
+      }
+      if (!grew) return
+      // 只登记，不立刻重排；等这轮收放动画结束再应用最终高度。
+      pendingGrow = next
+      if (growTimer) window.clearTimeout(growTimer)
+      growTimer = window.setTimeout(() => {
+        growTimer = 0
+        const settled = pendingGrow
+        pendingGrow = null
+        if (!settled) return
+        const latest = readViewport()
+        if (latest.h < settled.h - 1) return
+        prev = latest
+        commit(computeMetrics(latest.w, latest.h, latest.top, latest.topGuard))
+      }, GROW_SETTLE_MS)
     }
 
     const schedule = () => {
@@ -157,22 +235,51 @@ export function useCanvasMetrics(): CanvasMetrics {
       }
     }
 
-    applyCanvasVars(computeMetrics(prev.w, prev.h, prev.top))
+    /*
+     * 看门狗：ColorOS / UC / 夸克等浏览器在地址栏收放、切后台再回来、
+     * 从别的页面按返回键跳回时，偶尔什么都不派发（resize / pageshow / focus
+     * 全都没有），画布就停在旧高度，底部露出一条页面底色。
+     * 低频轮询一次 visualViewport，尺寸真变了才提交；空闲时只是一次读值，
+     * 不触发任何重渲染。隐藏时跳过，不和后台省电策略对着干。
+     */
+    const watchdog = window.setInterval(() => {
+      if (document.visibilityState === 'hidden') return
+      const next = readViewport()
+      if (
+        Math.abs(next.w - prev.w) <= 1 &&
+        Math.abs(next.h - prev.h) <= 1 &&
+        next.top === prev.top
+      ) {
+        return
+      }
+      prev = next
+      commit(computeMetrics(next.w, next.h, next.top, next.topGuard))
+    }, VIEWPORT_WATCHDOG_MS)
+
+    applyCanvasVars(computeMetrics(prev.w, prev.h, prev.top, prev.topGuard))
     window.addEventListener('resize', schedule)
     window.addEventListener('orientationchange', schedule)
     window.addEventListener('pageshow', schedule)
     window.addEventListener('focus', schedule)
+    // 切后台再回来时浏览器工具栏状态可能已经变了，但上述事件不一定派发
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') schedule()
+    }
+    document.addEventListener('visibilitychange', onVisibility)
     window.visualViewport?.addEventListener('resize', schedule)
     window.visualViewport?.addEventListener('scroll', schedule)
 
     return () => {
       if (frame) window.cancelAnimationFrame(frame)
+      if (growTimer) window.clearTimeout(growTimer)
+      window.clearInterval(watchdog)
       timers.forEach((t) => window.clearTimeout(t))
       timers.clear()
       window.removeEventListener('resize', schedule)
       window.removeEventListener('orientationchange', schedule)
       window.removeEventListener('pageshow', schedule)
       window.removeEventListener('focus', schedule)
+      document.removeEventListener('visibilitychange', onVisibility)
       window.visualViewport?.removeEventListener('resize', schedule)
       window.visualViewport?.removeEventListener('scroll', schedule)
     }

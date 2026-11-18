@@ -10,8 +10,13 @@
   "scripts": {
     "dev": "node scripts/dev.mjs",
     "lint": "eslint .",
-    "test": "node --test tools/test-cafe-session.mjs tools/test-game-state.mjs tools/test-global-bgm.mjs tools/test-pet-voice.mjs tools/test-story-system.mjs tools/test-story-voice.mjs tools/test-user-db.mjs",
+    "test": "node --test tools/test-cafe-session.mjs tools/test-game-state.mjs tools/test-global-bgm.mjs tools/test-low-power.mjs tools/test-save-scheduler.mjs tools/test-pet-voice.mjs tools/test-story-system.mjs tools/test-story-voice.mjs tools/test-user-db.mjs",
     "build": "tsc --noEmit && node scripts/build.mjs",
+    "check:small": "node tools/check-small-screens.mjs",
+    "deploy:hk": "node scripts/deploy-hk.mjs",
+    "deploy:hk:fast": "node scripts/deploy-hk.mjs --skip-tests",
+    "pack:hk": "node scripts/deploy-hk.mjs --package-only",
+    "rollback:hk": "node scripts/deploy-hk.mjs --rollback",
     "preview": "node scripts/preview.mjs",
     "e2e": "node tools/e2e.mjs 390 844 mobile",
     "e2e:desktop": "node tools/e2e.mjs 1440 900 desktop"

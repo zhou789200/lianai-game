@@ -82,11 +82,21 @@ function runApi(req, res, done) {
 
 function sendFile(res, filePath, status = 200) {
   const ext = path.extname(filePath).toLowerCase()
+  // 带指纹的构建产物可以永久缓存；美术资源文件名不含指纹，
+  // 用「短缓存 + 后台校验」：同一版本内不再重复下载 700KB 场景图，
+  // 发版后最多一天内自动失效，不会长期卡在旧图上。
   const isHashedAsset = filePath.includes(`${path.sep}assets${path.sep}`)
+  const isArt = filePath.includes(`${path.sep}art${path.sep}`)
+  const isIcon = filePath.includes(`${path.sep}icons${path.sep}`)
+  const cacheControl = isHashedAsset
+    ? 'public, max-age=31536000, immutable'
+    : isArt || isIcon
+      ? 'public, max-age=86400, stale-while-revalidate=604800'
+      : 'no-cache'
   res.writeHead(status, {
     'Content-Type': MIME[ext] ?? 'application/octet-stream',
-    // 带指纹的产物可以长缓存，入口 HTML 必须每次校验，否则更新后拿到旧页面
-    'Cache-Control': isHashedAsset ? 'public, max-age=31536000, immutable' : 'no-cache',
+    // 入口 HTML 必须每次校验，否则更新后拿到旧页面
+    'Cache-Control': cacheControl,
   })
   createReadStream(filePath).pipe(res)
 }

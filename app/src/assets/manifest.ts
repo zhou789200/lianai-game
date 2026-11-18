@@ -39,13 +39,6 @@ export const SCENES: Record<SceneKey, SceneAsset> = {
   story: asset('scene-story', 'scene', 'scene-story.webp', '傍晚吧台 · 剧情本'),
 }
 
-/* ---------------- 角色立绘（900×1400 透明底） ---------------- */
-export const CHARACTERS: Record<string, SceneAsset> = {
-  'linche-calm': asset('linche-calm', 'character', 'char-linche-calm.webp', '林澈 · 平静'),
-  'linche-smile': asset('linche-smile', 'character', 'char-linche-smile.webp', '林澈 · 微笑'),
-  'guhuai-calm': asset('guhuai-calm', 'character', 'char-guhuai-calm.webp', '顾淮 · 平静'),
-}
-
 /* ---------------- 宠物立绘（透明底 WebP，与咖啡店场景里的布丁同一套拆件） ---------------- */
 export const PETS: Record<string, SceneAsset> = {
   'pudding-front': asset('pudding-front', 'pet', 'cafe-cat-front.webp', '布丁 · 端坐着看你'),
@@ -105,11 +98,8 @@ export const PROPS: Record<string, SceneAsset> = {
   warmlight: asset('warmlight', 'prop', 'prop-warmlight.webp', '暖光壁灯'),
 }
 
-/** 剧情角色 → 立绘 的兜底映射（章节未配立绘时使用） */
-export function characterAsset(characterId?: string): SceneAsset | undefined {
-  if (!characterId) return CHARACTERS['linche-calm']
-  return (
-    CHARACTERS[`${characterId}-calm`] ??
-    Object.values(CHARACTERS).find((a) => a.id.startsWith(characterId))
-  )
-}
+/**
+ * 剧情角色立绘暂时没有美术产出：场景底图本身已经画好人物，
+ * 因此这里不声明任何不存在的文件，避免启动时稳定 404 与无谓预热。
+ * 立绘补齐后在这里重新登记，并在 SceneRenderer 中接入人物层。
+ */
